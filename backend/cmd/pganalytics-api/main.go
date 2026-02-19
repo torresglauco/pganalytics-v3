@@ -7,8 +7,10 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/dextra/pganalytics-v3/backend/internal/api"
+	"github.com/dextra/pganalytics-v3/backend/internal/auth"
 	"github.com/dextra/pganalytics-v3/backend/internal/config"
 	"github.com/dextra/pganalytics-v3/backend/internal/storage"
 	"github.com/dextra/pganalytics-v3/backend/internal/timescale"
@@ -82,6 +84,31 @@ func main() {
 
 	logger.Info("Connected to TimescaleDB")
 
+	// Initialize JWT Manager
+	jwtManager := auth.NewJWTManager(
+		cfg.JWTSecret,
+		15*time.Minute,     // Access token expiration
+		24*time.Hour,       // Refresh token expiration
+		30*time.Minute,     // Collector token expiration
+	)
+
+	// Initialize authentication services
+	passwordManager := auth.NewPasswordManager()
+	certManager, err := auth.NewCertificateManager("", "")
+	if err != nil {
+		logger.Fatal("Failed to initialize certificate manager", zap.Error(err))
+	}
+
+	// Create auth service with adapters for data access
+	authService := auth.NewAuthService(
+		jwtManager,
+		passwordManager,
+		certManager,
+		postgresDB,    // implements UserStore interface
+		postgresDB,    // implements CollectorStore interface
+		postgresDB,    // implements TokenStore interface
+	)
+
 	// Set Gin mode
 	if cfg.IsProduction() {
 		gin.SetMode(gin.ReleaseMode)
@@ -95,7 +122,7 @@ func main() {
 	router.Use(gin.Recovery())
 
 	// Create API server
-	apiServer := api.NewServer(cfg, logger, postgresDB, timescaleDB)
+	apiServer := api.NewServer(cfg, logger, postgresDB, timescaleDB, authService, jwtManager)
 
 	// Register routes
 	apiServer.RegisterRoutes(router)

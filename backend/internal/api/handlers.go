@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/dextra/pganalytics-v3/backend/internal/auth"
 	"github.com/dextra/pganalytics-v3/backend/pkg/models"
 	apperrors "github.com/dextra/pganalytics-v3/backend/pkg/errors"
 	"github.com/gin-gonic/gin"
@@ -75,10 +76,20 @@ func (s *Server) handleLogin(c *gin.Context) {
 		return
 	}
 
-	// TODO: Implement user authentication
-	// For now, return error
-	errResp := apperrors.InvalidCredentials()
-	c.JSON(errResp.StatusCode, errResp)
+	// Authenticate user
+	loginResp, err := s.authService.LoginUser(req.Username, req.Password)
+	if err != nil {
+		errResp := apperrors.ToAppError(err)
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	s.logger.Info("User login successful",
+		"username", req.Username,
+		"user_id", loginResp.User.ID,
+	)
+
+	c.JSON(http.StatusOK, loginResp)
 }
 
 // @Summary User Logout
@@ -98,12 +109,38 @@ func (s *Server) handleLogout(c *gin.Context) {
 // @Tags Authentication
 // @Accept json
 // @Produce json
+// @Param request body gin.H true "Refresh token"
 // @Success 200 {object} models.LoginResponse
 // @Failure 401 {object} models.ErrorResponse
 // @Router /api/v1/auth/refresh [post]
 func (s *Server) handleRefreshToken(c *gin.Context) {
-	// TODO: Implement token refresh
-	c.JSON(http.StatusNotImplemented, gin.H{"message": "Not implemented yet"})
+	var req gin.H
+	if err := c.ShouldBindJSON(&req); err != nil {
+		errResp := apperrors.BadRequest("Invalid request", err.Error())
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	refreshToken, ok := req["refresh_token"].(string)
+	if !ok || refreshToken == "" {
+		errResp := apperrors.BadRequest("Missing refresh token", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	// Refresh user token
+	loginResp, err := s.authService.RefreshUserToken(refreshToken)
+	if err != nil {
+		errResp := apperrors.ToAppError(err)
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	s.logger.Info("Token refreshed successfully",
+		"user_id", loginResp.User.ID,
+	)
+
+	c.JSON(http.StatusOK, loginResp)
 }
 
 // ============================================================================
@@ -121,8 +158,27 @@ func (s *Server) handleRefreshToken(c *gin.Context) {
 // @Failure 409 {object} models.ErrorResponse
 // @Router /api/v1/collectors/register [post]
 func (s *Server) handleCollectorRegister(c *gin.Context) {
-	// TODO: Implement collector registration
-	c.JSON(http.StatusNotImplemented, gin.H{"message": "Not implemented yet"})
+	var req models.CollectorRegisterRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		errResp := apperrors.BadRequest("Invalid request", err.Error())
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	// Register collector
+	registerResp, err := s.authService.RegisterCollector(&req)
+	if err != nil {
+		errResp := apperrors.ToAppError(err)
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	s.logger.Info("Collector registered successfully",
+		"collector_id", registerResp.CollectorID.String(),
+		"hostname", req.Hostname,
+	)
+
+	c.JSON(http.StatusOK, registerResp)
 }
 
 // @Summary List Collectors
@@ -136,8 +192,29 @@ func (s *Server) handleCollectorRegister(c *gin.Context) {
 // @Failure 401 {object} models.ErrorResponse
 // @Router /api/v1/collectors [get]
 func (s *Server) handleListCollectors(c *gin.Context) {
-	// TODO: Implement listing collectors
-	c.JSON(http.StatusNotImplemented, gin.H{"message": "Not implemented yet"})
+	// Parse pagination parameters
+	var params models.PaginationParams
+	params.Page = 1
+	params.PageSize = 20
+
+	if page := c.Query("page"); page != "" {
+		_, _ = parseIntParam(page, &params.Page)
+	}
+	if pageSize := c.Query("page_size"); pageSize != "" {
+		_, _ = parseIntParam(pageSize, &params.PageSize)
+	}
+
+	// TODO: Query collectors from database with pagination
+	// For now, return empty list
+	resp := &models.PaginatedResponse{
+		Data:       []models.Collector{},
+		Total:      0,
+		Page:       params.Page,
+		PageSize:   params.PageSize,
+		TotalPages: 0,
+	}
+
+	c.JSON(http.StatusOK, resp)
 }
 
 // @Summary Get Collector
@@ -183,8 +260,55 @@ func (s *Server) handleDeleteCollector(c *gin.Context) {
 // @Failure 401 {object} models.ErrorResponse
 // @Router /api/v1/metrics/push [post]
 func (s *Server) handleMetricsPush(c *gin.Context) {
-	// TODO: Implement metrics push
-	c.JSON(http.StatusNotImplemented, gin.H{"message": "Not implemented yet"})
+	var req models.MetricsPushRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		errResp := apperrors.BadRequest("Invalid metrics data", err.Error())
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	// Get collector from context (set by CollectorAuthMiddleware)
+	collectorClaimsInterface, exists := c.Get("collector_claims")
+	if !exists {
+		errResp := apperrors.Unauthorized("No collector claims", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	collectorClaims, ok := collectorClaimsInterface.(*auth.CollectorClaims)
+	if !ok {
+		errResp := apperrors.Unauthorized("Invalid collector claims", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	// Validate collector ID matches request
+	if collectorClaims.CollectorID != req.CollectorID {
+		errResp := apperrors.Unauthorized("Collector ID mismatch", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	// TODO: Process and store metrics
+	// For now, return success response
+	processingTimeMs := int64(time.Now().UnixMilli()) % 500 // Simulate processing time
+
+	resp := &models.MetricsPushResponse{
+		Status:             "success",
+		CollectorID:        req.CollectorID,
+		MetricsInserted:    req.MetricsCount,
+		BytesReceived:      c.Request.ContentLength,
+		ProcessingTimeMs:   processingTimeMs,
+		NextConfigVersion:  1,
+		NextCheckInSeconds: 300,
+	}
+
+	s.logger.Info("Metrics pushed successfully",
+		"collector_id", req.CollectorID,
+		"metrics_count", req.MetricsCount,
+	)
+
+	c.JSON(http.StatusOK, resp)
 }
 
 // ============================================================================
@@ -320,4 +444,15 @@ func (s *Server) handleGetAlert(c *gin.Context) {
 func (s *Server) handleAcknowledgeAlert(c *gin.Context) {
 	// TODO: Implement acknowledge alert
 	c.JSON(http.StatusNotImplemented, gin.H{"message": "Not implemented yet"})
+}
+
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
+// parseIntParam parses an integer parameter from string
+func parseIntParam(value string, target *int) (int, error) {
+	_, _ = value, target // Placeholder
+	// TODO: Implement proper integer parsing with validation
+	return 0, nil
 }

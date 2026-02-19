@@ -1,6 +1,7 @@
 package api
 
 import (
+	"github.com/dextra/pganalytics-v3/backend/internal/auth"
 	"github.com/dextra/pganalytics-v3/backend/internal/config"
 	"github.com/dextra/pganalytics-v3/backend/internal/storage"
 	"github.com/dextra/pganalytics-v3/backend/internal/timescale"
@@ -10,10 +11,12 @@ import (
 
 // Server represents the API server
 type Server struct {
-	config     *config.Config
-	logger     *zap.Logger
-	postgres   *storage.PostgresDB
-	timescale  *timescale.TimescaleDB
+	config      *config.Config
+	logger      *zap.Logger
+	postgres    *storage.PostgresDB
+	timescale   *timescale.TimescaleDB
+	authService *auth.AuthService
+	jwtManager  *auth.JWTManager
 }
 
 // NewServer creates a new API server
@@ -22,12 +25,16 @@ func NewServer(
 	logger *zap.Logger,
 	postgres *storage.PostgresDB,
 	timescale *timescale.TimescaleDB,
+	authService *auth.AuthService,
+	jwtManager *auth.JWTManager,
 ) *Server {
 	return &Server{
-		config:    cfg,
-		logger:    logger,
-		postgres:  postgres,
-		timescale: timescale,
+		config:      cfg,
+		logger:      logger,
+		postgres:    postgres,
+		timescale:   timescale,
+		authService: authService,
+		jwtManager:  jwtManager,
 	}
 }
 

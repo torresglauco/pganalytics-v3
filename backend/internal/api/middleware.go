@@ -4,47 +4,85 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/dextra/pganalytics-v3/backend/internal/auth"
 	apperrors "github.com/dextra/pganalytics-v3/backend/pkg/errors"
 	"github.com/gin-gonic/gin"
 )
 
 // AuthMiddleware validates JWT tokens
-// TODO: Implement JWT validation in Phase 2
 func (s *Server) AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Get Authorization header
 		authHeader := c.GetHeader("Authorization")
-		if authHeader == "" {
-			errResp := apperrors.MissingAuthHeader()
+
+		// Extract token using helper
+		token, err := auth.ExtractTokenFromHeader(authHeader)
+		if err != nil {
+			errResp := apperrors.ToAppError(err)
 			c.JSON(errResp.StatusCode, errResp)
 			c.Abort()
 			return
 		}
 
-		// Extract token from "Bearer <token>" format
-		parts := strings.Split(authHeader, " ")
-		if len(parts) != 2 || parts[0] != "Bearer" {
-			errResp := apperrors.InvalidToken("Invalid authorization header format")
+		// Validate JWT token
+		claims, err := s.jwtManager.ValidateUserToken(token)
+		if err != nil {
+			errResp := apperrors.ToAppError(err)
 			c.JSON(errResp.StatusCode, errResp)
 			c.Abort()
 			return
 		}
 
-		token := parts[1]
+		// Store user info in context for handlers to use
+		c.Set("user_id", claims.UserID)
+		c.Set("username", claims.Username)
+		c.Set("role", claims.Role)
+		c.Set("email", claims.Email)
+		c.Set("claims", claims)
 
-		// TODO: Validate JWT token
-		// For now, accept any non-empty token (not for production)
-		if token == "" {
-			errResp := apperrors.InvalidToken("Token is empty")
+		s.logger.Debug("User authenticated",
+			"user_id", claims.UserID,
+			"username", claims.Username,
+			"role", claims.Role,
+		)
+
+		c.Next()
+	}
+}
+
+// CollectorAuthMiddleware validates collector JWT tokens
+func (s *Server) CollectorAuthMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Get Authorization header
+		authHeader := c.GetHeader("Authorization")
+
+		// Extract token using helper
+		token, err := auth.ExtractTokenFromHeader(authHeader)
+		if err != nil {
+			errResp := apperrors.ToAppError(err)
 			c.JSON(errResp.StatusCode, errResp)
 			c.Abort()
 			return
 		}
 
-		// TODO: Extract user info from token and store in context
-		// c.Set("user_id", userID)
-		// c.Set("username", username)
-		// c.Set("role", role)
+		// Validate collector JWT token
+		claims, err := s.jwtManager.ValidateCollectorToken(token)
+		if err != nil {
+			errResp := apperrors.ToAppError(err)
+			c.JSON(errResp.StatusCode, errResp)
+			c.Abort()
+			return
+		}
+
+		// Store collector info in context
+		c.Set("collector_id", claims.CollectorID)
+		c.Set("hostname", claims.Hostname)
+		c.Set("collector_claims", claims)
+
+		s.logger.Debug("Collector authenticated",
+			"collector_id", claims.CollectorID,
+			"hostname", claims.Hostname,
+		)
 
 		c.Next()
 	}

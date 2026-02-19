@@ -1,10 +1,17 @@
 package main
 
 import (
-	"fmt"
+	"context"
 	"log"
+	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 
+	"github.com/dextra/pganalytics-v3/backend/internal/api"
+	"github.com/dextra/pganalytics-v3/backend/internal/config"
+	"github.com/dextra/pganalytics-v3/backend/internal/storage"
+	"github.com/dextra/pganalytics-v3/backend/internal/timescale"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
@@ -23,88 +30,112 @@ import (
 
 // @host localhost:8080
 // @BasePath /api/v1
+
+const version = "3.0.0-alpha"
+
 func main() {
+	// Load configuration
+	cfg := config.Load()
+
+	// Validate configuration
+	if err := cfg.Validate(); err != nil {
+		log.Fatalf("Configuration error: %v", err)
+	}
+
 	// Initialize logger
-	logger, err := zap.NewProduction()
+	var logger *zap.Logger
+	var err error
+
+	if cfg.IsProduction() {
+		logger, err = zap.NewProduction()
+	} else {
+		logger, err = zap.NewDevelopment()
+	}
+
 	if err != nil {
 		log.Fatalf("Failed to initialize logger: %v", err)
 	}
 	defer logger.Sync()
 
-	// Get configuration from environment
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
-	}
-
-	databaseURL := os.Getenv("DATABASE_URL")
-	if databaseURL == "" {
-		logger.Fatal("DATABASE_URL environment variable not set")
-	}
-
-	timescaleURL := os.Getenv("TIMESCALE_URL")
-	if timescaleURL == "" {
-		logger.Fatal("TIMESCALE_URL environment variable not set")
-	}
-
-	jwtSecret := os.Getenv("JWT_SECRET")
-	if jwtSecret == "" {
-		logger.Warn("JWT_SECRET not set, using default (insecure for production)")
-		jwtSecret = "default-insecure-secret"
-	}
-
 	// Log startup
 	logger.Info("pgAnalytics v3.0 API Starting",
-		zap.String("port", port),
-		zap.String("environment", getEnv("ENVIRONMENT", "development")),
+		zap.String("version", version),
+		zap.String("environment", cfg.Environment),
+		zap.Int("port", cfg.Port),
 	)
 
-	// Initialize Gin
-	if getEnv("ENVIRONMENT", "development") == "production" {
+	// Initialize PostgreSQL database
+	postgresDB, err := storage.NewPostgresDB(cfg.DatabaseURL)
+	if err != nil {
+		logger.Fatal("Failed to initialize PostgreSQL", zap.Error(err))
+	}
+	defer postgresDB.Close()
+
+	logger.Info("Connected to PostgreSQL")
+
+	// Initialize TimescaleDB database
+	timescaleDB, err := timescale.NewTimescaleDB(cfg.TimescaleURL)
+	if err != nil {
+		logger.Fatal("Failed to initialize TimescaleDB", zap.Error(err))
+	}
+	defer timescaleDB.Close()
+
+	logger.Info("Connected to TimescaleDB")
+
+	// Set Gin mode
+	if cfg.IsProduction() {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
-	router := gin.Default()
+	// Create router
+	router := gin.New()
 
-	// Health check endpoint
-	router.GET("/api/v1/health", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"status":  "ok",
-			"version": "3.0.0",
-			"message": "pgAnalytics API is running",
-		})
-	})
+	// Add middleware
+	router.Use(gin.Logger())
+	router.Use(gin.Recovery())
 
-	// Placeholder endpoints (to be implemented in Phase 2)
-	v1 := router.Group("/api/v1")
-	{
-		// Collectors
-		v1.POST("/collectors/register", func(c *gin.Context) {
-			c.JSON(200, gin.H{"status": "not implemented yet"})
-		})
-		v1.GET("/collectors", func(c *gin.Context) {
-			c.JSON(200, gin.H{"status": "not implemented yet"})
-		})
+	// Create API server
+	apiServer := api.NewServer(cfg, logger, postgresDB, timescaleDB)
 
-		// Metrics
-		v1.POST("/metrics/push", func(c *gin.Context) {
-			c.JSON(200, gin.H{"status": "not implemented yet"})
-		})
+	// Register routes
+	apiServer.RegisterRoutes(router)
 
-		// Configuration
-		v1.GET("/config/:collector_id", func(c *gin.Context) {
-			c.JSON(200, gin.H{"status": "not implemented yet"})
-		})
+	// Create HTTP server
+	httpServer := &http.Server{
+		Addr:           ":" + getEnvInt("PORT", "8080"),
+		Handler:        router,
+		ReadTimeout:    cfg.RequestTimeout,
+		WriteTimeout:   cfg.RequestTimeout,
+		MaxHeaderBytes: 1 << 20,
 	}
 
-	// Start server
-	logger.Info("Starting HTTP server", zap.String("address", ":"+port))
-	if err := router.Run(":" + port); err != nil {
-		logger.Fatal("Failed to start server", zap.Error(err))
+	// Start server in a goroutine
+	go func() {
+		logger.Info("Starting HTTP server", zap.String("address", httpServer.Addr))
+		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			logger.Fatal("HTTP server error", zap.Error(err))
+		}
+	}()
+
+	// Wait for interrupt signal
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+
+	<-sigChan
+	logger.Info("Shutdown signal received")
+
+	// Graceful shutdown
+	ctx, cancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
+	defer cancel()
+
+	if err := httpServer.Shutdown(ctx); err != nil {
+		logger.Error("HTTP server shutdown error", zap.Error(err))
 	}
+
+	logger.Info("Server shutdown complete")
 }
 
-func getEnv(key, defaultValue string) string {
+func getEnvInt(key, defaultValue string) string {
 	if value := os.Getenv(key); value != "" {
 		return value
 	}

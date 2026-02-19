@@ -1,0 +1,166 @@
+version: '3.9'
+
+services:
+  # Main PostgreSQL for pgAnalytics metadata & monitoring data
+  postgres:
+    image: postgres:16-alpine
+    container_name: pganalytics-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: pganalytics
+      POSTGRES_DB: pganalytics
+      POSTGRES_INITDB_ARGS: "-c shared_preload_libraries=timescaledb"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - pganalytics
+
+  # TimescaleDB for time-series metrics storage
+  timescale:
+    image: timescaledb/timescaledb:latest-pg16-oss
+    container_name: pganalytics-timescale
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: pganalytics
+      POSTGRES_DB: metrics
+    ports:
+      - "5433:5432"
+    volumes:
+      - timescale_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - pganalytics
+
+  # Backend API Server
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: pganalytics-backend
+    environment:
+      DATABASE_URL: "postgres://postgres:pganalytics@postgres:5432/pganalytics"
+      TIMESCALE_URL: "postgres://postgres:pganalytics@timescale:5432/metrics"
+      JWT_SECRET: "demo-secret-key-change-in-production"
+      JWT_EXPIRATION: "900"  # 15 minutes
+      TLS_CERT: "/etc/pganalytics/tls/server.crt"
+      TLS_KEY: "/etc/pganalytics/tls/server.key"
+      LOG_LEVEL: "debug"
+      PORT: "8080"
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      timescale:
+        condition: service_healthy
+    volumes:
+      - ./backend/migrations:/migrations:ro
+      - ./tls:/etc/pganalytics/tls:ro
+    networks:
+      - pganalytics
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/v1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # C/C++ Collector (Demo)
+  collector:
+    build:
+      context: .
+      dockerfile: collector/Dockerfile
+    container_name: pganalytics-collector-demo
+    environment:
+      COLLECTOR_ID: "col_demo_001"
+      COLLECTOR_NAME: "Demo Collector"
+      BACKEND_URL: "https://backend:8080"
+      BACKEND_TLS_VERIFY: "false"  # Self-signed certs for demo
+      POSTGRES_HOST: "postgres"
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "pganalytics"
+      POSTGRES_DATABASES: "postgres,pganalytics"
+      COLLECTION_INTERVAL: "60"
+      LOG_LEVEL: "debug"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    volumes:
+      - ./collector/config.toml.sample:/etc/pganalytics/collector.toml:ro
+      - ./tls:/etc/pganalytics/tls:ro
+      - collector_data:/var/lib/pganalytics
+    networks:
+      - pganalytics
+
+  # Grafana for Dashboards & Alerts
+  grafana:
+    image: grafana/grafana:11.0.0
+    container_name: pganalytics-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_INSTALL_PLUGINS: "grafana-piechart-panel,grafana-worldmap-panel"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgres
+      - timescale
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    networks:
+      - pganalytics
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Redis for caching (optional, for future use)
+  redis:
+    image: redis:7-alpine
+    container_name: pganalytics-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - pganalytics
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+networks:
+  pganalytics:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
+  timescale_data:
+    driver: local
+  grafana_data:
+    driver: local
+  collector_data:
+    driver: local
+  redis_data:
+    driver: local

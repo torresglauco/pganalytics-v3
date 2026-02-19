@@ -1,0 +1,66 @@
+# Build artifacts
+build/
+dist/
+*.o
+*.a
+*.so
+*.dylib
+*.exe
+*.dll
+CMakeCache.txt
+CMakeFiles/
+Makefile
+
+# Go
+vendor/
+*.test
+*.out
+coverage.html
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Certificates (for demo, should not be committed in real scenarios)
+tls/*.crt
+tls/*.key
+tls/*.pem
+
+# Database data
+data/
+pgdata/
+
+# Logs
+*.log
+logs/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Node/JavaScript
+node_modules/
+package-lock.json
+yarn.lock
+
+# Temporary files
+*.tmp
+tmp/
+temp/
+
+# Collector cache
+collector_data/
+
+# K6 results
+results.json

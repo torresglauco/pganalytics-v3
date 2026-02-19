@@ -1,0 +1,17 @@
+{
+  "name": "pganalytics-collector",
+  "version": "3.0.0",
+  "description": "pgAnalytics C/C++ Distributed Collector",
+  "homepage": "https://github.com/dextra/pganalytics-v3",
+  "dependencies": [
+    "nlohmann-json",
+    "curl",
+    "openssl",
+    "zlib",
+    "spdlog"
+  ],
+  "dev-dependencies": [
+    "gtest",
+    "catch2"
+  ]
+}

@@ -1,6 +1,8 @@
 #include "../include/collector.h"
 #include <iostream>
 #include <ctime>
+#include <sstream>
+#include <iomanip>
 
 // DiskUsageCollector implementation
 DiskUsageCollector::DiskUsageCollector(

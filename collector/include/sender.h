@@ -47,8 +47,10 @@ public:
 
     /**
      * Set JWT token (for testing or external token management)
+     * @param token JWT token string
+     * @param expiresAt Unix timestamp when token expires
      */
-    void setAuthToken(const std::string& token);
+    void setAuthToken(const std::string& token, long expiresAt);
 
     /**
      * Check if current token is still valid

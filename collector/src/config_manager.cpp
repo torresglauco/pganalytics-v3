@@ -67,7 +67,7 @@ bool ConfigManager::parseTOML(const std::string& content) {
     return true;
 }
 
-std::string ConfigManager::getString(const std::string& section, const std::string& key, const std::string& defaultValue) {
+std::string ConfigManager::getString(const std::string& section, const std::string& key, const std::string& defaultValue) const {
     auto secIt = config_.find(section);
     if (secIt == config_.end()) {
         return defaultValue;
@@ -81,7 +81,7 @@ std::string ConfigManager::getString(const std::string& section, const std::stri
     return keyIt->second;
 }
 
-int ConfigManager::getInt(const std::string& section, const std::string& key, int defaultValue) {
+int ConfigManager::getInt(const std::string& section, const std::string& key, int defaultValue) const {
     std::string value = getString(section, key);
     if (value.empty()) {
         return defaultValue;
@@ -94,7 +94,7 @@ int ConfigManager::getInt(const std::string& section, const std::string& key, in
     }
 }
 
-bool ConfigManager::getBool(const std::string& section, const std::string& key, bool defaultValue) {
+bool ConfigManager::getBool(const std::string& section, const std::string& key, bool defaultValue) const {
     std::string value = getString(section, key);
     if (value.empty()) {
         return defaultValue;
@@ -105,7 +105,7 @@ bool ConfigManager::getBool(const std::string& section, const std::string& key, 
     return value == "true" || value == "yes" || value == "1";
 }
 
-std::vector<std::string> ConfigManager::getStringArray(const std::string& section, const std::string& key) {
+std::vector<std::string> ConfigManager::getStringArray(const std::string& section, const std::string& key) const {
     std::string value = getString(section, key);
     if (value.empty()) {
         return {};

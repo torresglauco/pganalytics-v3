@@ -119,8 +119,9 @@ void Sender::refreshAuthToken() {
     // This would be called after registration
 }
 
-void Sender::setAuthToken(const std::string& token) {
+void Sender::setAuthToken(const std::string& token, long expiresAt) {
     authToken_ = token;
+    tokenExpiresAt_ = expiresAt;
 }
 
 bool Sender::isTokenValid() const {

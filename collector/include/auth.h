@@ -99,7 +99,7 @@ private:
     time_t tokenExpiresAt_;
     std::string clientCertificate_;
     std::string clientKey_;
-    std::string lastError_;
+    mutable std::string lastError_;
 
     /**
      * Encode data using HMAC-SHA256

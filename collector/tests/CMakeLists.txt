@@ -44,10 +44,14 @@ target_link_libraries(pganalytics-tests
     GTest::gtest_main
     OpenSSL::SSL OpenSSL::Crypto
     ${CURL_LIBRARIES}
-    ${PostgreSQL_LIBRARIES}
     ${ZLIB_LIBRARIES}
     pthread
 )
+
+# Add PostgreSQL libraries if found
+if(PostgreSQL_FOUND)
+    target_link_libraries(pganalytics-tests PRIVATE ${PostgreSQL_LIBRARIES})
+endif()
 
 # Compiler flags
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")

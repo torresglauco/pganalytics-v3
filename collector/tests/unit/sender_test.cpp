@@ -49,7 +49,8 @@ TEST_F(SenderTest, CreateInstance) {
 // Test 2: Set authentication token
 TEST_F(SenderTest, SetAuthToken) {
     std::string token = "test.jwt.token";
-    sender->setAuthToken(token);
+    time_t expiresAt = std::time(nullptr) + 3600;
+    sender->setAuthToken(token, expiresAt);
 
     EXPECT_EQ(sender->getAuthToken(), token);
 }
@@ -57,7 +58,8 @@ TEST_F(SenderTest, SetAuthToken) {
 // Test 3: Get authentication token
 TEST_F(SenderTest, GetAuthToken) {
     std::string token = "test.jwt.token";
-    sender->setAuthToken(token);
+    time_t expiresAt = std::time(nullptr) + 3600;
+    sender->setAuthToken(token, expiresAt);
 
     std::string retrieved = sender->getAuthToken();
     EXPECT_EQ(retrieved, token);
@@ -380,7 +382,7 @@ TEST_F(SenderTest, TokenRefreshCycle) {
 // Test 25: Sender state after operations
 TEST_F(SenderTest, SenderStateConsistency) {
     std::string token1 = "first.token.set";
-    sender->setAuthToken(token1);
+    sender->setAuthToken(token1, std::time(nullptr) + 3600);
 
     // Get token
     std::string retrieved1 = sender->getAuthToken();
@@ -388,7 +390,7 @@ TEST_F(SenderTest, SenderStateConsistency) {
 
     // Set new token
     std::string token2 = "second.token.set";
-    sender->setAuthToken(token2);
+    sender->setAuthToken(token2, std::time(nullptr) + 3600);
 
     // Get new token
     std::string retrieved2 = sender->getAuthToken();

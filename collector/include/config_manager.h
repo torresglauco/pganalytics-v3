@@ -33,22 +33,22 @@ public:
      * @param defaultValue Value to return if key not found
      * @return Configuration value
      */
-    std::string getString(const std::string& section, const std::string& key, const std::string& defaultValue = "");
+    std::string getString(const std::string& section, const std::string& key, const std::string& defaultValue = "") const;
 
     /**
      * Get an integer configuration value
      */
-    int getInt(const std::string& section, const std::string& key, int defaultValue = 0);
+    int getInt(const std::string& section, const std::string& key, int defaultValue = 0) const;
 
     /**
      * Get a boolean configuration value
      */
-    bool getBool(const std::string& section, const std::string& key, bool defaultValue = false);
+    bool getBool(const std::string& section, const std::string& key, bool defaultValue = false) const;
 
     /**
      * Get a string array configuration value
      */
-    std::vector<std::string> getStringArray(const std::string& section, const std::string& key);
+    std::vector<std::string> getStringArray(const std::string& section, const std::string& key) const;
 
     /**
      * Set a configuration value

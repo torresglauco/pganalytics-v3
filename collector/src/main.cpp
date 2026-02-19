@@ -105,8 +105,9 @@ int runCronMode() {
     );
 
     // Set initial auth token (would be fetched during registration)
-    // For now, generate one
-    sender.setAuthToken(authMgr.generateToken());
+    // For now, generate one with 1 hour expiration
+    authMgr.generateToken(3600);  // 1 hour
+    sender.setAuthToken(authMgr.getToken(), authMgr.getTokenExpiration());
 
     // Main collection loop
     int collectionInterval = gConfig->getCollectionInterval("collector", 60);

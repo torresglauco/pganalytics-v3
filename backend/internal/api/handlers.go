@@ -526,6 +526,160 @@ func (s *Server) handleAcknowledgeAlert(c *gin.Context) {
 }
 
 // ============================================================================
+// QUERY STATISTICS HANDLERS
+// ============================================================================
+
+// @Summary Get Top Slow Queries
+// @Description Get the slowest queries from a collector
+// @Tags QueryStats
+// @Security Bearer
+// @Produce json
+// @Param collector_id path string true "Collector ID"
+// @Param limit query int false "Result limit" default(20)
+// @Param hours query int false "Time range in hours" default(24)
+// @Success 200 {object} models.TopQueriesResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Router /api/v1/collectors/{collector_id}/queries/slow [get]
+func (s *Server) handleGetSlowQueries(c *gin.Context) {
+	collectorID := c.Param("collector_id")
+	limitStr := c.DefaultQuery("limit", "20")
+	hoursStr := c.DefaultQuery("hours", "24")
+
+	// Parse parameters
+	limit := 20
+	if l, err := strconv.Atoi(limitStr); err == nil && l > 0 && l <= 100 {
+		limit = l
+	}
+
+	hours := 24
+	if h, err := strconv.Atoi(hoursStr); err == nil && h > 0 && h <= 720 {
+		hours = h
+	}
+
+	since := time.Now().Add(-time.Duration(hours) * time.Hour)
+
+	queries, err := s.db.GetTopSlowQueries(c, collectorID, limit, since)
+	if err != nil {
+		s.logger.Error("Failed to query slow queries", zap.Error(err), zap.String("collector_id", collectorID))
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
+			Error:   "Internal Server Error",
+			Message: "Failed to query slow queries",
+			Code:    http.StatusInternalServerError,
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, models.TopQueriesResponse{
+		ServerID:  uuid.MustParse(collectorID),
+		QueryType: "slow",
+		Hours:     hours,
+		Count:     len(queries),
+		Queries:   queries,
+	})
+}
+
+// @Summary Get Top Frequent Queries
+// @Description Get the most frequently executed queries from a collector
+// @Tags QueryStats
+// @Security Bearer
+// @Produce json
+// @Param collector_id path string true "Collector ID"
+// @Param limit query int false "Result limit" default(20)
+// @Param hours query int false "Time range in hours" default(24)
+// @Success 200 {object} models.TopQueriesResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Router /api/v1/collectors/{collector_id}/queries/frequent [get]
+func (s *Server) handleGetFrequentQueries(c *gin.Context) {
+	collectorID := c.Param("collector_id")
+	limitStr := c.DefaultQuery("limit", "20")
+	hoursStr := c.DefaultQuery("hours", "24")
+
+	// Parse parameters
+	limit := 20
+	if l, err := strconv.Atoi(limitStr); err == nil && l > 0 && l <= 100 {
+		limit = l
+	}
+
+	hours := 24
+	if h, err := strconv.Atoi(hoursStr); err == nil && h > 0 && h <= 720 {
+		hours = h
+	}
+
+	since := time.Now().Add(-time.Duration(hours) * time.Hour)
+
+	queries, err := s.db.GetTopFrequentQueries(c, collectorID, limit, since)
+	if err != nil {
+		s.logger.Error("Failed to query frequent queries", zap.Error(err), zap.String("collector_id", collectorID))
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
+			Error:   "Internal Server Error",
+			Message: "Failed to query frequent queries",
+			Code:    http.StatusInternalServerError,
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, models.TopQueriesResponse{
+		ServerID:  uuid.MustParse(collectorID),
+		QueryType: "frequent",
+		Hours:     hours,
+		Count:     len(queries),
+		Queries:   queries,
+	})
+}
+
+// @Summary Get Query Timeline
+// @Description Get time-series data for a specific query
+// @Tags QueryStats
+// @Security Bearer
+// @Produce json
+// @Param query_hash path int true "Query hash from pg_stat_statements"
+// @Param hours query int false "Time range in hours" default(24)
+// @Success 200 {object} models.QueryTimelineResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Router /api/v1/queries/{query_hash}/timeline [get]
+func (s *Server) handleGetQueryTimeline(c *gin.Context) {
+	hashStr := c.Param("query_hash")
+	hoursStr := c.DefaultQuery("hours", "24")
+
+	// Parse query hash
+	queryHash, err := strconv.ParseInt(hashStr, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Error:   "Bad Request",
+			Message: "Invalid query hash",
+			Code:    http.StatusBadRequest,
+		})
+		return
+	}
+
+	hours := 24
+	if h, err := strconv.Atoi(hoursStr); err == nil && h > 0 && h <= 720 {
+		hours = h
+	}
+
+	since := time.Now().Add(-time.Duration(hours) * time.Hour)
+
+	stats, err := s.db.GetQueryTimeline(c, queryHash, since)
+	if err != nil {
+		s.logger.Error("Failed to query timeline", zap.Error(err), zap.Int64("query_hash", queryHash))
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
+			Error:   "Internal Server Error",
+			Message: "Failed to query timeline",
+			Code:    http.StatusInternalServerError,
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, models.QueryTimelineResponse{
+		QueryHash: queryHash,
+		Data:      stats,
+	})
+}
+
+// ============================================================================
 // HELPER FUNCTIONS
 // ============================================================================
 

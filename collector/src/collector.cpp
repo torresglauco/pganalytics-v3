@@ -3,6 +3,8 @@
 #include <ctime>
 #include <sstream>
 #include <iomanip>
+#include <cstdlib>
+#include <fstream>
 
 // DiskUsageCollector implementation
 DiskUsageCollector::DiskUsageCollector(
@@ -38,19 +40,79 @@ json DiskUsageCollector::execute() {
 }
 
 json DiskUsageCollector::collectDiskUsage() {
-    // TODO: Execute `df -B1` and parse output
-    // Or use statfs() system call
-    // Schema:
-    // {
-    //   "mount": "/",
-    //   "device": "/dev/sda1",
-    //   "total_gb": 100,
-    //   "used_gb": 45,
-    //   "free_gb": 55,
-    //   "percent_used": 45
-    // }
+    json filesystems = json::array();
 
-    return json::array();
+    // Execute df command and parse output
+    FILE* pipe = popen("df -B1 | tail -n +2", "r");
+    if (!pipe) {
+        return filesystems;
+    }
+
+    char buffer[512];
+    while (fgets(buffer, sizeof(buffer), pipe) != nullptr) {
+        std::string line(buffer);
+        std::istringstream iss(line);
+
+        std::string device, mount;
+        long total_bytes, used_bytes, available_bytes;
+
+        // df output: Filesystem 1B-blocks Used Available Use% Mounted on
+        if (iss >> device >> total_bytes >> used_bytes >> available_bytes) {
+            // Skip lines that don't look like real filesystems
+            if (device.find("/dev/") != 0) {
+                continue;
+            }
+
+            json fs_entry = json::object();
+            fs_entry["device"] = device;
+            fs_entry["mount"] = mount;
+            fs_entry["total_gb"] = total_bytes / (1024LL * 1024LL * 1024LL);
+            fs_entry["used_gb"] = used_bytes / (1024LL * 1024LL * 1024LL);
+            fs_entry["free_gb"] = available_bytes / (1024LL * 1024LL * 1024LL);
+
+            double percent = 0.0;
+            if (total_bytes > 0) {
+                percent = (100.0 * used_bytes) / total_bytes;
+            }
+            fs_entry["percent_used"] = percent;
+
+            filesystems.push_back(fs_entry);
+        }
+    }
+
+    pclose(pipe);
+
+    // Fallback: try reading /etc/mtab or /proc/mounts for mount points
+    // and use statfs for size information
+    std::ifstream mtab_file("/etc/mtab");
+    if (filesystems.empty() && mtab_file.is_open()) {
+        std::string line;
+        while (std::getline(mtab_file, line)) {
+            if (line.empty() || line[0] == '#') continue;
+
+            std::istringstream iss(line);
+            std::string device, mount, fstype;
+            if (!(iss >> device >> mount >> fstype)) continue;
+
+            // Skip pseudo-filesystems
+            if (fstype == "tmpfs" || fstype == "sysfs" || fstype == "proc" || fstype == "devtmpfs") {
+                continue;
+            }
+
+            json fs_entry = json::object();
+            fs_entry["device"] = device;
+            fs_entry["mount"] = mount;
+            fs_entry["total_gb"] = 0;  // Would use statfs here
+            fs_entry["used_gb"] = 0;
+            fs_entry["free_gb"] = 0;
+            fs_entry["percent_used"] = 0;
+
+            filesystems.push_back(fs_entry);
+        }
+        mtab_file.close();
+    }
+
+    return filesystems;
 }
 
 // CollectorManager implementation

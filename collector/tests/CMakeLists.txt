@@ -3,13 +3,29 @@
 # Find Google Test
 find_package(GTest REQUIRED)
 
-# Test sources
-set(TEST_SOURCES
+# Unit test sources
+set(UNIT_TEST_SOURCES
     unit/metrics_serializer_test.cpp
     unit/auth_test.cpp
     unit/metrics_buffer_test.cpp
     unit/config_manager_test.cpp
     unit/sender_test.cpp
+)
+
+# Integration test sources
+set(INTEGRATION_TEST_SOURCES
+    integration/mock_backend_server.cpp
+    integration/sender_integration_test.cpp
+    integration/collector_flow_test.cpp
+    integration/auth_integration_test.cpp
+    integration/config_integration_test.cpp
+    integration/error_handling_test.cpp
+)
+
+# Combine all test sources
+set(TEST_SOURCES
+    ${UNIT_TEST_SOURCES}
+    ${INTEGRATION_TEST_SOURCES}
 )
 
 # Exclude main.cpp from tests
@@ -34,7 +50,9 @@ add_executable(pganalytics-tests
 # Include directories for tests
 target_include_directories(pganalytics-tests PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../include
+    ${CMAKE_CURRENT_SOURCE_DIR}/integration
     ${GTEST_INCLUDE_DIRS}
+    ${nlohmann_json_INCLUDE_DIR}
 )
 
 # Link libraries

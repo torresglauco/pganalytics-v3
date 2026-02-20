@@ -12,13 +12,23 @@ option(BUILD_TESTS "Build unit tests" ON)
 # Find required packages
 find_package(OpenSSL 3.0 REQUIRED)
 find_package(CURL REQUIRED)
-find_package(PostgreSQL QUIET)
+find_package(PostgreSQL)
 find_package(ZLIB REQUIRED)
 find_package(nlohmann_json 3.2.0 QUIET)
 
 # If nlohmann_json not found, include it as header-only
 if(NOT nlohmann_json_FOUND)
     include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include/nlohmann)
+endif()
+
+# Check for libpq availability
+if(PostgreSQL_FOUND)
+    message(STATUS "PostgreSQL found: ${PostgreSQL_VERSION_STRING}")
+    message(STATUS "PostgreSQL include: ${PostgreSQL_INCLUDE_DIRS}")
+    message(STATUS "PostgreSQL libraries: ${PostgreSQL_LIBRARIES}")
+    add_compile_definitions(HAVE_LIBPQ)
+else()
+    message(STATUS "PostgreSQL not found - pg_stats collector will use default values")
 endif()
 
 # Include directories

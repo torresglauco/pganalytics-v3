@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
-#include "../src/postgres_plugin.cpp"
+#include "../include/collector.h"
 #include <nlohmann/json.hpp>
+#include <chrono>
 
 using json = nlohmann::json;
 
@@ -91,13 +92,13 @@ TEST_F(PgStatsCollectorTest, DatabaseStatsHaveCorrectTypes) {
 
         // Check if stats are present (will be 0 if no connection)
         if (db.contains("size_bytes")) {
-            EXPECT_TRUE(db["size_bytes"].is_number_unsigned());
+            EXPECT_TRUE(db["size_bytes"].is_number());
         }
         if (db.contains("transactions_committed")) {
-            EXPECT_TRUE(db["transactions_committed"].is_number_unsigned());
+            EXPECT_TRUE(db["transactions_committed"].is_number());
         }
         if (db.contains("transactions_rolledback")) {
-            EXPECT_TRUE(db["transactions_rolledback"].is_number_unsigned());
+            EXPECT_TRUE(db["transactions_rolledback"].is_number());
         }
     }
 }

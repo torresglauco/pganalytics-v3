@@ -275,6 +275,50 @@ func (p *PostgresDB) UpdateCollectorMetricsCount(ctx context.Context, collectorI
 	return nil
 }
 
+// GetCollectorConfig retrieves the latest configuration for a collector
+func (p *PostgresDB) GetCollectorConfig(ctx context.Context, collectorID string) (*models.CollectorConfig, error) {
+	config := &models.CollectorConfig{}
+
+	err := p.db.QueryRowContext(
+		ctx,
+		`SELECT id, collector_id, version, config, created_at, updated_by
+		 FROM pganalytics.collector_config
+		 WHERE collector_id::text = $1
+		 ORDER BY version DESC
+		 LIMIT 1`,
+		collectorID,
+	).Scan(
+		&config.ID, &config.CollectorID, &config.Version, &config.Config,
+		&config.CreatedAt, &config.UpdatedBy,
+	)
+
+	if err == sql.ErrNoRows {
+		return nil, apperrors.NotFound("collector configuration", collectorID)
+	}
+	if err != nil {
+		return nil, apperrors.DatabaseError("get collector config", err.Error())
+	}
+
+	return config, nil
+}
+
+// CreateCollectorConfig creates a new configuration version for a collector
+func (p *PostgresDB) CreateCollectorConfig(ctx context.Context, config *models.CollectorConfig) error {
+	err := p.db.QueryRowContext(
+		ctx,
+		`INSERT INTO pganalytics.collector_config (collector_id, config, version, updated_by)
+		 VALUES ($1, $2, COALESCE((SELECT MAX(version) FROM pganalytics.collector_config WHERE collector_id = $1), 0) + 1, $3)
+		 RETURNING id, version, created_at`,
+		config.CollectorID, config.Config, config.UpdatedBy,
+	).Scan(&config.ID, &config.Version, &config.CreatedAt)
+
+	if err != nil {
+		return apperrors.DatabaseError("create collector config", err.Error())
+	}
+
+	return nil
+}
+
 // ============================================================================
 // API TOKEN OPERATIONS
 // ============================================================================

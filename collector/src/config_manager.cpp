@@ -24,6 +24,10 @@ bool ConfigManager::loadFromFile() {
     return parseTOML(buffer.str());
 }
 
+bool ConfigManager::loadFromString(const std::string& tomlContent) {
+    return parseTOML(tomlContent);
+}
+
 bool ConfigManager::parseTOML(const std::string& content) {
     std::istringstream stream(content);
     std::string line;

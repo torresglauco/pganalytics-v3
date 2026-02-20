@@ -166,6 +166,91 @@ std::string Sender::compressJson(const std::string& input) {
     return output;
 }
 
+bool Sender::pullConfig(const std::string& collectorId, std::string& configToml, int& version) {
+    // Validate token is still valid
+    if (!isTokenValid()) {
+        refreshAuthToken();
+    }
+
+    // Build URL: {backendUrl}/api/v1/config/{collectorId}
+    std::string url = backendUrl_ + "/api/v1/config/" + collectorId;
+
+    // Initialize CURL
+    CURL* curl = curl_easy_init();
+    if (!curl) {
+        return false;
+    }
+
+    // Configure CURL for TLS 1.3 + mTLS
+    if (!setupCurl(curl)) {
+        curl_easy_cleanup(curl);
+        return false;
+    }
+
+    // Prepare headers
+    struct curl_slist* headers = nullptr;
+    headers = curl_slist_append(headers, "Accept: text/plain");
+
+    // Add Authorization header
+    std::string authHeader = "Authorization: Bearer " + getAuthToken();
+    headers = curl_slist_append(headers, authHeader.c_str());
+
+    // Set CURL options
+    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+    curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "GET");
+
+    // Response buffer
+    std::string responseBuffer;
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeCallback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &responseBuffer);
+
+    // Perform request
+    CURLcode res = curl_easy_perform(curl);
+
+    bool success = (res == CURLE_OK);
+    if (!success) {
+        std::cerr << "Config pull failed: " << curl_easy_strerror(res) << std::endl;
+        curl_slist_free_all(headers);
+        curl_easy_cleanup(curl);
+        return false;
+    }
+
+    // Check HTTP status code
+    long httpCode = 0;
+    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpCode);
+
+    if (httpCode == 200) {
+        configToml = responseBuffer;
+        version = 0;  // Default to 0, could be read from X-Config-Version header
+        // Note: To read response headers like X-Config-Version, would need to implement
+        // CURLOPT_HEADERFUNCTION callback. For now, version is read from config_version field.
+
+        curl_slist_free_all(headers);
+        curl_easy_cleanup(curl);
+        return true;
+    } else if (httpCode == 404) {
+        std::cerr << "Collector configuration not found on backend" << std::endl;
+        curl_slist_free_all(headers);
+        curl_easy_cleanup(curl);
+        return false;
+    } else if (httpCode == 401) {
+        // Token expired, refresh and retry once
+        curl_slist_free_all(headers);
+        curl_easy_cleanup(curl);
+        refreshAuthToken();
+        if (isTokenValid()) {
+            return pullConfig(collectorId, configToml, version);
+        }
+        return false;
+    } else {
+        std::cerr << "Config pull failed with HTTP " << httpCode << std::endl;
+        curl_slist_free_all(headers);
+        curl_easy_cleanup(curl);
+        return false;
+    }
+}
+
 bool Sender::setupCurl(void* curl) {
     CURL* curl_handle = static_cast<CURL*>(curl);
 

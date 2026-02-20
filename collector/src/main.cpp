@@ -114,7 +114,7 @@ int runCronMode() {
     int configPullInterval = gConfig->getInt("collector", "config_pull_interval", 300);
 
     std::cout << "Starting collection loop (collect every " << collectionInterval
-              << "s, push every " << pushInterval << "s)" << std::endl;
+              << "s, push every " << pushInterval << "s, config pull every " << configPullInterval << "s)" << std::endl;
 
     auto lastPushTime = std::chrono::steady_clock::now();
     auto lastConfigPullTime = std::chrono::steady_clock::now();
@@ -170,8 +170,42 @@ int runCronMode() {
             lastPushTime = now;
         }
 
-        // Sleep before next collection
-        std::this_thread::sleep_for(std::chrono::seconds(collectionInterval));
+        // Check if it's time to pull configuration
+        auto secsSinceConfigPull = std::chrono::duration_cast<std::chrono::seconds>(now - lastConfigPullTime).count();
+
+        if (secsSinceConfigPull >= configPullInterval) {
+            std::cout << "Pulling configuration from backend..." << std::endl;
+
+            std::string newConfigToml;
+            int newConfigVersion = 0;
+
+            if (sender.pullConfig(gConfig->getCollectorId(), newConfigToml, newConfigVersion)) {
+                // Check if we got a new configuration
+                if (!newConfigToml.empty()) {
+                    std::cout << "Applying new configuration (version " << newConfigVersion << ")..." << std::endl;
+
+                    // Try to load the new configuration
+                    if (gConfig->loadFromString(newConfigToml)) {
+                        // Reconfigure collectors with new settings
+                        collectorMgr.configure(gConfig->toJson());
+
+                        std::cout << "Configuration updated successfully (version " << newConfigVersion << ")" << std::endl;
+                    } else {
+                        std::cerr << "Failed to parse new configuration: " << gConfig->getLastError() << std::endl;
+                    }
+                } else {
+                    std::cout << "No configuration update available" << std::endl;
+                }
+            } else {
+                std::cerr << "Failed to pull configuration from backend (will retry next interval)" << std::endl;
+                // Continue with current config - graceful degradation
+            }
+
+            lastConfigPullTime = now;
+        }
+
+        // Sleep a bit to avoid busy-waiting
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 
     std::cout << "Collector stopped" << std::endl;

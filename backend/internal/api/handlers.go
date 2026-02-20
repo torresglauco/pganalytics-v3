@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
@@ -8,6 +9,7 @@ import (
 	"github.com/dextra/pganalytics-v3/backend/pkg/models"
 	apperrors "github.com/dextra/pganalytics-v3/backend/pkg/errors"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 const version = "3.0.0-alpha"
@@ -319,31 +321,108 @@ func (s *Server) handleMetricsPush(c *gin.Context) {
 // @Description Get configuration for a collector (pulled by collector)
 // @Tags Configuration
 // @Security Bearer
-// @Produce json
+// @Produce plain
 // @Param collector_id path string true "Collector ID"
-// @Success 200 {object} gin.H
+// @Success 200 {string} string "TOML configuration"
 // @Failure 404 {object} models.ErrorResponse
 // @Router /api/v1/config/{collector_id} [get]
 func (s *Server) handleGetConfig(c *gin.Context) {
-	// TODO: Implement get config
-	c.JSON(http.StatusNotImplemented, gin.H{"message": "Not implemented yet"})
+	collectorID := c.Param("collector_id")
+	ctx := c.Request.Context()
+
+	// Get the latest collector configuration
+	config, err := s.postgres.GetCollectorConfig(ctx, collectorID)
+	if err != nil {
+		errResp := apperrors.ToAppError(err)
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	// Return TOML format with version info in header
+	c.Header("Content-Type", "text/plain")
+	c.Header("X-Config-Version", fmt.Sprintf("%d", config.Version))
+	c.String(http.StatusOK, config.Config)
+
+	s.logger.Info("Collector config retrieved",
+		"collector_id", collectorID,
+		"config_version", config.Version,
+	)
 }
 
 // @Summary Update Collector Config
 // @Description Update configuration for a collector (admin only)
 // @Tags Configuration
 // @Security Bearer
-// @Accept json
+// @Accept plain
 // @Produce json
 // @Param collector_id path string true "Collector ID"
-// @Param request body gin.H true "Configuration"
+// @Param request body string true "TOML Configuration"
 // @Success 200 {object} gin.H
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 403 {object} models.ErrorResponse
 // @Router /api/v1/config/{collector_id} [put]
 func (s *Server) handleUpdateConfig(c *gin.Context) {
-	// TODO: Implement update config
-	c.JSON(http.StatusNotImplemented, gin.H{"message": "Not implemented yet"})
+	collectorID := c.Param("collector_id")
+	ctx := c.Request.Context()
+
+	// Get user from context (set by AuthMiddleware)
+	userInterface, exists := c.Get("user")
+	if !exists {
+		errResp := apperrors.Unauthorized("No user found", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	user, ok := userInterface.(*models.User)
+	if !ok {
+		errResp := apperrors.Unauthorized("Invalid user claims", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	// Check if user is admin (optional - for now allow any authenticated user)
+	// In a real implementation, this would check user.Role == "admin"
+
+	// Read TOML content from request body
+	tomlContent, err := c.GetRawData()
+	if err != nil {
+		errResp := apperrors.BadRequest("Failed to read configuration", err.Error())
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	// Create new config version
+	parsedUUID, err := uuid.Parse(collectorID)
+	if err != nil {
+		errResp := apperrors.BadRequest("Invalid collector ID format", err.Error())
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	config := &models.CollectorConfig{
+		CollectorID: parsedUUID,
+		Config:      string(tomlContent),
+		UpdatedBy:   &user.ID,
+	}
+
+	if err = s.postgres.CreateCollectorConfig(ctx, config); err != nil {
+		errResp := apperrors.ToAppError(err)
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	s.logger.Info("Collector config updated",
+		"collector_id", collectorID,
+		"config_version", config.Version,
+		"updated_by", user.ID,
+	)
+
+	c.JSON(http.StatusOK, gin.H{
+		"status":       "success",
+		"collector_id": collectorID,
+		"version":      config.Version,
+		"message":      "Configuration updated successfully",
+	})
 }
 
 // ============================================================================

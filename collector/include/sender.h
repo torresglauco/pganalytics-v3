@@ -57,6 +57,19 @@ public:
      */
     bool isTokenValid() const;
 
+    /**
+     * Pull configuration from backend
+     * @param collectorId Collector ID
+     * @param configToml Output: TOML configuration content
+     * @param version Output: Configuration version number
+     * @return true if successful, false otherwise
+     */
+    bool pullConfig(
+        const std::string& collectorId,
+        std::string& configToml,
+        int& version
+    );
+
 private:
     std::string backendUrl_;
     std::string collectorId_;

@@ -27,6 +27,13 @@ public:
     bool loadFromFile();
 
     /**
+     * Load configuration from a TOML string
+     * @param tomlContent TOML formatted configuration string
+     * @return true if successful, false otherwise
+     */
+    bool loadFromString(const std::string& tomlContent);
+
+    /**
      * Get a string configuration value
      * @param section Section name (e.g., "backend", "postgres")
      * @param key Configuration key

@@ -633,3 +633,296 @@ func (p *PostgresDB) GetQueryTimeline(ctx context.Context, queryHash int64, sinc
 
 	return queries, rows.Err()
 }
+
+// ============================================================================
+// PHASE 4.4: ADVANCED QUERY ANALYSIS METHODS
+// ============================================================================
+
+// GetQueryFingerprints returns grouped queries by fingerprint
+func (p *PostgresDB) GetQueryFingerprints(ctx context.Context, limit int) ([]*models.QueryFingerprintResponse, error) {
+	if limit > 100 {
+		limit = 100
+	}
+	if limit < 1 {
+		limit = 20
+	}
+
+	query := `
+	SELECT
+		fingerprint_hash,
+		normalized_text,
+		total_calls,
+		avg_execution_time,
+		first_seen,
+		last_seen
+	FROM query_fingerprints
+	WHERE total_calls > 0
+	ORDER BY total_calls DESC
+	LIMIT $1
+	`
+
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	rows, err := p.db.QueryContext(ctx, query, limit)
+	if err != nil {
+		return nil, apperrors.DatabaseError("query fingerprints", err.Error())
+	}
+	defer rows.Close()
+
+	var fingerprints []*models.QueryFingerprintResponse
+	for rows.Next() {
+		fp := &models.QueryFingerprintResponse{}
+		err := rows.Scan(
+			&fp.FingerprintHash,
+			&fp.NormalizedQuery,
+			&fp.TotalCalls,
+			&fp.AvgExecutionTime,
+			&fp.FirstSeen,
+			&fp.LastSeen,
+		)
+		if err != nil {
+			return nil, apperrors.DatabaseError("scan fingerprint row", err.Error())
+		}
+		fingerprints = append(fingerprints, fp)
+	}
+
+	return fingerprints, rows.Err()
+}
+
+// GetQueriesByFingerprint returns all individual queries for a specific fingerprint
+func (p *PostgresDB) GetQueriesByFingerprint(ctx context.Context, fingerprintHash int64, limit int) ([]*models.QueryStats, error) {
+	if limit > 100 {
+		limit = 100
+	}
+	if limit < 1 {
+		limit = 20
+	}
+
+	query := `
+	SELECT
+		time, collector_id, database_name, user_name, query_hash, query_text,
+		calls, total_time, mean_time, min_time, max_time, stddev_time, rows,
+		shared_blks_hit, shared_blks_read, shared_blks_dirtied, shared_blks_written,
+		local_blks_hit, local_blks_read, local_blks_dirtied, local_blks_written,
+		temp_blks_read, temp_blks_written, blk_read_time, blk_write_time,
+		wal_records, wal_fpi, wal_bytes, query_plan_time, query_exec_time
+	FROM metrics_pg_stats_query
+	WHERE fingerprint_query_hash(normalize_query_text(query_text)) = $1
+	ORDER BY time DESC
+	LIMIT $2
+	`
+
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	rows, err := p.db.QueryContext(ctx, query, fingerprintHash, limit)
+	if err != nil {
+		return nil, apperrors.DatabaseError("query by fingerprint", err.Error())
+	}
+	defer rows.Close()
+
+	var queries []*models.QueryStats
+	for rows.Next() {
+		q := &models.QueryStats{}
+		err := rows.Scan(
+			&q.Time, &q.CollectorID, &q.DatabaseName, &q.UserName, &q.QueryHash, &q.QueryText,
+			&q.Calls, &q.TotalTime, &q.MeanTime, &q.MinTime, &q.MaxTime, &q.StddevTime, &q.Rows,
+			&q.SharedBlksHit, &q.SharedBlksRead, &q.SharedBlksDirtied, &q.SharedBlksWritten,
+			&q.LocalBlksHit, &q.LocalBlksRead, &q.LocalBlksDirtied, &q.LocalBlksWritten,
+			&q.TempBlksRead, &q.TempBlksWritten, &q.BlkReadTime, &q.BlkWriteTime,
+			&q.WalRecords, &q.WalFpi, &q.WalBytes, &q.QueryPlanTime, &q.QueryExecTime,
+		)
+		if err != nil {
+			return nil, apperrors.DatabaseError("scan query row", err.Error())
+		}
+		queries = append(queries, q)
+	}
+
+	return queries, rows.Err()
+}
+
+// GetExplainPlan returns the latest EXPLAIN plan for a query
+func (p *PostgresDB) GetExplainPlan(ctx context.Context, queryHash int64) (*models.ExplainPlan, error) {
+	query := `
+	SELECT
+		id, query_hash, query_fingerprint_hash, collected_at, plan_json, plan_text,
+		rows_expected, rows_actual, plan_duration_ms, execution_duration_ms,
+		has_seq_scan, has_index_scan, has_bitmap_scan, has_nested_loop,
+		total_buffers_read, total_buffers_hit
+	FROM explain_plans
+	WHERE query_hash = $1
+	ORDER BY collected_at DESC
+	LIMIT 1
+	`
+
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	plan := &models.ExplainPlan{}
+	err := p.db.QueryRowContext(ctx, query, queryHash).Scan(
+		&plan.ID, &plan.QueryHash, &plan.QueryFingerprintHash, &plan.CollectedAt, &plan.PlanJSON, &plan.PlanText,
+		&plan.RowsExpected, &plan.RowsActual, &plan.PlanDurationMs, &plan.ExecutionDurationMs,
+		&plan.HasSeqScan, &plan.HasIndexScan, &plan.HasBitmapScan, &plan.HasNestedLoop,
+		&plan.TotalBuffersRead, &plan.TotalBuffersHit,
+	)
+
+	if err == sql.ErrNoRows {
+		return nil, nil // No explain plan found
+	}
+	if err != nil {
+		return nil, apperrors.DatabaseError("get explain plan", err.Error())
+	}
+
+	return plan, nil
+}
+
+// GetQueryAnomalies returns detected anomalies for a query
+func (p *PostgresDB) GetQueryAnomalies(ctx context.Context, queryHash int64, days int) ([]*models.QueryAnomaly, error) {
+	if days > 30 {
+		days = 30
+	}
+	if days < 1 {
+		days = 7
+	}
+
+	query := `
+	SELECT
+		id, query_hash, query_fingerprint_hash, anomaly_type, severity, detected_at,
+		metric_name, metric_value, baseline_value, deviation_stddev, z_score,
+		raw_metrics_json, resolved, resolved_at
+	FROM query_anomalies
+	WHERE query_hash = $1 AND detected_at >= NOW() - INTERVAL '1 day' * $2
+	ORDER BY detected_at DESC
+	`
+
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	rows, err := p.db.QueryContext(ctx, query, queryHash, days)
+	if err != nil {
+		return nil, apperrors.DatabaseError("get query anomalies", err.Error())
+	}
+	defer rows.Close()
+
+	var anomalies []*models.QueryAnomaly
+	for rows.Next() {
+		anomaly := &models.QueryAnomaly{}
+		err := rows.Scan(
+			&anomaly.ID, &anomaly.QueryHash, &anomaly.QueryFingerprintHash, &anomaly.AnomalyType,
+			&anomaly.Severity, &anomaly.DetectedAt, &anomaly.MetricName, &anomaly.MetricValue,
+			&anomaly.BaselineValue, &anomaly.DeviationStddev, &anomaly.ZScore,
+			&anomaly.RawMetricsJSON, &anomaly.Resolved, &anomaly.ResolvedAt,
+		)
+		if err != nil {
+			return nil, apperrors.DatabaseError("scan anomaly row", err.Error())
+		}
+		anomalies = append(anomalies, anomaly)
+	}
+
+	return anomalies, rows.Err()
+}
+
+// CreatePerformanceSnapshot creates a new baseline snapshot of query metrics
+func (p *PostgresDB) CreatePerformanceSnapshot(ctx context.Context, name string, description *string, snapshotType string, createdBy *string) (int64, error) {
+	var snapshotID int64
+	query := `
+	SELECT create_performance_snapshot($1, $2, $3, $4)
+	`
+
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second) // Longer timeout for snapshot capture
+	defer cancel()
+
+	err := p.db.QueryRowContext(ctx, query, name, description, snapshotType, createdBy).Scan(&snapshotID)
+	if err != nil {
+		return 0, apperrors.DatabaseError("create snapshot", err.Error())
+	}
+
+	return snapshotID, nil
+}
+
+// GetPerformanceSnapshots returns all performance snapshots with metadata
+func (p *PostgresDB) GetPerformanceSnapshots(ctx context.Context, limit int) ([]*models.PerformanceSnapshot, error) {
+	if limit > 100 {
+		limit = 100
+	}
+	if limit < 1 {
+		limit = 20
+	}
+
+	query := `
+	SELECT id, name, description, snapshot_type, created_at, created_by, metadata_json
+	FROM performance_snapshots
+	ORDER BY created_at DESC
+	LIMIT $1
+	`
+
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	rows, err := p.db.QueryContext(ctx, query, limit)
+	if err != nil {
+		return nil, apperrors.DatabaseError("get snapshots", err.Error())
+	}
+	defer rows.Close()
+
+	var snapshots []*models.PerformanceSnapshot
+	for rows.Next() {
+		snap := &models.PerformanceSnapshot{}
+		err := rows.Scan(&snap.ID, &snap.Name, &snap.Description, &snap.SnapshotType, &snap.CreatedAt, &snap.CreatedBy, &snap.MetadataJSON)
+		if err != nil {
+			return nil, apperrors.DatabaseError("scan snapshot row", err.Error())
+		}
+		snapshots = append(snapshots, snap)
+	}
+
+	return snapshots, rows.Err()
+}
+
+// CompareSnapshots compares metrics between two snapshots
+func (p *PostgresDB) CompareSnapshots(ctx context.Context, beforeSnapshotID int64, afterSnapshotID int64, limit int) ([]*models.SnapshotComparison, error) {
+	if limit > 100 {
+		limit = 100
+	}
+	if limit < 1 {
+		limit = 50
+	}
+
+	query := `
+	SELECT
+		query_hash, database_name, before_calls, after_calls, calls_change, calls_change_percent,
+		before_mean_time, after_mean_time, mean_time_change, mean_time_change_percent,
+		before_max_time, after_max_time, max_time_change,
+		before_cache_hits, after_cache_hits, before_cache_reads, after_cache_reads,
+		improvement_status
+	FROM compare_snapshots($1, $2)
+	LIMIT $3
+	`
+
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	rows, err := p.db.QueryContext(ctx, query, beforeSnapshotID, afterSnapshotID, limit)
+	if err != nil {
+		return nil, apperrors.DatabaseError("compare snapshots", err.Error())
+	}
+	defer rows.Close()
+
+	var comparisons []*models.SnapshotComparison
+	for rows.Next() {
+		comp := &models.SnapshotComparison{}
+		err := rows.Scan(
+			&comp.QueryHash, &comp.DatabaseName, &comp.BeforeCalls, &comp.AfterCalls,
+			&comp.CallsChange, &comp.CallsChangePercent, &comp.BeforeMeanTime, &comp.AfterMeanTime,
+			&comp.MeanTimeChange, &comp.MeanTimeChangePercent, &comp.BeforeMaxTime, &comp.AfterMaxTime,
+			&comp.MaxTimeChange, &comp.BeforeCacheHits, &comp.AfterCacheHits,
+			&comp.BeforeCacheReads, &comp.AfterCacheReads, &comp.ImprovementStatus,
+		)
+		if err != nil {
+			return nil, apperrors.DatabaseError("scan comparison row", err.Error())
+		}
+		comparisons = append(comparisons, comp)
+	}
+
+	return comparisons, rows.Err()
+}

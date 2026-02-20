@@ -375,3 +375,166 @@ type PaginatedResponse struct {
 	PageSize   int         `json:"page_size"`
 	TotalPages int         `json:"total_pages"`
 }
+
+// ============================================================================
+// PHASE 4.4: ADVANCED QUERY ANALYSIS MODELS
+// ============================================================================
+
+// QueryFingerprint represents a grouped set of similar queries
+type QueryFingerprint struct {
+	ID                int64      `db:"id" json:"id"`
+	FingerprintHash   int64      `db:"fingerprint_hash" json:"fingerprint_hash"`
+	NormalizedText    string     `db:"normalized_text" json:"normalized_text"`
+	SampleQueryText   *string    `db:"sample_query_text" json:"sample_query_text,omitempty"`
+	CollectorID       *uuid.UUID `db:"collector_id" json:"collector_id,omitempty"`
+	DatabaseName      *string    `db:"database_name" json:"database_name,omitempty"`
+	TotalCalls        int64      `db:"total_calls" json:"total_calls"`
+	AvgExecutionTime  float64    `db:"avg_execution_time" json:"avg_execution_time"`
+	FirstSeen         time.Time  `db:"first_seen" json:"first_seen"`
+	LastSeen          time.Time  `db:"last_seen" json:"last_seen"`
+}
+
+// QueryFingerprintResponse groups queries by fingerprint with statistics
+type QueryFingerprintResponse struct {
+	FingerprintHash   int64                `json:"fingerprint_hash"`
+	NormalizedQuery   string               `json:"normalized_query"`
+	TotalCalls        int64                `json:"total_calls"`
+	UniqueQueryCount  int                  `json:"unique_query_count"`
+	AvgExecutionTime  float64              `json:"avg_execution_time"`
+	MaxExecutionTime  float64              `json:"max_execution_time"`
+	MinExecutionTime  float64              `json:"min_execution_time"`
+	SampleQueries     []string             `json:"sample_queries"`
+	FirstSeen         time.Time            `json:"first_seen"`
+	LastSeen          time.Time            `json:"last_seen"`
+}
+
+// ExplainPlan represents a stored EXPLAIN plan output
+type ExplainPlan struct {
+	ID                    int64      `db:"id" json:"id"`
+	QueryHash             int64      `db:"query_hash" json:"query_hash"`
+	QueryFingerprintHash  *int64     `db:"query_fingerprint_hash" json:"query_fingerprint_hash,omitempty"`
+	CollectedAt           time.Time  `db:"collected_at" json:"collected_at"`
+	PlanJSON              interface{} `db:"plan_json" json:"plan_json"` // JSONB
+	PlanText              *string    `db:"plan_text" json:"plan_text,omitempty"`
+	RowsExpected          *int64     `db:"rows_expected" json:"rows_expected,omitempty"`
+	RowsActual            *int64     `db:"rows_actual" json:"rows_actual,omitempty"`
+	PlanDurationMs        *float64   `db:"plan_duration_ms" json:"plan_duration_ms,omitempty"`
+	ExecutionDurationMs   *float64   `db:"execution_duration_ms" json:"execution_duration_ms,omitempty"`
+	HasSeqScan            bool       `db:"has_seq_scan" json:"has_seq_scan"`
+	HasIndexScan          bool       `db:"has_index_scan" json:"has_index_scan"`
+	HasBitmapScan         bool       `db:"has_bitmap_scan" json:"has_bitmap_scan"`
+	HasNestedLoop         bool       `db:"has_nested_loop" json:"has_nested_loop"`
+	TotalBuffersRead      *int64     `db:"total_buffers_read" json:"total_buffers_read,omitempty"`
+	TotalBuffersHit       *int64     `db:"total_buffers_hit" json:"total_buffers_hit,omitempty"`
+}
+
+// IndexRecommendation represents a recommended index
+type IndexRecommendation struct {
+	ID                        int64      `db:"id" json:"id"`
+	CollectorID               *uuid.UUID `db:"collector_id" json:"collector_id,omitempty"`
+	DatabaseName              string     `db:"database_name" json:"database_name"`
+	SchemaName                string     `db:"schema_name" json:"schema_name"`
+	TableName                 string     `db:"table_name" json:"table_name"`
+	ColumnNames               interface{} `db:"column_names" json:"column_names"` // TEXT[]
+	CreateStatement           string     `db:"create_statement" json:"create_statement"`
+	EstimatedImprovementPct   float64    `db:"estimated_improvement_percent" json:"estimated_improvement_percent"`
+	AffectedQueryCount        int64      `db:"affected_query_count" json:"affected_query_count"`
+	AffectedTotalTimeMs       float64    `db:"affected_total_time_ms" json:"affected_total_time_ms"`
+	FrequencyScore            float64    `db:"frequency_score" json:"frequency_score"`
+	ImpactScore               float64    `db:"impact_score" json:"impact_score"`
+	ConfidenceScore           float64    `db:"confidence_score" json:"confidence_score"`
+	Dismissed                 bool       `db:"dismissed" json:"dismissed"`
+	DismissedAt               *time.Time `db:"dismissed_at" json:"dismissed_at,omitempty"`
+	DismissedReason           *string    `db:"dismissed_reason" json:"dismissed_reason,omitempty"`
+	CreatedAt                 time.Time  `db:"created_at" json:"created_at"`
+}
+
+// QueryAnomaly represents a detected anomaly in query performance
+type QueryAnomaly struct {
+	ID                  int64       `db:"id" json:"id"`
+	QueryHash           int64       `db:"query_hash" json:"query_hash"`
+	QueryFingerprintHash *int64     `db:"query_fingerprint_hash" json:"query_fingerprint_hash,omitempty"`
+	AnomalyType         string      `db:"anomaly_type" json:"anomaly_type"`       // execution_time_spike, cache_degradation, etc.
+	Severity            string      `db:"severity" json:"severity"`               // low, medium, high
+	DetectedAt          time.Time   `db:"detected_at" json:"detected_at"`
+	MetricName          *string     `db:"metric_name" json:"metric_name,omitempty"`
+	MetricValue         *float64    `db:"metric_value" json:"metric_value,omitempty"`
+	BaselineValue       *float64    `db:"baseline_value" json:"baseline_value,omitempty"`
+	DeviationStddev     *float64    `db:"deviation_stddev" json:"deviation_stddev,omitempty"`
+	ZScore              *float64    `db:"z_score" json:"z_score,omitempty"` // Standard deviations from mean
+	RawMetricsJSON      interface{} `db:"raw_metrics_json" json:"raw_metrics_json,omitempty"` // JSONB
+	Resolved            bool        `db:"resolved" json:"resolved"`
+	ResolvedAt          *time.Time  `db:"resolved_at" json:"resolved_at,omitempty"`
+}
+
+// QueryBaseline stores baseline metrics for anomaly detection
+type QueryBaseline struct {
+	ID                   int64      `db:"id" json:"id"`
+	QueryHash            int64      `db:"query_hash" json:"query_hash"`
+	MetricName           string     `db:"metric_name" json:"metric_name"`
+	BaselineValue        float64    `db:"baseline_value" json:"baseline_value"`
+	StddevValue          float64    `db:"stddev_value" json:"stddev_value"`
+	BaselinePeriodDays   int        `db:"baseline_period_days" json:"baseline_period_days"`
+	LastUpdated          time.Time  `db:"last_updated" json:"last_updated"`
+	MinValue             *float64   `db:"min_value" json:"min_value,omitempty"`
+	MaxValue             *float64   `db:"max_value" json:"max_value,omitempty"`
+}
+
+// PerformanceSnapshot captures a point-in-time snapshot of all query metrics
+type PerformanceSnapshot struct {
+	ID          int64      `db:"id" json:"id"`
+	Name        string     `db:"name" json:"name"`
+	Description *string    `db:"description" json:"description,omitempty"`
+	SnapshotType string     `db:"snapshot_type" json:"snapshot_type"` // manual, scheduled, pre_deploy, post_deploy
+	CreatedAt   time.Time  `db:"created_at" json:"created_at"`
+	CreatedBy   *string    `db:"created_by" json:"created_by,omitempty"`
+	MetadataJSON interface{} `db:"metadata_json" json:"metadata_json,omitempty"` // JSONB
+}
+
+// QueryPerformanceSnapshot stores query metrics for a specific snapshot
+type QueryPerformanceSnapshot struct {
+	ID                   int64      `db:"id" json:"id"`
+	SnapshotID           int64      `db:"snapshot_id" json:"snapshot_id"`
+	QueryHash            int64      `db:"query_hash" json:"query_hash"`
+	QueryFingerprintHash *int64     `db:"query_fingerprint_hash" json:"query_fingerprint_hash,omitempty"`
+	DatabaseName         *string    `db:"database_name" json:"database_name,omitempty"`
+	Calls                int64      `db:"calls" json:"calls"`
+	TotalTime            float64    `db:"total_time" json:"total_time"`
+	MeanTime             float64    `db:"mean_time" json:"mean_time"`
+	MaxTime              float64    `db:"max_time" json:"max_time"`
+	MinTime              float64    `db:"min_time" json:"min_time"`
+	StddevTime           *float64   `db:"stddev_time" json:"stddev_time,omitempty"`
+	Rows                 int64      `db:"rows" json:"rows"`
+	SharedBlksHit        int64      `db:"shared_blks_hit" json:"shared_blks_hit"`
+	SharedBlksRead       int64      `db:"shared_blks_read" json:"shared_blks_read"`
+	BlkReadTime          float64    `db:"blk_read_time" json:"blk_read_time"`
+	BlkWriteTime         float64    `db:"blk_write_time" json:"blk_write_time"`
+	// Optional PG13+ fields
+	WalRecords    *int64   `db:"wal_records" json:"wal_records,omitempty"`
+	WalFpi        *int64   `db:"wal_fpi" json:"wal_fpi,omitempty"`
+	WalBytes      *int64   `db:"wal_bytes" json:"wal_bytes,omitempty"`
+	QueryPlanTime *float64 `db:"query_plan_time" json:"query_plan_time,omitempty"`
+	QueryExecTime *float64 `db:"query_exec_time" json:"query_exec_time,omitempty"`
+}
+
+// SnapshotComparison represents a comparison between two snapshots
+type SnapshotComparison struct {
+	QueryHash            int64    `json:"query_hash"`
+	DatabaseName         *string  `json:"database_name,omitempty"`
+	BeforeCalls          int64    `json:"before_calls"`
+	AfterCalls           int64    `json:"after_calls"`
+	CallsChange          int64    `json:"calls_change"`
+	CallsChangePercent   *float64 `json:"calls_change_percent,omitempty"`
+	BeforeMeanTime       float64  `json:"before_mean_time"`
+	AfterMeanTime        float64  `json:"after_mean_time"`
+	MeanTimeChange       float64  `json:"mean_time_change"`
+	MeanTimeChangePercent *float64 `json:"mean_time_change_percent,omitempty"`
+	BeforeMaxTime        float64  `json:"before_max_time"`
+	AfterMaxTime         float64  `json:"after_max_time"`
+	MaxTimeChange        float64  `json:"max_time_change"`
+	BeforeCacheHits      int64    `json:"before_cache_hits"`
+	AfterCacheHits       int64    `json:"after_cache_hits"`
+	BeforeCacheReads     int64    `json:"before_cache_reads"`
+	AfterCacheReads      int64    `json:"after_cache_reads"`
+	ImprovementStatus    string   `json:"improvement_status"` // improved, degraded, unchanged
+}

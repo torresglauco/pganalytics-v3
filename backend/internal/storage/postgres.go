@@ -4,11 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 
-	"github.com/dextra/pganalytics-v3/backend/pkg/models"
 	apperrors "github.com/dextra/pganalytics-v3/backend/pkg/errors"
-	_ "github.com/lib/pq"
+	"github.com/dextra/pganalytics-v3/backend/pkg/models"
+	"github.com/lib/pq"
 )
 
 // PostgresDB wraps a PostgreSQL database connection
@@ -925,4 +926,440 @@ func (p *PostgresDB) CompareSnapshots(ctx context.Context, beforeSnapshotID int6
 	}
 
 	return comparisons, rows.Err()
+}
+
+// ============================================================================
+// PHASE 4.4.3: INDEX RECOMMENDATIONS
+// ============================================================================
+
+// GetIndexRecommendations returns recommended indexes for a specific database
+func (p *PostgresDB) GetIndexRecommendations(ctx context.Context, databaseName string, limit int) ([]*models.IndexRecommendation, error) {
+	if limit > 50 {
+		limit = 50
+	}
+	if limit < 1 {
+		limit = 20
+	}
+
+	query := `
+	SELECT
+		id, collector_id, database_name, schema_name, table_name, column_names,
+		create_statement, estimated_improvement_percent, affected_query_count,
+		affected_total_time_ms, frequency_score, impact_score, confidence_score,
+		dismissed, dismissed_at, dismissed_reason, created_at
+	FROM index_recommendations
+	WHERE database_name = $1
+		AND NOT dismissed
+	ORDER BY confidence_score DESC, impact_score DESC
+	LIMIT $2
+	`
+
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	rows, err := p.db.QueryContext(ctx, query, databaseName, limit)
+	if err != nil {
+		return nil, apperrors.DatabaseError("get index recommendations", err.Error())
+	}
+	defer rows.Close()
+
+	var recommendations []*models.IndexRecommendation
+	for rows.Next() {
+		rec := &models.IndexRecommendation{}
+		err := rows.Scan(
+			&rec.ID, &rec.CollectorID, &rec.DatabaseName, &rec.SchemaName, &rec.TableName, pq.Array(&rec.ColumnNames),
+			&rec.CreateStatement, &rec.EstimatedImprovementPct, &rec.AffectedQueryCount,
+			&rec.AffectedTotalTimeMs, &rec.FrequencyScore, &rec.ImpactScore, &rec.ConfidenceScore,
+			&rec.Dismissed, &rec.DismissedAt, &rec.DismissedReason, &rec.CreatedAt,
+		)
+		if err != nil {
+			return nil, apperrors.DatabaseError("scan index recommendation row", err.Error())
+		}
+		recommendations = append(recommendations, rec)
+	}
+
+	return recommendations, rows.Err()
+}
+
+// StoreIndexRecommendations stores index recommendations (upsert)
+func (p *PostgresDB) StoreIndexRecommendations(ctx context.Context, recommendations []*models.IndexRecommendation) error {
+	if len(recommendations) == 0 {
+		return nil
+	}
+
+	query := `
+	INSERT INTO index_recommendations (
+		collector_id, database_name, schema_name, table_name, column_names, column_names_str,
+		create_statement, estimated_improvement_percent, affected_query_count,
+		affected_total_time_ms, frequency_score, impact_score, confidence_score, created_at
+	) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW())
+	ON CONFLICT (database_name, schema_name, table_name, column_names_str) DO UPDATE SET
+		estimated_improvement_percent = EXCLUDED.estimated_improvement_percent,
+		affected_query_count = EXCLUDED.affected_query_count,
+		affected_total_time_ms = EXCLUDED.affected_total_time_ms,
+		frequency_score = EXCLUDED.frequency_score,
+		impact_score = EXCLUDED.impact_score,
+		confidence_score = EXCLUDED.confidence_score
+	RETURNING id
+	`
+
+	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+
+	for _, rec := range recommendations {
+		// Convert column names array to string for unique constraint
+		columnNamesStr := strings.Join(rec.ColumnNames, ",")
+
+		_, err := p.db.ExecContext(ctx, query,
+			rec.CollectorID, rec.DatabaseName, rec.SchemaName, rec.TableName, pq.Array(rec.ColumnNames), columnNamesStr,
+			rec.CreateStatement, rec.EstimatedImprovementPct, rec.AffectedQueryCount,
+			rec.AffectedTotalTimeMs, rec.FrequencyScore, rec.ImpactScore, rec.ConfidenceScore,
+		)
+		if err != nil {
+			return apperrors.DatabaseError("store index recommendation", err.Error())
+		}
+	}
+
+	return nil
+}
+
+// DismissIndexRecommendation marks a recommendation as dismissed
+func (p *PostgresDB) DismissIndexRecommendation(ctx context.Context, recommendationID int64, reason *string) error {
+	query := `
+	UPDATE index_recommendations
+	SET dismissed = TRUE, dismissed_at = NOW(), dismissed_reason = $2
+	WHERE id = $1
+	`
+
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	result, err := p.db.ExecContext(ctx, query, recommendationID, reason)
+	if err != nil {
+		return apperrors.DatabaseError("dismiss index recommendation", err.Error())
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return apperrors.DatabaseError("check rows affected", err.Error())
+	}
+
+	if rowsAffected == 0 {
+		return apperrors.NotFound("index recommendation", fmt.Sprintf("%d", recommendationID))
+	}
+
+	return nil
+}
+
+// GetIndexRecommendationByID retrieves a specific index recommendation by ID
+func (p *PostgresDB) GetIndexRecommendationByID(ctx context.Context, recommendationID int64) (*models.IndexRecommendation, error) {
+	query := `
+	SELECT
+		id, collector_id, database_name, schema_name, table_name, column_names,
+		create_statement, estimated_improvement_percent, affected_query_count,
+		affected_total_time_ms, frequency_score, impact_score, confidence_score,
+		dismissed, dismissed_at, dismissed_reason, created_at
+	FROM index_recommendations
+	WHERE id = $1
+	`
+
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	rec := &models.IndexRecommendation{}
+	err := p.db.QueryRowContext(ctx, query, recommendationID).Scan(
+		&rec.ID, &rec.CollectorID, &rec.DatabaseName, &rec.SchemaName, &rec.TableName, pq.Array(&rec.ColumnNames),
+		&rec.CreateStatement, &rec.EstimatedImprovementPct, &rec.AffectedQueryCount,
+		&rec.AffectedTotalTimeMs, &rec.FrequencyScore, &rec.ImpactScore, &rec.ConfidenceScore,
+		&rec.Dismissed, &rec.DismissedAt, &rec.DismissedReason, &rec.CreatedAt,
+	)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, apperrors.NotFound("index recommendation", fmt.Sprintf("%d", recommendationID))
+		}
+		return nil, apperrors.DatabaseError("get index recommendation", err.Error())
+	}
+
+	return rec, nil
+}
+
+// GenerateIndexRecommendations analyzes recent EXPLAIN plans to generate recommendations
+// This is called periodically (e.g., via background job or manual trigger)
+func (p *PostgresDB) GenerateIndexRecommendations(ctx context.Context, databaseName string, collectorID *string) (int, error) {
+	// Phase 4.4.3 Implementation:
+	// Analyze EXPLAIN plans from the last 24 hours to identify:
+	// 1. Seq Scan operations (missing indexes)
+	// 2. Frequency of the pattern (how many times)
+	// 3. Estimated improvement (query count * mean time savings)
+	// 4. Confidence score based on frequency and impact
+
+	query := `
+	INSERT INTO index_recommendations (
+		collector_id, database_name, schema_name, table_name, column_names, column_names_str,
+		create_statement, estimated_improvement_percent, affected_query_count,
+		affected_total_time_ms, frequency_score, impact_score, confidence_score, created_at
+	)
+	SELECT
+		COALESCE($1::uuid, ep.collector_id),
+		$2,
+		'public',
+		json_extract_path_text(ep.plan_json, 'Plan', 'Relation Name')::varchar(63),
+		ARRAY[json_extract_path_text(ep.plan_json, 'Plan', 'Filter')],
+		json_extract_path_text(ep.plan_json, 'Plan', 'Filter'),
+		'CREATE INDEX CONCURRENTLY idx_' || json_extract_path_text(ep.plan_json, 'Plan', 'Relation Name') ||
+			'_' || REPLACE(json_extract_path_text(ep.plan_json, 'Plan', 'Filter'), ' ', '_') ||
+			' ON ' || json_extract_path_text(ep.plan_json, 'Plan', 'Relation Name') ||
+			' (' || json_extract_path_text(ep.plan_json, 'Plan', 'Filter') || ')',
+		50.0,
+		COUNT(DISTINCT ep.query_hash),
+		SUM(COALESCE(mq.total_time, 0)),
+		0.7,
+		0.8,
+		0.8,
+		NOW()
+	FROM explain_plans ep
+	JOIN metrics_pg_stats_query mq ON ep.query_hash = mq.query_hash
+	WHERE ep.has_seq_scan = true
+		AND ep.collected_at >= NOW() - INTERVAL '24 hours'
+		AND mq.mean_time > 100  -- Only for queries taking >100ms
+	GROUP BY
+		json_extract_path_text(ep.plan_json, 'Plan', 'Relation Name'),
+		json_extract_path_text(ep.plan_json, 'Plan', 'Filter')
+	ON CONFLICT (database_name, schema_name, table_name, column_names_str) DO UPDATE SET
+		affected_query_count = EXCLUDED.affected_query_count,
+		affected_total_time_ms = EXCLUDED.affected_total_time_ms,
+		frequency_score = EXCLUDED.frequency_score,
+		confidence_score = EXCLUDED.confidence_score
+	`
+
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	result, err := p.db.ExecContext(ctx, query, collectorID, databaseName)
+	if err != nil {
+		return 0, apperrors.DatabaseError("generate index recommendations", err.Error())
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return 0, apperrors.DatabaseError("get rows affected", err.Error())
+	}
+
+	return int(rowsAffected), nil
+}
+
+// ============================================================================
+// PHASE 4.4.4: ANOMALY DETECTION
+// ============================================================================
+
+// GetAnomaliesBySeverity returns anomalies filtered by severity level
+func (p *PostgresDB) GetAnomaliesBySeverity(ctx context.Context, severity string, limit int) ([]*models.QueryAnomaly, error) {
+	if limit > 100 {
+		limit = 100
+	}
+	if limit < 1 {
+		limit = 50
+	}
+
+	// Validate severity value
+	if severity != "low" && severity != "medium" && severity != "high" {
+		severity = "high"
+	}
+
+	query := `
+	SELECT
+		id, query_hash, query_fingerprint_hash, anomaly_type, severity, detected_at,
+		metric_name, metric_value, baseline_value, deviation_stddev, z_score,
+		raw_metrics_json, resolved, resolved_at
+	FROM query_anomalies
+	WHERE severity = $1
+		AND NOT resolved
+	ORDER BY detected_at DESC
+	LIMIT $2
+	`
+
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	rows, err := p.db.QueryContext(ctx, query, severity, limit)
+	if err != nil {
+		return nil, apperrors.DatabaseError("get anomalies by severity", err.Error())
+	}
+	defer rows.Close()
+
+	var anomalies []*models.QueryAnomaly
+	for rows.Next() {
+		anomaly := &models.QueryAnomaly{}
+		err := rows.Scan(
+			&anomaly.ID, &anomaly.QueryHash, &anomaly.QueryFingerprintHash, &anomaly.AnomalyType,
+			&anomaly.Severity, &anomaly.DetectedAt, &anomaly.MetricName, &anomaly.MetricValue,
+			&anomaly.BaselineValue, &anomaly.DeviationStddev, &anomaly.ZScore,
+			&anomaly.RawMetricsJSON, &anomaly.Resolved, &anomaly.ResolvedAt,
+		)
+		if err != nil {
+			return nil, apperrors.DatabaseError("scan anomaly row", err.Error())
+		}
+		anomalies = append(anomalies, anomaly)
+	}
+
+	return anomalies, rows.Err()
+}
+
+// StoreAnomalies stores detected anomalies in the database
+func (p *PostgresDB) StoreAnomalies(ctx context.Context, anomalies []*models.QueryAnomaly) error {
+	if len(anomalies) == 0 {
+		return nil
+	}
+
+	query := `
+	INSERT INTO query_anomalies (
+		query_hash, query_fingerprint_hash, anomaly_type, severity, detected_at,
+		metric_name, metric_value, baseline_value, deviation_stddev, z_score,
+		raw_metrics_json, resolved
+	) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+	ON CONFLICT (query_hash, anomaly_type, metric_name, detected_at) DO NOTHING
+	`
+
+	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+
+	tx, err := p.db.BeginTx(ctx, nil)
+	if err != nil {
+		return apperrors.DatabaseError("begin transaction", err.Error())
+	}
+	defer tx.Rollback()
+
+	stmt, err := tx.PrepareContext(ctx, query)
+	if err != nil {
+		return apperrors.DatabaseError("prepare statement", err.Error())
+	}
+	defer stmt.Close()
+
+	for _, anomaly := range anomalies {
+		_, err := stmt.ExecContext(ctx,
+			anomaly.QueryHash, anomaly.QueryFingerprintHash, anomaly.AnomalyType, anomaly.Severity,
+			anomaly.DetectedAt, anomaly.MetricName, anomaly.MetricValue, anomaly.BaselineValue,
+			anomaly.DeviationStddev, anomaly.ZScore, anomaly.RawMetricsJSON, anomaly.Resolved,
+		)
+		if err != nil {
+			return apperrors.DatabaseError("insert anomaly", err.Error())
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return apperrors.DatabaseError("commit transaction", err.Error())
+	}
+
+	return nil
+}
+
+// CalculateBaselineAndDetectAnomalies executes the database function to calculate baselines and detect anomalies
+func (p *PostgresDB) CalculateBaselineAndDetectAnomalies(ctx context.Context) error {
+	query := `SELECT calculate_baselines_and_anomalies()`
+
+	ctx, cancel := context.WithTimeout(ctx, 60*time.Second) // Allow up to 60 seconds for calculation
+	defer cancel()
+
+	_, err := p.db.ExecContext(ctx, query)
+	if err != nil {
+		return apperrors.DatabaseError("calculate baselines and anomalies", err.Error())
+	}
+
+	return nil
+}
+
+// GetQueryBaseline retrieves the baseline metrics for a query
+func (p *PostgresDB) GetQueryBaseline(ctx context.Context, queryHash int64, metricName string) (*models.QueryBaseline, error) {
+	query := `
+	SELECT
+		id, query_hash, metric_name, baseline_value, stddev_value,
+		baseline_period_days, last_updated, min_value, max_value
+	FROM query_baselines
+	WHERE query_hash = $1 AND metric_name = $2
+	`
+
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	baseline := &models.QueryBaseline{}
+	err := p.db.QueryRowContext(ctx, query, queryHash, metricName).Scan(
+		&baseline.ID, &baseline.QueryHash, &baseline.MetricName, &baseline.BaselineValue,
+		&baseline.StddevValue, &baseline.BaselinePeriodDays, &baseline.LastUpdated,
+		&baseline.MinValue, &baseline.MaxValue,
+	)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil // No baseline found, not an error
+		}
+		return nil, apperrors.DatabaseError("get query baseline", err.Error())
+	}
+
+	return baseline, nil
+}
+
+// GetQueryBaselines retrieves all baselines for a query
+func (p *PostgresDB) GetQueryBaselines(ctx context.Context, queryHash int64) ([]*models.QueryBaseline, error) {
+	query := `
+	SELECT
+		id, query_hash, metric_name, baseline_value, stddev_value,
+		baseline_period_days, last_updated, min_value, max_value
+	FROM query_baselines
+	WHERE query_hash = $1
+	ORDER BY metric_name ASC
+	`
+
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	rows, err := p.db.QueryContext(ctx, query, queryHash)
+	if err != nil {
+		return nil, apperrors.DatabaseError("get query baselines", err.Error())
+	}
+	defer rows.Close()
+
+	var baselines []*models.QueryBaseline
+	for rows.Next() {
+		baseline := &models.QueryBaseline{}
+		err := rows.Scan(
+			&baseline.ID, &baseline.QueryHash, &baseline.MetricName, &baseline.BaselineValue,
+			&baseline.StddevValue, &baseline.BaselinePeriodDays, &baseline.LastUpdated,
+			&baseline.MinValue, &baseline.MaxValue,
+		)
+		if err != nil {
+			return nil, apperrors.DatabaseError("scan baseline row", err.Error())
+		}
+		baselines = append(baselines, baseline)
+	}
+
+	return baselines, rows.Err()
+}
+
+// ResolveAnomaly marks an anomaly as resolved
+func (p *PostgresDB) ResolveAnomaly(ctx context.Context, anomalyID int64) error {
+	query := `
+	UPDATE query_anomalies
+	SET resolved = TRUE, resolved_at = NOW()
+	WHERE id = $1
+	`
+
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	result, err := p.db.ExecContext(ctx, query, anomalyID)
+	if err != nil {
+		return apperrors.DatabaseError("resolve anomaly", err.Error())
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return apperrors.DatabaseError("check rows affected", err.Error())
+	}
+
+	if rowsAffected == 0 {
+		return apperrors.NotFound("anomaly", fmt.Sprintf("%d", anomalyID))
+	}
+
+	return nil
 }

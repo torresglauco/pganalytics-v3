@@ -221,9 +221,12 @@ func (s *Server) handleGetIndexRecommendations(c *gin.Context) {
 // handleDismissIndexRecommendation marks a recommendation as dismissed
 // POST /api/v1/index-recommendations/:id/dismiss
 func (s *Server) handleDismissIndexRecommendation(c *gin.Context) {
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
 	// Parse recommendation ID from URL
 	idStr := c.Param("id")
-	_, err := strconv.ParseInt(idStr, 10, 64)
+	recommendationID, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid recommendation ID"})
 		return
@@ -231,19 +234,54 @@ func (s *Server) handleDismissIndexRecommendation(c *gin.Context) {
 
 	// Parse request body
 	var req struct {
-		Reason string `json:"reason,omitempty"`
+		Reason *string `json:"reason,omitempty"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
 		return
 	}
 
-	// TODO: Implement dismiss logic in storage layer
-	// For now, return success placeholder
+	// Dismiss the recommendation in database
+	err = s.db.DismissIndexRecommendation(ctx, recommendationID, req.Reason)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to dismiss recommendation"})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{
-		"id":     idStr,
+		"id":     recommendationID,
 		"status": "dismissed",
 		"reason": req.Reason,
+	})
+}
+
+// handleGenerateIndexRecommendations triggers analysis of EXPLAIN plans for index recommendations
+// POST /api/v1/databases/:database_name/index-recommendations/generate
+func (s *Server) handleGenerateIndexRecommendations(c *gin.Context) {
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 30*time.Second)
+	defer cancel()
+
+	databaseName := c.Param("database_name")
+	if databaseName == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "database_name is required"})
+		return
+	}
+
+	// Optional: Get collector ID from query parameter
+	collectorID := c.Query("collector_id")
+
+	// Generate recommendations from recent EXPLAIN plans
+	count, err := s.db.GenerateIndexRecommendations(ctx, databaseName, &collectorID)
+	if err != nil {
+		s.logger.Warnf("Failed to generate index recommendations: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate recommendations"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"database":                  databaseName,
+		"recommendations_generated": count,
+		"status":                    "success",
 	})
 }
 
@@ -339,6 +377,53 @@ func (s *Server) handleGetAnomaliesBySeverity(c *gin.Context) {
 		"severity":  severity,
 		"anomalies": anomalies,
 		"count":     len(anomalies),
+	})
+}
+
+// handleDetectAnomalies triggers the anomaly detection process
+// POST /api/v1/anomalies/detect
+func (s *Server) handleDetectAnomalies(c *gin.Context) {
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 60*time.Second)
+	defer cancel()
+
+	// Execute anomaly detection calculation
+	err := s.db.CalculateBaselineAndDetectAnomalies(ctx)
+	if err != nil {
+		s.logger.Warnf("Failed to detect anomalies: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to run anomaly detection"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status":  "success",
+		"message": "Anomaly detection completed",
+	})
+}
+
+// handleResolveAnomaly marks an anomaly as resolved
+// POST /api/v1/anomalies/:id/resolve
+func (s *Server) handleResolveAnomaly(c *gin.Context) {
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	// Parse anomaly ID from URL
+	idStr := c.Param("id")
+	anomalyID, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid anomaly ID"})
+		return
+	}
+
+	// Resolve the anomaly
+	err = s.db.ResolveAnomaly(ctx, anomalyID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to resolve anomaly"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"id":     anomalyID,
+		"status": "resolved",
 	})
 }
 
@@ -597,4 +682,117 @@ func validateSnapshotName(name string) error {
 		return apperrors.ValidationError("name", "snapshot name too long (max 255 characters)")
 	}
 	return nil
+}
+
+// ============================================================================
+// EXPLAIN PLAN STORAGE HANDLER (Internal)
+// ============================================================================
+
+// handleStoreExplainPlan stores EXPLAIN plans from collector
+// POST /api/v1/internal/explain-plans (internal endpoint, no auth shown here)
+func (s *Server) handleStoreExplainPlan(c *gin.Context) {
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 15*time.Second)
+	defer cancel()
+
+	// Parse request body
+	var req struct {
+		QueryHash            int64       `json:"query_hash" binding:"required"`
+		QueryFingerprintHash *int64      `json:"query_fingerprint_hash,omitempty"`
+		CollectedAt          time.Time   `json:"collected_at"`
+		PlanJSON             interface{} `json:"plan_json"`
+		PlanText             *string     `json:"plan_text,omitempty"`
+		RowsExpected         *int64      `json:"rows_expected,omitempty"`
+		RowsActual           *int64      `json:"rows_actual,omitempty"`
+		PlanDurationMs       *float64    `json:"plan_duration_ms,omitempty"`
+		ExecutionDurationMs  *float64    `json:"execution_duration_ms,omitempty"`
+		HasSeqScan           bool        `json:"has_seq_scan"`
+		HasIndexScan         bool        `json:"has_index_scan"`
+		HasBitmapScan        bool        `json:"has_bitmap_scan"`
+		HasNestedLoop        bool        `json:"has_nested_loop"`
+		TotalBuffersRead     *int64      `json:"total_buffers_read,omitempty"`
+		TotalBuffersHit      *int64      `json:"total_buffers_hit,omitempty"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+		return
+	}
+
+	// Create model
+	plan := &models.ExplainPlan{
+		QueryHash:            req.QueryHash,
+		QueryFingerprintHash: req.QueryFingerprintHash,
+		CollectedAt:          req.CollectedAt,
+		PlanJSON:             req.PlanJSON,
+		PlanText:             req.PlanText,
+		RowsExpected:         req.RowsExpected,
+		RowsActual:           req.RowsActual,
+		PlanDurationMs:       req.PlanDurationMs,
+		ExecutionDurationMs:  req.ExecutionDurationMs,
+		HasSeqScan:           req.HasSeqScan,
+		HasIndexScan:         req.HasIndexScan,
+		HasBitmapScan:        req.HasBitmapScan,
+		HasNestedLoop:        req.HasNestedLoop,
+		TotalBuffersRead:     req.TotalBuffersRead,
+		TotalBuffersHit:      req.TotalBuffersHit,
+	}
+
+	// Store in database
+	err := s.db.StoreExplainPlan(ctx, plan)
+	if err != nil {
+		s.logger.Warnf("Failed to store explain plan: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to store explain plan"})
+		return
+	}
+
+	// Return response
+	c.JSON(http.StatusCreated, gin.H{
+		"query_hash": req.QueryHash,
+		"status":     "stored",
+	})
+}
+
+// handleGetLatestExplainPlans returns recently captured EXPLAIN plans
+// GET /api/v1/collectors/:collector_id/explain-plans?limit=10
+func (s *Server) handleGetLatestExplainPlans(c *gin.Context) {
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 10*time.Second)
+	defer cancel()
+
+	// Get collector ID from URL
+	collectorID := c.Param("collector_id")
+	if collectorID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "collector_id is required"})
+		return
+	}
+
+	// Parse query parameters
+	limitStr := c.DefaultQuery("limit", "10")
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil || limit < 1 || limit > 50 {
+		limit = 10
+	}
+
+	// Query EXPLAIN plans from database
+	plans, err := s.db.GetLatestExplainPlans(ctx, collectorID, limit)
+	if err != nil {
+		s.logger.Warnf("Failed to get latest explain plans: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve explain plans"})
+		return
+	}
+
+	if len(plans) == 0 {
+		c.JSON(http.StatusOK, gin.H{
+			"collector_id": collectorID,
+			"plans":        []interface{}{},
+			"count":        0,
+		})
+		return
+	}
+
+	// Return response
+	c.JSON(http.StatusOK, gin.H{
+		"collector_id": collectorID,
+		"plans":        plans,
+		"count":        len(plans),
+	})
 }

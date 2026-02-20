@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/dextra/pganalytics-v3/backend/internal/auth"
-	"github.com/dextra/pganalytics-v3/backend/pkg/models"
 	apperrors "github.com/dextra/pganalytics-v3/backend/pkg/errors"
+	"github.com/dextra/pganalytics-v3/backend/pkg/models"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -321,34 +321,34 @@ func (s *Server) handleMetricsPush(c *gin.Context) {
 								stat := &models.QueryStats{
 									Time:              queryStatsReq.Timestamp,
 									CollectorID:       uuid.MustParse(req.CollectorID),
-									DatabaseName:     db.Database,
-									UserName:         "system", // Set from query info if available
-									QueryHash:        queryInfo.Hash,
-									QueryText:        queryInfo.Text,
-									Calls:            queryInfo.Calls,
-									TotalTime:        queryInfo.TotalTime,
-									MeanTime:         queryInfo.MeanTime,
-									MinTime:          queryInfo.MinTime,
-									MaxTime:          queryInfo.MaxTime,
-									StddevTime:       queryInfo.StddevTime,
-									Rows:             queryInfo.Rows,
-									SharedBlksHit:    queryInfo.SharedBlksHit,
-									SharedBlksRead:   queryInfo.SharedBlksRead,
+									DatabaseName:      db.Database,
+									UserName:          "system", // Set from query info if available
+									QueryHash:         queryInfo.Hash,
+									QueryText:         queryInfo.Text,
+									Calls:             queryInfo.Calls,
+									TotalTime:         queryInfo.TotalTime,
+									MeanTime:          queryInfo.MeanTime,
+									MinTime:           queryInfo.MinTime,
+									MaxTime:           queryInfo.MaxTime,
+									StddevTime:        queryInfo.StddevTime,
+									Rows:              queryInfo.Rows,
+									SharedBlksHit:     queryInfo.SharedBlksHit,
+									SharedBlksRead:    queryInfo.SharedBlksRead,
 									SharedBlksDirtied: queryInfo.SharedBlksDirtied,
 									SharedBlksWritten: queryInfo.SharedBlksWritten,
-									LocalBlksHit:     queryInfo.LocalBlksHit,
-									LocalBlksRead:    queryInfo.LocalBlksRead,
-									LocalBlksDirtied: queryInfo.LocalBlksDirtied,
-									LocalBlksWritten: queryInfo.LocalBlksWritten,
-									TempBlksRead:     queryInfo.TempBlksRead,
-									TempBlksWritten:  queryInfo.TempBlksWritten,
-									BlkReadTime:      queryInfo.BlkReadTime,
-									BlkWriteTime:     queryInfo.BlkWriteTime,
-									WalRecords:       queryInfo.WalRecords,
-									WalFpi:           queryInfo.WalFpi,
-									WalBytes:         queryInfo.WalBytes,
-									QueryPlanTime:    queryInfo.QueryPlanTime,
-									QueryExecTime:    queryInfo.QueryExecTime,
+									LocalBlksHit:      queryInfo.LocalBlksHit,
+									LocalBlksRead:     queryInfo.LocalBlksRead,
+									LocalBlksDirtied:  queryInfo.LocalBlksDirtied,
+									LocalBlksWritten:  queryInfo.LocalBlksWritten,
+									TempBlksRead:      queryInfo.TempBlksRead,
+									TempBlksWritten:   queryInfo.TempBlksWritten,
+									BlkReadTime:       queryInfo.BlkReadTime,
+									BlkWriteTime:      queryInfo.BlkWriteTime,
+									WalRecords:        queryInfo.WalRecords,
+									WalFpi:            queryInfo.WalFpi,
+									WalBytes:          queryInfo.WalBytes,
+									QueryPlanTime:     queryInfo.QueryPlanTime,
+									QueryExecTime:     queryInfo.QueryExecTime,
 								}
 
 								// Insert individual query stat
@@ -360,6 +360,29 @@ func (s *Server) handleMetricsPush(c *gin.Context) {
 									)
 								} else {
 									metricsInserted++
+
+									// Phase 4.4.2: Trigger EXPLAIN plan capture for slow queries (>1000ms mean time)
+									// Strategy: Capture EXPLAIN on first occurrence to minimize overhead
+									// Note: Actual EXPLAIN execution happens on the collector side,
+									// which sends back the plan via the /api/v1/internal/explain-plans endpoint
+									if queryInfo.MeanTime > 1000.0 {
+										// Check if EXPLAIN plan already exists for this query
+										existingPlan, err := s.db.GetLatestExplainPlan(c, queryInfo.Hash)
+										if err == nil && existingPlan != nil {
+											// Plan already exists, skip to avoid duplicate EXPLAINs
+											continue
+										}
+
+										// TODO: Queue EXPLAIN execution request on collector
+										// The collector will execute EXPLAIN (ANALYZE, FORMAT JSON, BUFFERS)
+										// and send back results via POST /api/v1/internal/explain-plans
+										// For now, we log the slow query for manual investigation
+										s.logger.Info("Slow query detected (candidate for EXPLAIN)",
+											zap.String("query_hash", fmt.Sprintf("%d", queryInfo.Hash)),
+											zap.String("database", db.Database),
+											zap.Float64("mean_time_ms", queryInfo.MeanTime),
+										)
+									}
 								}
 							}
 						}

@@ -74,6 +74,12 @@ func (s *Server) RegisterRoutes(router *gin.Engine) {
 			metrics.POST("/push", s.MTLSMiddleware(), s.AuthMiddleware(), s.handleMetricsPush)
 		}
 
+		// Internal analysis routes (collector -> backend for analyzed data like EXPLAIN plans)
+		internal := api.Group("/internal")
+		{
+			internal.POST("/explain-plans", s.MTLSMiddleware(), s.AuthMiddleware(), s.handleStoreExplainPlan)
+		}
+
 		// Configuration routes
 		config := api.Group("/config")
 		{
@@ -132,6 +138,7 @@ func (s *Server) RegisterRoutes(router *gin.Engine) {
 		indexRecommendations := api.Group("/databases/:database_name/index-recommendations")
 		{
 			indexRecommendations.GET("", s.AuthMiddleware(), s.handleGetIndexRecommendations)
+			indexRecommendations.POST("/generate", s.AuthMiddleware(), s.handleGenerateIndexRecommendations)
 		}
 
 		recommendations := api.Group("/index-recommendations")
@@ -148,6 +155,8 @@ func (s *Server) RegisterRoutes(router *gin.Engine) {
 		anomaliesBySeverity := api.Group("/anomalies")
 		{
 			anomaliesBySeverity.GET("", s.AuthMiddleware(), s.handleGetAnomaliesBySeverity)
+			anomaliesBySeverity.POST("/detect", s.AuthMiddleware(), s.handleDetectAnomalies)
+			anomaliesBySeverity.POST("/:id/resolve", s.AuthMiddleware(), s.handleResolveAnomaly)
 		}
 
 		// Performance Snapshots routes

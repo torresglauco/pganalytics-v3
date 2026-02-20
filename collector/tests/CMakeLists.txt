@@ -10,6 +10,7 @@ set(UNIT_TEST_SOURCES
     unit/metrics_buffer_test.cpp
     unit/config_manager_test.cpp
     unit/sender_test.cpp
+    postgres_plugin_test.cpp
 )
 
 # Integration test sources

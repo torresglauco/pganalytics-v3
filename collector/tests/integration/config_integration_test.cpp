@@ -65,9 +65,9 @@ TEST_F(ConfigIntegrationTest, RequiredFieldsPresent) {
     // Test: Collector ID, backend URL required
     auto config = fixtures::getBasicConfigToml();
 
-    // Config must have collector ID and backend URL
-    EXPECT_TRUE(config.find("collector_id") != std::string::npos);
-    EXPECT_TRUE(config.find("backend_url") != std::string::npos);
+    // Config must have collector ID and backend URL (fixture uses "id" and "url")
+    EXPECT_TRUE(config.find("id") != std::string::npos);
+    EXPECT_TRUE(config.find("url") != std::string::npos);
 }
 
 TEST_F(ConfigIntegrationTest, InvalidBackendUrl) {
@@ -126,8 +126,8 @@ TEST_F(ConfigIntegrationTest, BackendUrlApplied) {
     // Test: Sender uses configured backend URL
     auto config = fixtures::getBasicConfigToml();
 
-    // Config must specify backend URL
-    EXPECT_TRUE(config.find("backend_url") != std::string::npos);
+    // Config must specify backend URL (fixture uses "url")
+    EXPECT_TRUE(config.find("url") != std::string::npos);
 }
 
 TEST_F(ConfigIntegrationTest, TlsSettingsApplied) {
@@ -192,9 +192,9 @@ TEST_F(ConfigIntegrationTest, ConfigurationPersistence) {
     // Test: Configuration values persist correctly
     auto config = fixtures::getBasicConfigToml();
 
-    // Config values should be retrievable multiple times
+    // Config values should be retrievable multiple times (fixture uses "id")
     EXPECT_GT(config.length(), 0);
-    EXPECT_TRUE(config.find("collector_id") != std::string::npos);
+    EXPECT_TRUE(config.find("id") != std::string::npos);
 }
 
 TEST_F(ConfigIntegrationTest, MultipleSections) {

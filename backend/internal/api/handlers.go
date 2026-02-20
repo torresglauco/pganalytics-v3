@@ -1,8 +1,10 @@
 package api
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/dextra/pganalytics-v3/backend/internal/auth"
@@ -10,6 +12,7 @@ import (
 	apperrors "github.com/dextra/pganalytics-v3/backend/pkg/errors"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"go.uber.org/zap"
 )
 
 const version = "3.0.0-alpha"
@@ -291,14 +294,87 @@ func (s *Server) handleMetricsPush(c *gin.Context) {
 		return
 	}
 
-	// TODO: Process and store metrics
-	// For now, return success response
-	processingTimeMs := int64(time.Now().UnixMilli()) % 500 // Simulate processing time
+	// Process metrics based on type
+	startTime := time.Now()
+	metricsInserted := 0
+
+	if req.Metrics != nil && len(req.Metrics) > 0 {
+		for _, metric := range req.Metrics {
+			// Type assertion to access metric fields
+			if metricMap, ok := metric.(map[string]interface{}); ok {
+				metricType := ""
+				if typeVal, exists := metricMap["type"]; exists {
+					metricType = typeVal.(string)
+				}
+
+				// Handle query stats metrics
+				if metricType == "pg_query_stats" {
+					// Convert metric to QueryStatsRequest
+					var queryStatsReq models.QueryStatsRequest
+					metricsJSON, _ := json.Marshal(metric)
+					json.Unmarshal(metricsJSON, &queryStatsReq)
+
+					// Extract and store individual query statistics
+					if queryStatsReq.Databases != nil {
+						for _, db := range queryStatsReq.Databases {
+							for _, queryInfo := range db.Queries {
+								stat := &models.QueryStats{
+									Time:              queryStatsReq.Timestamp,
+									CollectorID:       uuid.MustParse(req.CollectorID),
+									DatabaseName:     db.Database,
+									UserName:         "system", // Set from query info if available
+									QueryHash:        queryInfo.Hash,
+									QueryText:        queryInfo.Text,
+									Calls:            queryInfo.Calls,
+									TotalTime:        queryInfo.TotalTime,
+									MeanTime:         queryInfo.MeanTime,
+									MinTime:          queryInfo.MinTime,
+									MaxTime:          queryInfo.MaxTime,
+									StddevTime:       queryInfo.StddevTime,
+									Rows:             queryInfo.Rows,
+									SharedBlksHit:    queryInfo.SharedBlksHit,
+									SharedBlksRead:   queryInfo.SharedBlksRead,
+									SharedBlksDirtied: queryInfo.SharedBlksDirtied,
+									SharedBlksWritten: queryInfo.SharedBlksWritten,
+									LocalBlksHit:     queryInfo.LocalBlksHit,
+									LocalBlksRead:    queryInfo.LocalBlksRead,
+									LocalBlksDirtied: queryInfo.LocalBlksDirtied,
+									LocalBlksWritten: queryInfo.LocalBlksWritten,
+									TempBlksRead:     queryInfo.TempBlksRead,
+									TempBlksWritten:  queryInfo.TempBlksWritten,
+									BlkReadTime:      queryInfo.BlkReadTime,
+									BlkWriteTime:     queryInfo.BlkWriteTime,
+									WalRecords:       queryInfo.WalRecords,
+									WalFpi:           queryInfo.WalFpi,
+									WalBytes:         queryInfo.WalBytes,
+									QueryPlanTime:    queryInfo.QueryPlanTime,
+									QueryExecTime:    queryInfo.QueryExecTime,
+								}
+
+								// Insert individual query stat
+								if err := s.db.InsertQueryStats(c, req.CollectorID, []*models.QueryStats{stat}); err != nil {
+									s.logger.Error("Failed to insert query stat",
+										zap.Error(err),
+										zap.String("query_hash", fmt.Sprintf("%d", queryInfo.Hash)),
+										zap.String("database", db.Database),
+									)
+								} else {
+									metricsInserted++
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	processingTimeMs := time.Since(startTime).Milliseconds()
 
 	resp := &models.MetricsPushResponse{
 		Status:             "success",
 		CollectorID:        req.CollectorID,
-		MetricsInserted:    req.MetricsCount,
+		MetricsInserted:    metricsInserted,
 		BytesReceived:      c.Request.ContentLength,
 		ProcessingTimeMs:   processingTimeMs,
 		NextConfigVersion:  1,
@@ -307,7 +383,8 @@ func (s *Server) handleMetricsPush(c *gin.Context) {
 
 	s.logger.Info("Metrics pushed successfully",
 		"collector_id", req.CollectorID,
-		"metrics_count", req.MetricsCount,
+		"metrics_inserted", metricsInserted,
+		"processing_time_ms", processingTimeMs,
 	)
 
 	c.JSON(http.StatusOK, resp)

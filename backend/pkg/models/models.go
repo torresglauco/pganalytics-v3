@@ -187,6 +187,103 @@ type AuditLog struct {
 }
 
 // ============================================================================
+// QUERY STATISTICS MODELS
+// ============================================================================
+
+// QueryStats represents query-level performance statistics from pg_stat_statements
+type QueryStats struct {
+	ID              int64      `db:"id" json:"id"`
+	Time            time.Time  `db:"time" json:"time"`
+	CollectorID     uuid.UUID  `db:"collector_id" json:"collector_id"`
+	DatabaseName    string     `db:"database_name" json:"database_name"`
+	UserName        string     `db:"user_name" json:"user_name"`
+	QueryHash       int64      `db:"query_hash" json:"query_hash"`
+	QueryText       string     `db:"query_text" json:"query_text"`
+	Calls           int64      `db:"calls" json:"calls"`
+	TotalTime       float64    `db:"total_time" json:"total_time"`           // milliseconds
+	MeanTime        float64    `db:"mean_time" json:"mean_time"`             // milliseconds
+	MinTime         float64    `db:"min_time" json:"min_time"`               // milliseconds
+	MaxTime         float64    `db:"max_time" json:"max_time"`               // milliseconds
+	StddevTime      float64    `db:"stddev_time" json:"stddev_time"`         // milliseconds
+	Rows            int64      `db:"rows" json:"rows"`
+	SharedBlksHit   int64      `db:"shared_blks_hit" json:"shared_blks_hit"`
+	SharedBlksRead  int64      `db:"shared_blks_read" json:"shared_blks_read"`
+	SharedBlksDirtied int64    `db:"shared_blks_dirtied" json:"shared_blks_dirtied"`
+	SharedBlksWritten int64    `db:"shared_blks_written" json:"shared_blks_written"`
+	LocalBlksHit    int64      `db:"local_blks_hit" json:"local_blks_hit"`
+	LocalBlksRead   int64      `db:"local_blks_read" json:"local_blks_read"`
+	LocalBlksDirtied int64     `db:"local_blks_dirtied" json:"local_blks_dirtied"`
+	LocalBlksWritten int64     `db:"local_blks_written" json:"local_blks_written"`
+	TempBlksRead    int64      `db:"temp_blks_read" json:"temp_blks_read"`
+	TempBlksWritten int64      `db:"temp_blks_written" json:"temp_blks_written"`
+	BlkReadTime     float64    `db:"blk_read_time" json:"blk_read_time"`     // milliseconds
+	BlkWriteTime    float64    `db:"blk_write_time" json:"blk_write_time"`   // milliseconds
+	WalRecords      *int64     `db:"wal_records" json:"wal_records,omitempty"`
+	WalFpi          *int64     `db:"wal_fpi" json:"wal_fpi,omitempty"`
+	WalBytes        *int64     `db:"wal_bytes" json:"wal_bytes,omitempty"`
+	QueryPlanTime   *float64   `db:"query_plan_time" json:"query_plan_time,omitempty"`
+	QueryExecTime   *float64   `db:"query_exec_time" json:"query_exec_time,omitempty"`
+}
+
+// QueryStatsRequest represents query stats data from collector
+type QueryStatsRequest struct {
+	Type      string          `json:"type"` // "pg_query_stats"
+	Timestamp time.Time       `json:"timestamp"`
+	Databases []QueryStatsDB  `json:"databases"`
+}
+
+// QueryStatsDB represents query stats for a single database
+type QueryStatsDB struct {
+	Database string      `json:"database"`
+	Queries  []QueryInfo `json:"queries"`
+}
+
+// QueryInfo represents a single query's statistics
+type QueryInfo struct {
+	Hash            int64    `json:"hash"`
+	Text            string   `json:"text"`
+	Calls           int64    `json:"calls"`
+	TotalTime       float64  `json:"total_time"`
+	MeanTime        float64  `json:"mean_time"`
+	MinTime         float64  `json:"min_time"`
+	MaxTime         float64  `json:"max_time"`
+	StddevTime      float64  `json:"stddev_time"`
+	Rows            int64    `json:"rows"`
+	SharedBlksHit   int64    `json:"shared_blks_hit"`
+	SharedBlksRead  int64    `json:"shared_blks_read"`
+	SharedBlksDirtied int64  `json:"shared_blks_dirtied"`
+	SharedBlksWritten int64  `json:"shared_blks_written"`
+	LocalBlksHit    int64    `json:"local_blks_hit"`
+	LocalBlksRead   int64    `json:"local_blks_read"`
+	LocalBlksDirtied int64   `json:"local_blks_dirtied"`
+	LocalBlksWritten int64   `json:"local_blks_written"`
+	TempBlksRead    int64    `json:"temp_blks_read"`
+	TempBlksWritten int64    `json:"temp_blks_written"`
+	BlkReadTime     float64  `json:"blk_read_time"`
+	BlkWriteTime    float64  `json:"blk_write_time"`
+	WalRecords      *int64   `json:"wal_records,omitempty"`
+	WalFpi          *int64   `json:"wal_fpi,omitempty"`
+	WalBytes        *int64   `json:"wal_bytes,omitempty"`
+	QueryPlanTime   *float64 `json:"query_plan_time,omitempty"`
+	QueryExecTime   *float64 `json:"query_exec_time,omitempty"`
+}
+
+// TopQueriesResponse represents the response for top queries API
+type TopQueriesResponse struct {
+	ServerID     uuid.UUID     `json:"server_id"`
+	QueryType    string        `json:"type"` // "slow", "frequent"
+	Hours        int           `json:"hours"`
+	Count        int           `json:"count"`
+	Queries      []*QueryStats `json:"queries"`
+}
+
+// QueryTimelineResponse represents the response for query timeline API
+type QueryTimelineResponse struct {
+	QueryHash int64          `json:"query_hash"`
+	Data      []*QueryStats  `json:"data"`
+}
+
+// ============================================================================
 // RESPONSE MODELS
 // ============================================================================
 

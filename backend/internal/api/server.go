@@ -109,6 +109,59 @@ func (s *Server) RegisterRoutes(router *gin.Engine) {
 		{
 			timeline.GET("/:query_hash/timeline", s.AuthMiddleware(), s.handleGetQueryTimeline)
 		}
+
+		// ========================================================================
+		// PHASE 4.4: ADVANCED QUERY ANALYSIS ROUTES
+		// ========================================================================
+
+		// Query Fingerprinting routes
+		fingerprints := api.Group("/queries/fingerprints")
+		{
+			fingerprints.GET("", s.AuthMiddleware(), s.handleGetQueryFingerprints)
+			fingerprints.GET("/:fingerprint_hash/queries", s.AuthMiddleware(), s.handleGetQueriesByFingerprint)
+		}
+
+		// EXPLAIN Plan routes
+		explainRoutes := api.Group("/queries")
+		{
+			explainRoutes.GET("/:query_hash/explain", s.AuthMiddleware(), s.handleGetExplainPlan)
+			explainRoutes.GET("/:query_hash/explain/history", s.AuthMiddleware(), s.handleGetExplainPlanHistory)
+		}
+
+		// Index Recommendations routes
+		indexRecommendations := api.Group("/databases/:database_name/index-recommendations")
+		{
+			indexRecommendations.GET("", s.AuthMiddleware(), s.handleGetIndexRecommendations)
+		}
+
+		recommendations := api.Group("/index-recommendations")
+		{
+			recommendations.POST("/:id/dismiss", s.AuthMiddleware(), s.handleDismissIndexRecommendation)
+		}
+
+		// Anomaly Detection routes
+		anomalies := api.Group("/queries")
+		{
+			anomalies.GET("/:query_hash/anomalies", s.AuthMiddleware(), s.handleGetQueryAnomalies)
+		}
+
+		anomaliesBySeverity := api.Group("/anomalies")
+		{
+			anomaliesBySeverity.GET("", s.AuthMiddleware(), s.handleGetAnomaliesBySeverity)
+		}
+
+		// Performance Snapshots routes
+		snapshots := api.Group("/snapshots")
+		{
+			snapshots.POST("", s.AuthMiddleware(), s.handleCreatePerformanceSnapshot)
+			snapshots.GET("", s.AuthMiddleware(), s.handleGetPerformanceSnapshots)
+		}
+
+		snapshotComparison := api.Group("/queries")
+		{
+			snapshotComparison.GET("/comparison", s.AuthMiddleware(), s.handleCompareSnapshots)
+			snapshotComparison.GET("/:query_hash/comparison", s.AuthMiddleware(), s.handleGetSnapshotComparison)
+		}
 	}
 
 	s.logger.Info("API routes registered")

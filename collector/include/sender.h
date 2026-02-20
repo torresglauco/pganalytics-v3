@@ -47,8 +47,15 @@ public:
 
     /**
      * Set JWT token (for testing or external token management)
+     * @param token JWT token string
+     * @param expiresAt Unix timestamp when token expires
      */
-    void setAuthToken(const std::string& token);
+    void setAuthToken(const std::string& token, long expiresAt);
+
+    /**
+     * Check if current token is still valid
+     */
+    bool isTokenValid() const;
 
 private:
     std::string backendUrl_;
@@ -60,7 +67,7 @@ private:
     long tokenExpiresAt_;
 
     static size_t writeCallback(void* contents, size_t size, size_t nmemb, std::string* userp);
-    std::string compressJson(const json& data);
+    std::string compressJson(const std::string& input);
     std::string generateJwt();
     bool setupCurl(void* curl);
 };

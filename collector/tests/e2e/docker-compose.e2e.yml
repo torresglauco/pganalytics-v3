@@ -1,0 +1,148 @@
+version: '3.9'
+
+services:
+  # PostgreSQL for pgAnalytics metadata
+  postgres:
+    image: postgres:16-alpine
+    container_name: e2e-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: pganalytics
+      POSTGRES_DB: pganalytics
+    ports:
+      - "5432:5432"
+    volumes:
+      - e2e_postgres_data:/var/lib/postgresql/data
+      - ./init-schema.sql:/docker-entrypoint-initdb.d/01-init-schema.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - e2e_network
+
+  # TimescaleDB for metrics storage
+  timescale:
+    image: timescaledb/timescaledb:latest-pg16-oss
+    container_name: e2e-timescale
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: pganalytics
+      POSTGRES_DB: metrics
+    ports:
+      - "5433:5432"
+    volumes:
+      - e2e_timescale_data:/var/lib/postgresql/data
+      - ./init-timescale.sql:/docker-entrypoint-initdb.d/01-init-timescale.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - e2e_network
+
+  # Backend API Server
+  backend:
+    build:
+      context: ../..
+      dockerfile: backend/Dockerfile
+    container_name: e2e-backend
+    environment:
+      DATABASE_URL: "postgres://postgres:pganalytics@postgres:5432/pganalytics"
+      TIMESCALE_URL: "postgres://postgres:pganalytics@timescale:5432/metrics"
+      JWT_SECRET: "e2e-test-secret"
+      JWT_EXPIRATION: "900"
+      TLS_CERT: "/etc/pganalytics/tls/server.crt"
+      TLS_KEY: "/etc/pganalytics/tls/server.key"
+      LOG_LEVEL: "debug"
+      PORT: "8080"
+      TESTING_MODE: "true"
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      timescale:
+        condition: service_healthy
+    volumes:
+      - ../../tls:/etc/pganalytics/tls:ro
+      - ../../backend/migrations:/migrations:ro
+    networks:
+      - e2e_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "-k", "https://localhost:8080/api/v1/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # C/C++ Collector (E2E test)
+  collector:
+    build:
+      context: ../..
+      dockerfile: collector/Dockerfile
+    container_name: e2e-collector
+    environment:
+      COLLECTOR_ID: "e2e_col_001"
+      COLLECTOR_NAME: "E2E Test Collector"
+      BACKEND_URL: "https://backend:8080"
+      BACKEND_TLS_VERIFY: "false"
+      POSTGRES_HOST: "postgres"
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "pganalytics"
+      POSTGRES_DATABASES: "postgres,pganalytics"
+      COLLECTION_INTERVAL: "10"  # 10 seconds for faster E2E testing
+      LOG_LEVEL: "debug"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    volumes:
+      - ../../tls:/etc/pganalytics/tls:ro
+      - ./collector-config.toml:/etc/pganalytics/collector.toml:ro
+      - e2e_collector_data:/var/lib/pganalytics
+    networks:
+      - e2e_network
+
+  # Grafana for Dashboards & Alerts (optional for E2E)
+  grafana:
+    image: grafana/grafana:11.0.0
+    container_name: e2e-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgres
+      - timescale
+    volumes:
+      - e2e_grafana_data:/var/lib/grafana
+      - ../../grafana/provisioning:/etc/grafana/provisioning:ro
+    networks:
+      - e2e_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+networks:
+  e2e_network:
+    driver: bridge
+
+volumes:
+  e2e_postgres_data:
+    driver: local
+  e2e_timescale_data:
+    driver: local
+  e2e_grafana_data:
+    driver: local
+  e2e_collector_data:
+    driver: local
+

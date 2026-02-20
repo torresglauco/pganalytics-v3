@@ -12,7 +12,7 @@ option(BUILD_TESTS "Build unit tests" ON)
 # Find required packages
 find_package(OpenSSL 3.0 REQUIRED)
 find_package(CURL REQUIRED)
-find_package(PostgreSQL REQUIRED)
+find_package(PostgreSQL QUIET)
 find_package(ZLIB REQUIRED)
 find_package(nlohmann_json 3.2.0 QUIET)
 
@@ -26,9 +26,13 @@ include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${OPENSSL_INCLUDE_DIR}
     ${CURL_INCLUDE_DIRS}
-    ${PostgreSQL_INCLUDE_DIRS}
     ${ZLIB_INCLUDE_DIRS}
 )
+
+# Add PostgreSQL include dirs if found
+if(PostgreSQL_FOUND)
+    include_directories(${PostgreSQL_INCLUDE_DIRS})
+endif()
 
 # Source files
 set(COLLECTOR_SOURCES
@@ -65,10 +69,14 @@ target_link_libraries(pganalytics
     PRIVATE
     OpenSSL::SSL OpenSSL::Crypto
     ${CURL_LIBRARIES}
-    ${PostgreSQL_LIBRARIES}
     ${ZLIB_LIBRARIES}
     pthread
 )
+
+# Add PostgreSQL libraries if found
+if(PostgreSQL_FOUND)
+    target_link_libraries(pganalytics PRIVATE ${PostgreSQL_LIBRARIES})
+endif()
 
 # Compiler flags
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")

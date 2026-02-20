@@ -1,1 +1,189 @@
-// TODO: Implement
+#include "../include/sender.h"
+#include <curl/curl.h>
+#include <zlib.h>
+#include <iostream>
+#include <sstream>
+#include <ctime>
+
+Sender::Sender(
+    const std::string& backendUrl,
+    const std::string& collectorId,
+    const std::string& certFile,
+    const std::string& keyFile,
+    bool tlsVerify
+) : backendUrl_(backendUrl),
+    collectorId_(collectorId),
+    certFile_(certFile),
+    keyFile_(keyFile),
+    tlsVerify_(tlsVerify),
+    tokenExpiresAt_(0) {
+}
+
+bool Sender::pushMetrics(const json& metrics) {
+    // Validate metrics
+    if (!metrics.is_object() || !metrics.contains("metrics")) {
+        return false;
+    }
+
+    // Refresh token if needed
+    if (!isTokenValid()) {
+        refreshAuthToken();
+    }
+
+    // Serialize metrics to JSON string
+    std::string jsonData = metrics.dump();
+
+    // Compress with gzip
+    std::string compressed = compressJson(jsonData);
+    if (compressed.empty()) {
+        return false;
+    }
+
+    // Initialize CURL
+    CURL* curl = curl_easy_init();
+    if (!curl) {
+        return false;
+    }
+
+    // Configure CURL for TLS 1.3 + mTLS
+    if (!setupCurl(curl)) {
+        curl_easy_cleanup(curl);
+        return false;
+    }
+
+    // Prepare URL and headers
+    std::string url = backendUrl_ + "/api/v1/metrics/push";
+    struct curl_slist* headers = nullptr;
+    headers = curl_slist_append(headers, "Content-Type: application/json");
+    headers = curl_slist_append(headers, "Content-Encoding: gzip");
+
+    // Add Authorization header
+    std::string authHeader = "Authorization: Bearer " + getAuthToken();
+    headers = curl_slist_append(headers, authHeader.c_str());
+
+    // Set CURL options
+    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, compressed.c_str());
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, compressed.size());
+
+    // Response callback
+    std::string responseData;
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeCallback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &responseData);
+
+    // Perform request
+    CURLcode res = curl_easy_perform(curl);
+
+    bool success = (res == CURLE_OK);
+    if (!success) {
+        std::cerr << "CURL error: " << curl_easy_strerror(res) << std::endl;
+    }
+
+    // Check HTTP status code
+    if (success) {
+        long httpCode;
+        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpCode);
+        success = (httpCode == 200 || httpCode == 201);
+
+        if (!success && httpCode == 401) {
+            // Token expired, refresh and retry once
+            refreshAuthToken();
+            authHeader = "Authorization: Bearer " + getAuthToken();
+            curl_slist_free_all(headers);
+            headers = nullptr;
+            headers = curl_slist_append(headers, "Content-Type: application/json");
+            headers = curl_slist_append(headers, "Content-Encoding: gzip");
+            headers = curl_slist_append(headers, authHeader.c_str());
+
+            curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+            res = curl_easy_perform(curl);
+            success = (res == CURLE_OK);
+        }
+    }
+
+    // Cleanup
+    curl_slist_free_all(headers);
+    curl_easy_cleanup(curl);
+
+    return success;
+}
+
+std::string Sender::getAuthToken() {
+    return authToken_;
+}
+
+void Sender::refreshAuthToken() {
+    // In a real implementation, this would refresh the token from the backend
+    // For now, just regenerate it locally
+    // This would be called after registration
+}
+
+void Sender::setAuthToken(const std::string& token, long expiresAt) {
+    authToken_ = token;
+    tokenExpiresAt_ = expiresAt;
+}
+
+bool Sender::isTokenValid() const {
+    if (authToken_.empty() || tokenExpiresAt_ == 0) {
+        return false;
+    }
+
+    time_t now = std::time(nullptr);
+    // Add 60 second buffer for token expiration (refresh 1 min before expiry)
+    return now < (tokenExpiresAt_ - 60);
+}
+
+size_t Sender::writeCallback(void* contents, size_t size, size_t nmemb, std::string* userp) {
+    if (userp) {
+        userp->append(static_cast<const char*>(contents), size * nmemb);
+    }
+    return size * nmemb;
+}
+
+std::string Sender::compressJson(const std::string& input) {
+    std::string output;
+
+    // Allocate output buffer
+    size_t compressedSize = compressBound(input.size());
+    output.resize(compressedSize);
+
+    // Compress
+    int result = compress2(
+        reinterpret_cast<unsigned char*>(&output[0]),
+        &compressedSize,
+        reinterpret_cast<const unsigned char*>(input.c_str()),
+        input.size(),
+        6  // Compression level
+    );
+
+    if (result != Z_OK) {
+        output.clear();
+        return output;
+    }
+
+    output.resize(compressedSize);
+    return output;
+}
+
+bool Sender::setupCurl(void* curl) {
+    CURL* curl_handle = static_cast<CURL*>(curl);
+
+    // Force TLS 1.3
+    curl_easy_setopt(curl_handle, CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1_3);
+
+    // mTLS certificate and key
+    curl_easy_setopt(curl_handle, CURLOPT_SSLCERT, certFile_.c_str());
+    curl_easy_setopt(curl_handle, CURLOPT_SSLKEY, keyFile_.c_str());
+
+    // Certificate verification
+    if (tlsVerify_) {
+        curl_easy_setopt(curl_handle, CURLOPT_SSL_VERIFYPEER, 1L);
+        curl_easy_setopt(curl_handle, CURLOPT_SSL_VERIFYHOST, 2L);
+    } else {
+        curl_easy_setopt(curl_handle, CURLOPT_SSL_VERIFYPEER, 0L);
+        curl_easy_setopt(curl_handle, CURLOPT_SSL_VERIFYHOST, 0L);
+    }
+
+    return true;
+}

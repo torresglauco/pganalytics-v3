@@ -1,0 +1,48 @@
+# E2E Test Collector Configuration
+
+[collector]
+id = "e2e_col_001"
+name = "E2E Test Collector"
+hostname = "e2e-test-host"
+log_level = "debug"
+
+[backend]
+url = "https://backend:8080"
+tls_verify = false
+tls_ca_file = "/etc/pganalytics/tls/ca.crt"
+client_cert_file = "/etc/pganalytics/tls/client.crt"
+client_key_file = "/etc/pganalytics/tls/client.key"
+
+[postgresql]
+host = "postgres"
+port = 5432
+user = "postgres"
+password = "pganalytics"
+databases = ["postgres", "pganalytics"]
+connection_timeout = 10
+query_timeout = 30
+
+[collection]
+# For E2E tests, use shorter intervals
+interval_pg_stats = 10
+interval_pg_log = 10
+interval_sysstat = 10
+interval_disk_usage = 10
+
+push_interval = 10
+buffer_size_mb = 10
+compression_enabled = true
+
+enabled_metrics = [
+  "pg_stats",
+  "pg_log",
+  "sysstat",
+  "disk_usage"
+]
+
+[logging]
+level = "debug"
+file = "/var/log/pganalytics/collector.log"
+max_size_mb = 100
+max_backups = 5
+

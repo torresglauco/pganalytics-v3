@@ -68,7 +68,7 @@ public:
     // Metrics submission
     bool submitMetrics(
         const std::string& metrics_json,
-        bool compress = true,
+        bool compress,
         std::string& response_body,
         int& response_code
     );

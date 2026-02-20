@@ -22,10 +22,25 @@ set(INTEGRATION_TEST_SOURCES
     integration/error_handling_test.cpp
 )
 
+# E2E test sources
+set(E2E_TEST_SOURCES
+    e2e/e2e_harness.cpp
+    e2e/http_client.cpp
+    e2e/database_helper.cpp
+    e2e/grafana_helper.cpp
+    e2e/1_collector_registration_test.cpp
+    e2e/2_metrics_ingestion_test.cpp
+    e2e/3_configuration_test.cpp
+    e2e/4_dashboard_visibility_test.cpp
+    e2e/5_performance_test.cpp
+    e2e/6_failure_recovery_test.cpp
+)
+
 # Combine all test sources
 set(TEST_SOURCES
     ${UNIT_TEST_SOURCES}
     ${INTEGRATION_TEST_SOURCES}
+    ${E2E_TEST_SOURCES}
 )
 
 # Exclude main.cpp from tests
@@ -51,6 +66,7 @@ add_executable(pganalytics-tests
 target_include_directories(pganalytics-tests PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../include
     ${CMAKE_CURRENT_SOURCE_DIR}/integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e
     ${GTEST_INCLUDE_DIRS}
     ${nlohmann_json_INCLUDE_DIR}
 )

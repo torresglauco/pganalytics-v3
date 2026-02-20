@@ -11,8 +11,7 @@
 #include "../include/metrics_serializer.h"
 #include "../include/metrics_buffer.h"
 
-// Global configuration and state
-std::shared_ptr<ConfigManager> gConfig = nullptr;
+// Global state (gConfig is defined in config_manager.cpp)
 volatile sig_atomic_t shouldExit = 0;
 
 // Signal handler for graceful shutdown

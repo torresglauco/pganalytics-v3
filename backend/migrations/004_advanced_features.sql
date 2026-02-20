@@ -220,14 +220,125 @@ CREATE INDEX IF NOT EXISTS idx_baseline_query ON query_baselines(query_hash);
 
 -- Function to calculate baselines and detect anomalies
 CREATE OR REPLACE FUNCTION calculate_baselines_and_anomalies() RETURNS VOID AS $$
+DECLARE
+    v_threshold FLOAT := 2.0; -- Multiplier for stddev-based detection (2x stddev = anomaly)
+    v_baseline_days INT := 7;
 BEGIN
-    -- This function will:
-    -- 1. Calculate 7-day rolling baseline for each query metric
-    -- 2. Detect anomalies using stddev-based detection (>2x stddev = anomaly)
-    -- 3. Insert into query_anomalies table
+    -- Phase 4.4.4 Implementation: Anomaly Detection
+    -- 1. Calculate 7-day rolling baseline for key metrics
+    -- 2. Detect anomalies using stddev-based detection
+    -- 3. Classify severity based on deviation magnitude
 
-    -- Implementation executed during Phase 4.4.4
-    NULL;
+    -- Step 1: Update or create baselines for each metric
+    INSERT INTO query_baselines (
+        query_hash, metric_name, baseline_value, stddev_value,
+        baseline_period_days, last_updated, min_value, max_value
+    )
+    SELECT
+        mq.query_hash,
+        'mean_time'::VARCHAR(100),
+        AVG(mq.mean_time)::FLOAT,
+        STDDEV_POP(mq.mean_time)::FLOAT,
+        v_baseline_days,
+        NOW(),
+        MIN(mq.mean_time)::FLOAT,
+        MAX(mq.mean_time)::FLOAT
+    FROM metrics_pg_stats_query mq
+    WHERE mq.time >= NOW() - INTERVAL '1 day' * v_baseline_days
+    GROUP BY mq.query_hash
+    ON CONFLICT (query_hash, metric_name) DO UPDATE SET
+        baseline_value = EXCLUDED.baseline_value,
+        stddev_value = EXCLUDED.stddev_value,
+        last_updated = NOW(),
+        min_value = EXCLUDED.min_value,
+        max_value = EXCLUDED.max_value;
+
+    -- Step 2: Detect execution time spikes
+    INSERT INTO query_anomalies (
+        query_hash, anomaly_type, severity, detected_at,
+        metric_name, metric_value, baseline_value, deviation_stddev, z_score, resolved
+    )
+    SELECT
+        mq.query_hash,
+        'execution_time_spike'::VARCHAR(50),
+        CASE
+            WHEN (mq.mean_time - qb.baseline_value) / NULLIF(qb.stddev_value, 0) > 4.0 THEN 'high'::VARCHAR(20)
+            WHEN (mq.mean_time - qb.baseline_value) / NULLIF(qb.stddev_value, 0) > 3.0 THEN 'medium'::VARCHAR(20)
+            ELSE 'low'::VARCHAR(20)
+        END,
+        NOW(),
+        'mean_time'::VARCHAR(100),
+        mq.mean_time::FLOAT,
+        qb.baseline_value::FLOAT,
+        ((mq.mean_time - qb.baseline_value) / NULLIF(qb.stddev_value, 0))::FLOAT,
+        ((mq.mean_time - qb.baseline_value) / NULLIF(qb.stddev_value, 0))::FLOAT,
+        FALSE
+    FROM metrics_pg_stats_query mq
+    JOIN query_baselines qb ON mq.query_hash = qb.query_hash
+    WHERE qb.metric_name = 'mean_time'
+        AND qb.stddev_value > 0
+        AND mq.mean_time > (qb.baseline_value + (v_threshold * qb.stddev_value))
+        AND mq.time >= NOW() - INTERVAL '1 hour'
+    ON CONFLICT (query_hash, anomaly_type, metric_name, detected_at) DO NOTHING;
+
+    -- Step 3: Detect cache degradation (lower hit ratio)
+    INSERT INTO query_anomalies (
+        query_hash, anomaly_type, severity, detected_at,
+        metric_name, metric_value, baseline_value, deviation_stddev, z_score, resolved
+    )
+    SELECT
+        mq.query_hash,
+        'cache_degradation'::VARCHAR(50),
+        CASE
+            WHEN cache_hit_ratio < 0.3 THEN 'high'::VARCHAR(20)
+            WHEN cache_hit_ratio < 0.5 THEN 'medium'::VARCHAR(20)
+            ELSE 'low'::VARCHAR(20)
+        END,
+        NOW(),
+        'cache_hit_ratio'::VARCHAR(100),
+        cache_hit_ratio::FLOAT,
+        0.8::FLOAT,
+        ((0.8 - cache_hit_ratio) / 0.2)::FLOAT,
+        ((0.8 - cache_hit_ratio) / 0.2)::FLOAT,
+        FALSE
+    FROM (
+        SELECT
+            mq.query_hash,
+            CASE
+                WHEN (mq.shared_blks_hit + mq.shared_blks_read) = 0 THEN 0
+                ELSE mq.shared_blks_hit::FLOAT / (mq.shared_blks_hit + mq.shared_blks_read)::FLOAT
+            END as cache_hit_ratio
+        FROM metrics_pg_stats_query mq
+        WHERE mq.time >= NOW() - INTERVAL '1 hour'
+    ) as cache_stats
+    WHERE cache_hit_ratio < 0.5
+    ON CONFLICT (query_hash, anomaly_type, metric_name, detected_at) DO NOTHING;
+
+    -- Step 4: Detect I/O increase (higher read/write times)
+    INSERT INTO query_anomalies (
+        query_hash, anomaly_type, severity, detected_at,
+        metric_name, metric_value, baseline_value, deviation_stddev, z_score, resolved
+    )
+    SELECT
+        mq.query_hash,
+        'io_increase'::VARCHAR(50),
+        CASE
+            WHEN (mq.blk_read_time + mq.blk_write_time) > 1000 THEN 'high'::VARCHAR(20)
+            WHEN (mq.blk_read_time + mq.blk_write_time) > 500 THEN 'medium'::VARCHAR(20)
+            ELSE 'low'::VARCHAR(20)
+        END,
+        NOW(),
+        'io_time'::VARCHAR(100),
+        (mq.blk_read_time + mq.blk_write_time)::FLOAT,
+        100::FLOAT,
+        ((mq.blk_read_time + mq.blk_write_time - 100) / 50)::FLOAT,
+        ((mq.blk_read_time + mq.blk_write_time - 100) / 50)::FLOAT,
+        FALSE
+    FROM metrics_pg_stats_query mq
+    WHERE mq.time >= NOW() - INTERVAL '1 hour'
+        AND (mq.blk_read_time + mq.blk_write_time) > 500;
+
+    RAISE NOTICE 'Baseline calculation and anomaly detection completed';
 END;
 $$ LANGUAGE plpgsql;
 

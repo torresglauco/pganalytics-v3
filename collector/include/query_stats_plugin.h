@@ -80,4 +80,21 @@ private:
      * @return JSON object with queries from pg_stat_statements
      */
     json collectQueryStats(const std::string& dbname);
+
+    /**
+     * Execute EXPLAIN ANALYZE on a query and capture the plan
+     * Phase 4.4.2: EXPLAIN PLAN Integration
+     * @param dbname Database name
+     * @param queryHash Query hash identifier
+     * @param queryText Query text to explain
+     * @return JSON object with EXPLAIN plan or null if execution fails
+     */
+    json executeExplainPlan(const std::string& dbname, int64_t queryHash, const std::string& queryText);
+
+    /**
+     * Check if query should be explained (execution time > threshold)
+     * @param meanTime Average execution time in milliseconds
+     * @return true if query exceeds EXPLAIN threshold (1000ms)
+     */
+    bool shouldExplainQuery(float meanTime) const { return meanTime > 1000.0f; }
 };

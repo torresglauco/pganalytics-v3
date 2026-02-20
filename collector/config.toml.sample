@@ -1,121 +1,72 @@
-# pgAnalytics Collector Configuration Sample
+# pgAnalytics Collector v3.0 Configuration
 # Copy to /etc/pganalytics/collector.toml and customize
+# Supports TOML format with [section] headers and key = value pairs
 
 [collector]
-# Unique identifier for this collector
-id = "col_001"
+# Unique identifier for this collector (auto-generated during registration)
+id = "collector-001"
 
-# Human-readable name
-name = "Production DB Server"
+# Hostname to report to backend (should be the actual server hostname)
+hostname = "db-server-01.example.com"
 
-# Hostname to report to backend
-hostname = "db-server-01"
-
-# Collection interval in seconds (default: 60)
+# Collection interval in seconds (how often to collect metrics)
 interval = 60
 
-# Enable/disable debug logging
-debug = false
+# Metrics push interval in seconds (how often to send to backend)
+push_interval = 60
+
+# Config pull interval in seconds (how often to fetch config from backend)
+config_pull_interval = 300
 
 [backend]
 # Backend API URL (must use HTTPS in production)
-url = "https://api.pganalytics.local"
-
-# Path to client certificate (for mTLS)
-tls_cert = "/etc/pganalytics/collector.crt"
-
-# Path to client key (for mTLS)
-tls_key = "/etc/pganalytics/collector.key"
-
-# Verify backend's TLS certificate (set to false for self-signed certs in demo)
-tls_verify = false
-
-# JWT token (will be obtained during collector registration)
-# jwt_token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-
-# Connection timeout in seconds
-connection_timeout = 30
-
-# Request timeout in seconds
-request_timeout = 60
+url = "https://api.example.com:8080"
 
 [postgres]
-# PostgreSQL host
+# PostgreSQL server connection details
 host = "localhost"
-
-# PostgreSQL port
 port = 5432
-
-# PostgreSQL user (should have minimal read-only permissions)
-user = "pganalytics_monitor"
-
-# PostgreSQL password (preferably use PGPASSWORD environment variable)
+user = "postgres"
 password = ""
 
-# List of databases to monitor (empty = all)
-databases = ["postgres", "app_database"]
+# Primary database name
+database = "postgres"
 
-# Connection timeout in seconds
-connection_timeout = 10
-
-# Whether to collect statistics
-collect_stats = true
-
-# Whether to collect logs
-collect_logs = true
-
-[collectors]
-# Enable/disable specific collectors
-pg_stats = true
-sysstat = true
-disk_usage = true
-pg_log = true
-
-[logging]
-# Log level: debug, info, warn, error
-level = "info"
-
-# Log file path (empty = stdout)
-file = "/var/log/pganalytics/collector.log"
-
-# Maximum log file size in MB
-max_size = 100
-
-# Number of backup log files to keep
-max_backups = 3
-
-# Maximum age of log files in days
-max_age = 7
-
-[metrics]
-# Enable compression (gzip)
-compression = true
-
-# Enable buffering (accumulate metrics before sending)
-buffering = true
-
-# Buffer size in number of metrics
-buffer_size = 1000
-
-# Flush buffer after timeout in seconds (even if not full)
-buffer_timeout = 60
+# Comma-separated list of databases to monitor
+# If empty, uses the database specified above
+databases = "postgres, myapp, analytics"
 
 [tls]
-# TLS version minimum (1.3 recommended)
-min_version = "1.3"
+# Whether to verify TLS certificates from backend (false = accept self-signed)
+verify = false
 
-# Custom CA certificate path (optional)
-# ca_cert = "/etc/pganalytics/ca.crt"
+# Path to client certificate for mTLS (PEM format)
+cert_file = "/etc/pganalytics/collector.crt"
 
-[retry]
-# Number of retry attempts
-max_attempts = 3
+# Path to client private key for mTLS (PEM format)
+key_file = "/etc/pganalytics/collector.key"
 
-# Initial retry backoff in seconds
-initial_backoff = 1
+# Path to CA certificate for verifying backend (optional)
+# ca_file = "/etc/pganalytics/ca.crt"
 
-# Maximum retry backoff in seconds
-max_backoff = 60
+# Collector-specific section for enabling/disabling metric types
+# Each metric type can have its own interval
+[pg_stats]
+enabled = true
+interval = 60
 
-# Exponential backoff multiplier
-multiplier = 2.0
+[sysstat]
+enabled = true
+interval = 60
+
+[pg_log]
+enabled = true
+interval = 300
+
+[disk_usage]
+enabled = true
+interval = 300
+
+# Example: Disable a collector
+# [pg_log]
+# enabled = false

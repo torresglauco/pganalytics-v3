@@ -1,59 +1,56 @@
 #include "../include/collector.h"
 #include <iostream>
 #include <ctime>
+#include <sstream>
+#include <iomanip>
 
-// PgStatsCollector implementation (stub)
-PgStatsCollector::PgStatsCollector(
+// DiskUsageCollector implementation
+DiskUsageCollector::DiskUsageCollector(
     const std::string& hostname,
-    const std::string& collectorId,
-    const std::string& postgresHost,
-    int postgresPort,
-    const std::string& postgresUser,
-    const std::string& postgresPassword,
-    const std::vector<std::string>& databases
+    const std::string& collectorId
 )
-    : postgresHost_(postgresHost),
-      postgresPort_(postgresPort),
-      postgresUser_(postgresUser),
-      postgresPassword_(postgresPassword),
-      databases_(databases),
-      enabled_(true) {
+    : enabled_(true) {
     hostname_ = hostname;
     collectorId_ = collectorId;
 }
 
-json PgStatsCollector::execute() {
+json DiskUsageCollector::execute() {
+    auto now = std::time(nullptr);
+    auto tm = *std::gmtime(&now);
+    std::ostringstream oss;
+    oss << std::put_time(&tm, "%Y-%m-%dT%H:%M:%SZ");
+
     json result = {
-        {"type", "pg_stats"},
-        {"timestamp", json::array()},
-        {"databases", json::array()}
+        {"type", "disk_usage"},
+        {"timestamp", oss.str()},
+        {"filesystems", json::array()}
     };
 
-    // TODO: Implement actual PostgreSQL connection and data gathering
-    // For now, return empty result
-    std::cout << "PgStatsCollector::execute() - placeholder" << std::endl;
+    // Collect disk usage
+    json filesystems = collectDiskUsage();
+    if (filesystems.is_array()) {
+        result["filesystems"] = filesystems;
+    }
+
+    std::cout << "DiskUsageCollector::execute() - gathering filesystem usage" << std::endl;
 
     return result;
 }
 
-json PgStatsCollector::collectDatabaseStats(const std::string& dbname) {
-    // TODO: Implement
-    return json::object();
-}
+json DiskUsageCollector::collectDiskUsage() {
+    // TODO: Execute `df -B1` and parse output
+    // Or use statfs() system call
+    // Schema:
+    // {
+    //   "mount": "/",
+    //   "device": "/dev/sda1",
+    //   "total_gb": 100,
+    //   "used_gb": 45,
+    //   "free_gb": 55,
+    //   "percent_used": 45
+    // }
 
-json PgStatsCollector::collectTableStats(const std::string& dbname) {
-    // TODO: Implement
     return json::array();
-}
-
-json PgStatsCollector::collectIndexStats(const std::string& dbname) {
-    // TODO: Implement
-    return json::array();
-}
-
-json PgStatsCollector::collectDatabaseGlobalStats() {
-    // TODO: Implement
-    return json::object();
 }
 
 // CollectorManager implementation

@@ -96,6 +96,19 @@ func (s *Server) RegisterRoutes(router *gin.Engine) {
 			alerts.GET("/:id", s.AuthMiddleware(), s.handleGetAlert)
 			alerts.POST("/:id/acknowledge", s.AuthMiddleware(), s.handleAcknowledgeAlert)
 		}
+
+		// Query Statistics routes
+		queries := api.Group("/collectors/:collector_id/queries")
+		{
+			queries.GET("/slow", s.AuthMiddleware(), s.handleGetSlowQueries)
+			queries.GET("/frequent", s.AuthMiddleware(), s.handleGetFrequentQueries)
+		}
+
+		// Query timeline routes
+		timeline := api.Group("/queries")
+		{
+			timeline.GET("/:query_hash/timeline", s.AuthMiddleware(), s.handleGetQueryTimeline)
+		}
 	}
 
 	s.logger.Info("API routes registered")

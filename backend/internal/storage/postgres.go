@@ -459,3 +459,177 @@ func (p *PostgresDB) ListServers(ctx context.Context, offset, limit int) ([]*mod
 
 	return servers, rows.Err()
 }
+
+// ============================================================================
+// QUERY STATISTICS METHODS
+// ============================================================================
+
+// InsertQueryStats inserts query statistics from collector
+func (p *PostgresDB) InsertQueryStats(ctx context.Context, collectorID string, stats []*models.QueryStats) error {
+	if len(stats) == 0 {
+		return nil
+	}
+
+	// Prepare bulk insert statement
+	query := `INSERT INTO metrics_pg_stats_query (
+		time, collector_id, database_name, user_name, query_hash, query_text,
+		calls, total_time, mean_time, min_time, max_time, stddev_time, rows,
+		shared_blks_hit, shared_blks_read, shared_blks_dirtied, shared_blks_written,
+		local_blks_hit, local_blks_read, local_blks_dirtied, local_blks_written,
+		temp_blks_read, temp_blks_written, blk_read_time, blk_write_time,
+		wal_records, wal_fpi, wal_bytes, query_plan_time, query_exec_time
+	) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17,
+	         $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30)`
+
+	// Use transaction for bulk insert
+	tx, err := p.db.BeginTx(ctx, nil)
+	if err != nil {
+		return apperrors.DatabaseError("begin transaction", err.Error())
+	}
+	defer tx.Rollback()
+
+	stmt, err := tx.PrepareContext(ctx, query)
+	if err != nil {
+		return apperrors.DatabaseError("prepare statement", err.Error())
+	}
+	defer stmt.Close()
+
+	for _, stat := range stats {
+		if _, err := stmt.ExecContext(ctx,
+			stat.Time, collectorID, stat.DatabaseName, stat.UserName, stat.QueryHash,
+			stat.QueryText, stat.Calls, stat.TotalTime, stat.MeanTime, stat.MinTime,
+			stat.MaxTime, stat.StddevTime, stat.Rows, stat.SharedBlksHit, stat.SharedBlksRead,
+			stat.SharedBlksDirtied, stat.SharedBlksWritten, stat.LocalBlksHit, stat.LocalBlksRead,
+			stat.LocalBlksDirtied, stat.LocalBlksWritten, stat.TempBlksRead, stat.TempBlksWritten,
+			stat.BlkReadTime, stat.BlkWriteTime, stat.WalRecords, stat.WalFpi, stat.WalBytes,
+			stat.QueryPlanTime, stat.QueryExecTime,
+		); err != nil {
+			return apperrors.DatabaseError("insert query stats", err.Error())
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return apperrors.DatabaseError("commit transaction", err.Error())
+	}
+
+	return nil
+}
+
+// GetTopSlowQueries returns the N slowest queries in a time range
+func (p *PostgresDB) GetTopSlowQueries(ctx context.Context, collectorID string, limit int, since time.Time) ([]*models.QueryStats, error) {
+	rows, err := p.db.QueryContext(ctx, `
+		SELECT time, collector_id, database_name, user_name, query_hash, query_text,
+		       calls, total_time, mean_time, min_time, max_time, stddev_time, rows,
+		       shared_blks_hit, shared_blks_read, shared_blks_dirtied, shared_blks_written,
+		       local_blks_hit, local_blks_read, local_blks_dirtied, local_blks_written,
+		       temp_blks_read, temp_blks_written, blk_read_time, blk_write_time,
+		       wal_records, wal_fpi, wal_bytes, query_plan_time, query_exec_time
+		FROM metrics_pg_stats_query
+		WHERE collector_id = $1 AND time >= $2
+		ORDER BY max_time DESC
+		LIMIT $3
+	`, collectorID, since, limit)
+
+	if err != nil {
+		return nil, apperrors.DatabaseError("query top slow queries", err.Error())
+	}
+	defer rows.Close()
+
+	var queries []*models.QueryStats
+	for rows.Next() {
+		q := &models.QueryStats{}
+		err := rows.Scan(
+			&q.Time, &q.CollectorID, &q.DatabaseName, &q.UserName, &q.QueryHash, &q.QueryText,
+			&q.Calls, &q.TotalTime, &q.MeanTime, &q.MinTime, &q.MaxTime, &q.StddevTime, &q.Rows,
+			&q.SharedBlksHit, &q.SharedBlksRead, &q.SharedBlksDirtied, &q.SharedBlksWritten,
+			&q.LocalBlksHit, &q.LocalBlksRead, &q.LocalBlksDirtied, &q.LocalBlksWritten,
+			&q.TempBlksRead, &q.TempBlksWritten, &q.BlkReadTime, &q.BlkWriteTime,
+			&q.WalRecords, &q.WalFpi, &q.WalBytes, &q.QueryPlanTime, &q.QueryExecTime,
+		)
+		if err != nil {
+			return nil, apperrors.DatabaseError("scan slow query row", err.Error())
+		}
+		queries = append(queries, q)
+	}
+
+	return queries, rows.Err()
+}
+
+// GetTopFrequentQueries returns the N most frequently executed queries
+func (p *PostgresDB) GetTopFrequentQueries(ctx context.Context, collectorID string, limit int, since time.Time) ([]*models.QueryStats, error) {
+	rows, err := p.db.QueryContext(ctx, `
+		SELECT time, collector_id, database_name, user_name, query_hash, query_text,
+		       calls, total_time, mean_time, min_time, max_time, stddev_time, rows,
+		       shared_blks_hit, shared_blks_read, shared_blks_dirtied, shared_blks_written,
+		       local_blks_hit, local_blks_read, local_blks_dirtied, local_blks_written,
+		       temp_blks_read, temp_blks_written, blk_read_time, blk_write_time,
+		       wal_records, wal_fpi, wal_bytes, query_plan_time, query_exec_time
+		FROM metrics_pg_stats_query
+		WHERE collector_id = $1 AND time >= $2
+		ORDER BY calls DESC
+		LIMIT $3
+	`, collectorID, since, limit)
+
+	if err != nil {
+		return nil, apperrors.DatabaseError("query top frequent queries", err.Error())
+	}
+	defer rows.Close()
+
+	var queries []*models.QueryStats
+	for rows.Next() {
+		q := &models.QueryStats{}
+		err := rows.Scan(
+			&q.Time, &q.CollectorID, &q.DatabaseName, &q.UserName, &q.QueryHash, &q.QueryText,
+			&q.Calls, &q.TotalTime, &q.MeanTime, &q.MinTime, &q.MaxTime, &q.StddevTime, &q.Rows,
+			&q.SharedBlksHit, &q.SharedBlksRead, &q.SharedBlksDirtied, &q.SharedBlksWritten,
+			&q.LocalBlksHit, &q.LocalBlksRead, &q.LocalBlksDirtied, &q.LocalBlksWritten,
+			&q.TempBlksRead, &q.TempBlksWritten, &q.BlkReadTime, &q.BlkWriteTime,
+			&q.WalRecords, &q.WalFpi, &q.WalBytes, &q.QueryPlanTime, &q.QueryExecTime,
+		)
+		if err != nil {
+			return nil, apperrors.DatabaseError("scan frequent query row", err.Error())
+		}
+		queries = append(queries, q)
+	}
+
+	return queries, rows.Err()
+}
+
+// GetQueryTimeline returns time-series data for a specific query
+func (p *PostgresDB) GetQueryTimeline(ctx context.Context, queryHash int64, since time.Time) ([]*models.QueryStats, error) {
+	rows, err := p.db.QueryContext(ctx, `
+		SELECT time, collector_id, database_name, user_name, query_hash, query_text,
+		       calls, total_time, mean_time, min_time, max_time, stddev_time, rows,
+		       shared_blks_hit, shared_blks_read, shared_blks_dirtied, shared_blks_written,
+		       local_blks_hit, local_blks_read, local_blks_dirtied, local_blks_written,
+		       temp_blks_read, temp_blks_written, blk_read_time, blk_write_time,
+		       wal_records, wal_fpi, wal_bytes, query_plan_time, query_exec_time
+		FROM metrics_pg_stats_query_1h
+		WHERE query_hash = $1 AND time >= $2
+		ORDER BY time ASC
+	`, queryHash, since)
+
+	if err != nil {
+		return nil, apperrors.DatabaseError("query timeline", err.Error())
+	}
+	defer rows.Close()
+
+	var queries []*models.QueryStats
+	for rows.Next() {
+		q := &models.QueryStats{}
+		err := rows.Scan(
+			&q.Time, &q.CollectorID, &q.DatabaseName, &q.UserName, &q.QueryHash, &q.QueryText,
+			&q.Calls, &q.TotalTime, &q.MeanTime, &q.MinTime, &q.MaxTime, &q.StddevTime, &q.Rows,
+			&q.SharedBlksHit, &q.SharedBlksRead, &q.SharedBlksDirtied, &q.SharedBlksWritten,
+			&q.LocalBlksHit, &q.LocalBlksRead, &q.LocalBlksDirtied, &q.LocalBlksWritten,
+			&q.TempBlksRead, &q.TempBlksWritten, &q.BlkReadTime, &q.BlkWriteTime,
+			&q.WalRecords, &q.WalFpi, &q.WalBytes, &q.QueryPlanTime, &q.QueryExecTime,
+		)
+		if err != nil {
+			return nil, apperrors.DatabaseError("scan timeline row", err.Error())
+		}
+		queries = append(queries, q)
+	}
+
+	return queries, rows.Err()
+}

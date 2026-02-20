@@ -10,6 +10,7 @@
 #include "../include/sender.h"
 #include "../include/metrics_serializer.h"
 #include "../include/metrics_buffer.h"
+#include "../include/query_stats_plugin.h"
 
 // Global state (gConfig is defined in config_manager.cpp)
 volatile sig_atomic_t shouldExit = 0;
@@ -93,6 +94,21 @@ int runCronMode() {
         std::cout << "Added PgLogCollector" << std::endl;
     }
 
+    // Create query stats collector (will be collected separately if enabled)
+    std::unique_ptr<PgQueryStatsCollector> queryStatsCollector = nullptr;
+    if (gConfig->isCollectorEnabled("pg_query_stats")) {
+        queryStatsCollector = std::make_unique<PgQueryStatsCollector>(
+            gConfig->getHostname(),
+            gConfig->getCollectorId(),
+            pgConfig.host,
+            pgConfig.port,
+            pgConfig.user,
+            pgConfig.password,
+            pgConfig.databases
+        );
+        std::cout << "Added PgQueryStatsCollector" << std::endl;
+    }
+
     // Initialize metrics buffer and sender
     MetricsBuffer buffer;
     Sender sender(
@@ -133,6 +149,21 @@ int runCronMode() {
                     }
                 } else {
                     std::cerr << "Invalid metric: " << MetricsSerializer::getLastValidationError() << std::endl;
+                }
+            }
+        }
+
+        // Collect query statistics if enabled
+        if (queryStatsCollector && queryStatsCollector->isEnabled()) {
+            std::cout << "Collecting query statistics..." << std::endl;
+            json queryStats = queryStatsCollector->execute();
+            if (!queryStats.is_null() && queryStats.contains("databases")) {
+                if (MetricsSerializer::validateMetric(queryStats)) {
+                    if (!buffer.append(queryStats)) {
+                        std::cerr << "Failed to append query stats to buffer (buffer full)" << std::endl;
+                    }
+                } else {
+                    std::cerr << "Invalid query stats: " << MetricsSerializer::getLastValidationError() << std::endl;
                 }
             }
         }

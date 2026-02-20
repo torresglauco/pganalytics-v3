@@ -256,3 +256,119 @@ json PgQueryStatsCollector::collectQueryStats(const std::string& dbname) {
     return json::object();
 #endif
 }
+
+/**
+ * Execute EXPLAIN ANALYZE (JSON) on a query to capture execution plan
+ * Phase 4.4.2: EXPLAIN PLAN Integration
+ */
+json PgQueryStatsCollector::executeExplainPlan(
+    const std::string& dbname,
+    int64_t queryHash,
+    const std::string& queryText) {
+
+#ifdef HAVE_LIBPQ
+    try {
+        // Build connection string
+        std::ostringstream conn_str;
+        conn_str << "host=" << postgresHost_
+                 << " port=" << postgresPort_
+                 << " user=" << postgresUser_
+                 << " password=" << postgresPassword_
+                 << " dbname=" << dbname
+                 << " connect_timeout=5";
+
+        PGconn* conn = PQconnectdb(conn_str.str().c_str());
+
+        if (PQstatus(conn) != CONNECTION_OK) {
+            std::cerr << "Failed to connect to " << dbname << " for EXPLAIN: " << PQerrorMessage(conn) << std::endl;
+            PQfinish(conn);
+            return json::object();
+        }
+
+        // Execute EXPLAIN ANALYZE (FORMAT JSON)
+        // Build query: EXPLAIN (ANALYZE, FORMAT JSON) <original query>
+        std::ostringstream explain_query;
+        explain_query << "EXPLAIN (ANALYZE, FORMAT JSON, BUFFERS) " << queryText;
+
+        // Set statement timeout to 30 seconds
+        PQexec(conn, "SET statement_timeout = '30s'");
+
+        PGresult* res = PQexec(conn, explain_query.str().c_str());
+
+        if (PQresultStatus(res) != PGRES_TUPLES_OK) {
+            std::cerr << "EXPLAIN failed for query " << queryHash << ": " << PQerrorMessage(conn) << std::endl;
+            PQclear(res);
+            PQfinish(conn);
+            return json::object();
+        }
+
+        // Extract JSON plan from result
+        json plan_json = json::object();
+        plan_json["query_hash"] = queryHash;
+        plan_json["database"] = dbname;
+        plan_json["collected_at"] = getCurrentTimestamp();
+        plan_json["query_text"] = queryText;
+
+        if (PQntuples(res) > 0) {
+            try {
+                // PostgreSQL returns EXPLAIN JSON as a single text field
+                std::string explain_result = PQgetvalue(res, 0, 0);
+
+                // Parse the JSON result
+                auto plan_data = json::parse(explain_result);
+
+                if (plan_data.is_array() && plan_data.size() > 0) {
+                    auto plan_obj = plan_data[0];
+
+                    // Extract key metrics from plan
+                    plan_json["plan"] = plan_obj["Plan"];
+                    plan_json["planning_time_ms"] = plan_obj.value("Planning Time", 0.0);
+                    plan_json["execution_time_ms"] = plan_obj.value("Execution Time", 0.0);
+
+                    // Extract row counts if present
+                    if (plan_obj.contains("Plan")) {
+                        auto& plan = plan_obj["Plan"];
+                        if (plan.contains("Actual Rows")) {
+                            plan_json["rows_actual"] = plan["Actual Rows"];
+                        }
+                        if (plan.contains("Rows")) {
+                            plan_json["rows_expected"] = plan["Rows"];
+                        }
+
+                        // Check for scan types
+                        plan_json["has_seq_scan"] = plan_json.dump().find("Seq Scan") != std::string::npos;
+                        plan_json["has_index_scan"] = plan_json.dump().find("Index") != std::string::npos;
+                        plan_json["has_bitmap_scan"] = plan_json.dump().find("Bitmap") != std::string::npos;
+                        plan_json["has_nested_loop"] = plan_json.dump().find("Nested Loop") != std::string::npos;
+
+                        // Extract buffer statistics
+                        if (plan.contains("Shared Hit Blocks")) {
+                            plan_json["shared_blocks_hit"] = plan["Shared Hit Blocks"];
+                        }
+                        if (plan.contains("Shared Read Blocks")) {
+                            plan_json["shared_blocks_read"] = plan["Shared Read Blocks"];
+                        }
+                    }
+                }
+            } catch (const std::exception& e) {
+                std::cerr << "Error parsing EXPLAIN JSON for query " << queryHash << ": " << e.what() << std::endl;
+                plan_json["parse_error"] = e.what();
+            }
+        }
+
+        PQclear(res);
+        PQfinish(conn);
+
+        return plan_json;
+
+    } catch (const std::exception& e) {
+        std::cerr << "Exception executing EXPLAIN for query " << queryHash << ": " << e.what() << std::endl;
+        return json::object();
+    }
+
+#else
+    // libpq not available
+    std::cerr << "libpq not available for EXPLAIN execution" << std::endl;
+    return json::object();
+#endif
+}

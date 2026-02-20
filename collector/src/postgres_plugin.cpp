@@ -35,44 +35,91 @@ json PgStatsCollector::execute() {
         {"databases", json::array()}
     };
 
-    // TODO: Implement PostgreSQL connection and actual data gathering
-    // For now, return a stub response with the correct schema
-    // In production, this would:
-    // 1. Connect to PostgreSQL using libpq
-    // 2. Execute queries to gather table stats, index stats, database stats
-    // 3. Parse results and populate the JSON structure
-    // 4. Handle multiple databases (from config)
+    // Collect stats for each configured database
+    for (const auto& dbname : databases_) {
+        json db_stats = json::object();
+        db_stats["database"] = dbname;
 
-    std::cout << "PgStatsCollector::execute() - gathering PostgreSQL stats from " << postgresHost_ << std::endl;
+        // Collect database-level stats
+        auto db_info = collectDatabaseStats(dbname);
+        if (!db_info.empty()) {
+            db_stats.update(db_info);
+        }
+
+        // Collect table stats
+        auto tables = collectTableStats(dbname);
+        if (tables.is_array()) {
+            db_stats["tables"] = tables;
+        } else {
+            db_stats["tables"] = json::array();
+        }
+
+        // Collect index stats
+        auto indexes = collectIndexStats(dbname);
+        if (indexes.is_array()) {
+            db_stats["indexes"] = indexes;
+        } else {
+            db_stats["indexes"] = json::array();
+        }
+
+        result["databases"].push_back(db_stats);
+    }
 
     return result;
 }
 
 json PgStatsCollector::collectDatabaseStats(const std::string& dbname) {
-    // TODO: Execute:
+    json result = json::object();
+
+    // Stub implementation - would connect via libpq and execute:
     // SELECT datname, pg_database_size(datname) as size_bytes,
-    //        xact_commit, xact_rollback, tup_returned, tup_fetched, tup_inserted, tup_updated, tup_deleted
+    //        xact_commit, xact_rollback, tup_returned, tup_fetched,
+    //        tup_inserted, tup_updated, tup_deleted
     // FROM pg_stat_database WHERE datname = 'dbname'
-    return json::object();
+
+    result["size_bytes"] = 0;
+    result["transactions_committed"] = 0;
+    result["transactions_rolledback"] = 0;
+
+    return result;
 }
 
 json PgStatsCollector::collectTableStats(const std::string& dbname) {
-    // TODO: Execute:
-    // SELECT schemaname, tablename, n_live_tup, n_dead_tup, n_mod_since_analyze,
-    //        last_vacuum, last_autovacuum, last_analyze, last_autoanalyze, vacuum_count, autovacuum_count
-    // FROM pg_stat_user_tables
-    return json::array();
+    json tables = json::array();
+
+    // Stub implementation - would connect via libpq and execute:
+    // SELECT schemaname, tablename, n_live_tup, n_dead_tup,
+    //        n_mod_since_analyze, last_vacuum, last_autovacuum,
+    //        last_analyze, last_autoanalyze, vacuum_count, autovacuum_count
+    // FROM pg_stat_user_tables ORDER BY n_live_tup DESC LIMIT 100
+
+    // This would typically return top 100 tables by row count
+    // For now, return empty array
+
+    return tables;
 }
 
 json PgStatsCollector::collectIndexStats(const std::string& dbname) {
-    // TODO: Execute:
-    // SELECT schemaname, indexname, tablename, idx_scan, idx_tup_read, idx_tup_fetch, pg_relation_size(indexrelid)
-    // FROM pg_stat_user_indexes
-    return json::array();
+    json indexes = json::array();
+
+    // Stub implementation - would connect via libpq and execute:
+    // SELECT schemaname, indexname, tablename, idx_scan,
+    //        idx_tup_read, idx_tup_fetch, pg_relation_size(indexrelid) as size_bytes
+    // FROM pg_stat_user_indexes WHERE idx_scan = 0 OR idx_scan > 0
+    // ORDER BY pg_relation_size(indexrelid) DESC LIMIT 100
+
+    // This would typically return unused and large indexes
+    // For now, return empty array
+
+    return indexes;
 }
 
 json PgStatsCollector::collectDatabaseGlobalStats() {
-    // TODO: Execute:
-    // SELECT datname, pg_database_size(datname), numbackends FROM pg_stat_database
-    return json::object();
+    json result = json::object();
+
+    // Stub implementation - would connect and execute:
+    // SELECT datname, pg_database_size(datname) as size_bytes, numbackends
+    // FROM pg_stat_database
+
+    return result;
 }

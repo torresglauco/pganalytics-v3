@@ -49,6 +49,7 @@ set(COLLECTOR_SOURCES
     src/main.cpp
     src/collector.cpp
     src/postgres_plugin.cpp
+    src/query_stats_plugin.cpp
     src/sysstat_plugin.cpp
     src/log_plugin.cpp
     src/sender.cpp
@@ -62,6 +63,7 @@ set(COLLECTOR_SOURCES
 set(COLLECTOR_HEADERS
     include/collector.h
     include/postgres_plugin.h
+    include/query_stats_plugin.h
     include/sysstat_plugin.h
     include/log_plugin.h
     include/sender.h

@@ -118,6 +118,7 @@ class SimulatedCollector:
                 bytes_sent = len(payload_json.encode('utf-8'))
                 return bytes_sent, elapsed, True
             else:
+                print(f"Metrics push failed with status {response.status_code}: {response.text}", file=sys.stderr)
                 return 0, elapsed, False
 
         except Exception as e:

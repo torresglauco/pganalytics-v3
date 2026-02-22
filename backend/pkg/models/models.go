@@ -545,3 +545,152 @@ type SnapshotComparison struct {
 	AfterCacheReads       int64    `json:"after_cache_reads"`
 	ImprovementStatus     string   `json:"improvement_status"` // improved, degraded, unchanged
 }
+
+// ============================================================================
+// PHASE 4.5: ML-BASED QUERY OPTIMIZATION SUGGESTIONS MODELS
+// ============================================================================
+
+// WorkloadPattern represents a detected recurring pattern in query execution
+type WorkloadPattern struct {
+	ID                 int64                  `db:"id" json:"id"`
+	DatabaseName       string                 `db:"database_name" json:"database_name"`
+	PatternType        string                 `db:"pattern_type" json:"pattern_type"`         // hourly_peak, daily_cycle, weekly_pattern, batch_job
+	PatternMetadata    map[string]interface{} `db:"pattern_metadata" json:"pattern_metadata"` // peak_hour, variance, confidence, affected_queries
+	DetectionTimestamp time.Time              `db:"detection_timestamp" json:"detection_timestamp"`
+	Description        *string                `db:"description" json:"description,omitempty"`
+	AffectedQueryCount int                    `db:"affected_query_count" json:"affected_query_count"`
+}
+
+// QueryRewriteSuggestion represents a recommended SQL rewrite
+type QueryRewriteSuggestion struct {
+	ID                      int64     `db:"id" json:"id"`
+	QueryHash               int64     `db:"query_hash" json:"query_hash"`
+	FingerprintHash         *int64    `db:"fingerprint_hash" json:"fingerprint_hash,omitempty"`
+	SuggestionType          string    `db:"suggestion_type" json:"suggestion_type"` // n_plus_one_detected, subquery_optimization, join_reorder, missing_limit
+	Description             string    `db:"description" json:"description"`
+	OriginalQuery           *string   `db:"original_query" json:"original_query,omitempty"`
+	SuggestedRewrite        string    `db:"suggested_rewrite" json:"suggested_rewrite"`
+	Reasoning               *string   `db:"reasoning" json:"reasoning,omitempty"`
+	EstimatedImprovementPct float64   `db:"estimated_improvement_percent" json:"estimated_improvement_percent"`
+	ConfidenceScore         float64   `db:"confidence_score" json:"confidence_score"`
+	Dismissed               bool      `db:"dismissed" json:"dismissed"`
+	Implemented             bool      `db:"implemented" json:"implemented"`
+	ImplementationNotes     *string   `db:"implementation_notes" json:"implementation_notes,omitempty"`
+	CreatedAt               time.Time `db:"created_at" json:"created_at"`
+	UpdatedAt               time.Time `db:"updated_at" json:"updated_at"`
+}
+
+// ParameterTuningSuggestion represents a recommended parameter optimization
+type ParameterTuningSuggestion struct {
+	ID                      int64     `db:"id" json:"id"`
+	QueryHash               int64     `db:"query_hash" json:"query_hash"`
+	FingerprintHash         *int64    `db:"fingerprint_hash" json:"fingerprint_hash,omitempty"`
+	ParameterName           string    `db:"parameter_name" json:"parameter_name"` // work_mem, sort_mem, limit, batch_size
+	CurrentValue            *string   `db:"current_value" json:"current_value,omitempty"`
+	RecommendedValue        string    `db:"recommended_value" json:"recommended_value"`
+	Reasoning               *string   `db:"reasoning" json:"reasoning,omitempty"`
+	EstimatedImprovementPct float64   `db:"estimated_improvement_percent" json:"estimated_improvement_percent"`
+	ConfidenceScore         float64   `db:"confidence_score" json:"confidence_score"`
+	CreatedAt               time.Time `db:"created_at" json:"created_at"`
+	UpdatedAt               time.Time `db:"updated_at" json:"updated_at"`
+}
+
+// OptimizationRecommendation represents an aggregated recommendation with ROI scoring
+type OptimizationRecommendation struct {
+	ID                       int64     `db:"id" json:"id"`
+	QueryHash                int64     `db:"query_hash" json:"query_hash"`
+	SourceType               string    `db:"source_type" json:"source_type"` // index, rewrite, parameter, workload
+	SourceID                 *int64    `db:"source_id" json:"source_id,omitempty"`
+	RecommendationText       string    `db:"recommendation_text" json:"recommendation_text"`
+	DetailedExplanation      *string   `db:"detailed_explanation" json:"detailed_explanation,omitempty"`
+	EstimatedImprovementPct  float64   `db:"estimated_improvement_percent" json:"estimated_improvement_percent"`
+	ConfidenceScore          float64   `db:"confidence_score" json:"confidence_score"`
+	UrgencyScore             float64   `db:"urgency_score" json:"urgency_score"`
+	ROIScore                 float64   `db:"roi_score" json:"roi_score"`                                           // confidence × improvement × urgency
+	ImplementationComplexity *string   `db:"implementation_complexity" json:"implementation_complexity,omitempty"` // low, medium, high
+	DismissalReason          *string   `db:"dismissal_reason" json:"dismissal_reason,omitempty"`
+	IsDismissed              bool      `db:"is_dismissed" json:"is_dismissed"`
+	CreatedAt                time.Time `db:"created_at" json:"created_at"`
+	UpdatedAt                time.Time `db:"updated_at" json:"updated_at"`
+}
+
+// OptimizationImplementation tracks when a recommendation is applied and measures results
+type OptimizationImplementation struct {
+	ID                       int64                  `db:"id" json:"id"`
+	RecommendationID         int64                  `db:"recommendation_id" json:"recommendation_id"`
+	QueryHash                int64                  `db:"query_hash" json:"query_hash"`
+	ImplementationTimestamp  time.Time              `db:"implementation_timestamp" json:"implementation_timestamp"`
+	ImplementationNotes      *string                `db:"implementation_notes" json:"implementation_notes,omitempty"`
+	PreOptimizationStats     map[string]interface{} `db:"pre_optimization_stats" json:"pre_optimization_stats,omitempty"`   // mean_time, calls, total_time
+	PostOptimizationStats    map[string]interface{} `db:"post_optimization_stats" json:"post_optimization_stats,omitempty"` // measured after implementation
+	ActualImprovementPct     *float64               `db:"actual_improvement_percent" json:"actual_improvement_percent,omitempty"`
+	ActualImprovementSeconds *float64               `db:"actual_improvement_seconds" json:"actual_improvement_seconds,omitempty"`
+	Status                   string                 `db:"status" json:"status"` // pending, implemented, reverted, failed
+	ErrorMessage             *string                `db:"error_message" json:"error_message,omitempty"`
+	MeasuredAt               *time.Time             `db:"measured_at" json:"measured_at,omitempty"`
+}
+
+// QueryPerformanceModel represents a trained ML model for performance prediction
+type QueryPerformanceModel struct {
+	ID                 int64                  `db:"id" json:"id"`
+	ModelType          string                 `db:"model_type" json:"model_type"` // linear_regression, decision_tree, random_forest, xgboost
+	ModelName          *string                `db:"model_name" json:"model_name,omitempty"`
+	DatabaseName       *string                `db:"database_name" json:"database_name,omitempty"`
+	ModelBinary        []byte                 `db:"model_binary" json:"-"`                  // Serialized model (not exposed in JSON)
+	ModelJSON          map[string]interface{} `db:"model_json" json:"model_json,omitempty"` // JSON representation
+	FeatureNames       []string               `db:"feature_names" json:"feature_names"`
+	TrainingSampleSize *int                   `db:"training_sample_size" json:"training_sample_size,omitempty"`
+	RSquared           *float64               `db:"r_squared" json:"r_squared,omitempty"`
+	RMSE               *float64               `db:"rmse" json:"rmse,omitempty"`
+	MAE                *float64               `db:"mae" json:"mae,omitempty"`
+	FeatureImportance  map[string]interface{} `db:"feature_importance" json:"feature_importance,omitempty"`
+	TrainingTimestamp  time.Time              `db:"training_timestamp" json:"training_timestamp"`
+	LastUpdated        time.Time              `db:"last_updated" json:"last_updated"`
+	Version            int                    `db:"version" json:"version"`
+	IsActive           bool                   `db:"is_active" json:"is_active"`
+	Metrics            map[string]interface{} `db:"metrics" json:"metrics,omitempty"` // Additional metrics
+}
+
+// PerformancePrediction represents a performance prediction for a query
+type PerformancePrediction struct {
+	QueryHash            int64                  `json:"query_hash"`
+	PredictedExecutionMs float64                `json:"predicted_execution_time_ms"`
+	ConfidenceScore      float64                `json:"confidence"`
+	PredictionRange      PredictionRange        `json:"range"`
+	ModelVersion         *string                `json:"model_version,omitempty"`
+	Features             map[string]interface{} `json:"features,omitempty"`
+	Timestamp            time.Time              `json:"timestamp"`
+}
+
+// PredictionRange represents the min/max range for a prediction
+type PredictionRange struct {
+	Min float64 `json:"min"`
+	Max float64 `json:"max"`
+}
+
+// OptimizationResult represents the result view of optimization impact
+type OptimizationResult struct {
+	ImplementationID     int64      `json:"implementation_id"`
+	RecommendationID     int64      `json:"recommendation_id"`
+	QueryHash            int64      `json:"query_hash"`
+	RecommendationText   string     `json:"recommendation_text"`
+	EstimatedImprovement float64    `json:"estimated_improvement"`
+	ActualImprovement    *float64   `json:"actual_improvement,omitempty"`
+	PredictionErrorPct   *float64   `json:"prediction_error_percent,omitempty"`
+	Status               string     `json:"status"`
+	ImplementationTime   time.Time  `json:"implementation_timestamp"`
+	MeasuredAt           *time.Time `json:"measured_at,omitempty"`
+	TimeToMeasurement    *string    `json:"time_to_measurement,omitempty"`
+	ConfidenceScore      float64    `json:"confidence_score"`
+	ActualImprovementSec *float64   `json:"actual_improvement_seconds,omitempty"`
+}
+
+// WorkloadPatternSummary represents a summary of patterns
+type WorkloadPatternSummary struct {
+	DatabaseName    string        `json:"database_name"`
+	PatternType     string        `json:"pattern_type"`
+	Occurrences     int           `json:"occurrences"`
+	AvgConfidence   float64       `json:"avg_confidence"`
+	LatestDetection time.Time     `json:"latest_detection"`
+	AllMetadata     []interface{} `json:"all_metadata"`
+}

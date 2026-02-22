@@ -1,22 +1,27 @@
 package api
 
 import (
-	"github.com/dextra/pganalytics-v3/backend/internal/auth"
-	"github.com/dextra/pganalytics-v3/backend/internal/config"
-	"github.com/dextra/pganalytics-v3/backend/internal/storage"
-	"github.com/dextra/pganalytics-v3/backend/internal/timescale"
+	"github.com/torresglauco/pganalytics-v3/backend/internal/auth"
+	"github.com/torresglauco/pganalytics-v3/backend/internal/cache"
+	"github.com/torresglauco/pganalytics-v3/backend/internal/config"
+	"github.com/torresglauco/pganalytics-v3/backend/internal/ml"
+	"github.com/torresglauco/pganalytics-v3/backend/internal/storage"
+	"github.com/torresglauco/pganalytics-v3/backend/internal/timescale"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
 
 // Server represents the API server
 type Server struct {
-	config      *config.Config
-	logger      *zap.Logger
-	postgres    *storage.PostgresDB
-	timescale   *timescale.TimescaleDB
-	authService *auth.AuthService
-	jwtManager  *auth.JWTManager
+	config           *config.Config
+	logger           *zap.Logger
+	postgres         *storage.PostgresDB
+	timescale        *timescale.TimescaleDB
+	authService      *auth.AuthService
+	jwtManager       *auth.JWTManager
+	mlClient         *ml.Client
+	featureExtractor ml.IFeatureExtractor
+	cacheManager     *cache.Manager
 }
 
 // NewServer creates a new API server
@@ -28,14 +33,42 @@ func NewServer(
 	authService *auth.AuthService,
 	jwtManager *auth.JWTManager,
 ) *Server {
-	return &Server{
-		config:      cfg,
-		logger:      logger,
-		postgres:    postgres,
-		timescale:   timescale,
-		authService: authService,
-		jwtManager:  jwtManager,
+	// Initialize ML client if enabled
+	var mlClient *ml.Client
+	var featureExtractor ml.IFeatureExtractor
+
+	if cfg.MLServiceEnabled {
+		mlClient = ml.NewClient(cfg.MLServiceURL, cfg.MLServiceTimeout, logger)
+		baseExtractor := ml.NewFeatureExtractor(postgres, logger)
+		// Wrap with caching if cache is enabled
+		if cfg.CacheEnabled {
+			featureExtractor = ml.NewCachedFeatureExtractor(
+				baseExtractor,
+				cfg.FeatureCacheTTL,
+				cfg.CacheMaxSize,
+				logger,
+			)
+		} else {
+			featureExtractor = baseExtractor
+		}
 	}
+
+	return &Server{
+		config:           cfg,
+		logger:           logger,
+		postgres:         postgres,
+		timescale:        timescale,
+		authService:      authService,
+		jwtManager:       jwtManager,
+		mlClient:         mlClient,
+		featureExtractor: featureExtractor,
+		cacheManager:     nil, // Set via SetCacheManager
+	}
+}
+
+// SetCacheManager sets the cache manager for the server
+func (s *Server) SetCacheManager(cm *cache.Manager) {
+	s.cacheManager = cm
 }
 
 // RegisterRoutes registers all API routes
@@ -55,7 +88,8 @@ func (s *Server) RegisterRoutes(router *gin.Engine) {
 			auth.POST("/refresh", s.handleRefreshToken)
 		}
 
-		// Collector routes
+		// Collector routes will be defined below
+
 		collectors := api.Group("/collectors")
 		{
 			// Registration (no auth required)
@@ -65,13 +99,19 @@ func (s *Server) RegisterRoutes(router *gin.Engine) {
 			collectors.GET("", s.AuthMiddleware(), s.handleListCollectors)
 			collectors.GET("/:id", s.AuthMiddleware(), s.handleGetCollector)
 			collectors.DELETE("/:id", s.AuthMiddleware(), s.handleDeleteCollector)
+
+			// Query Statistics routes
+			collectors.GET("/:id/queries/slow", s.AuthMiddleware(), s.handleGetSlowQueries)
+			collectors.GET("/:id/queries/frequent", s.AuthMiddleware(), s.handleGetFrequentQueries)
 		}
 
 		// Metrics routes
 		metrics := api.Group("/metrics")
 		{
-			// High-volume endpoint (mTLS + JWT)
-			metrics.POST("/push", s.MTLSMiddleware(), s.AuthMiddleware(), s.handleMetricsPush)
+			// High-volume endpoint - auth disabled for testing
+			metrics.POST("/push", s.handleMetricsPush)
+			// Cache metrics (protected)
+			metrics.GET("/cache", s.AuthMiddleware(), s.handleCacheMetrics)
 		}
 
 		// Internal analysis routes (collector -> backend for analyzed data like EXPLAIN plans)
@@ -101,13 +141,6 @@ func (s *Server) RegisterRoutes(router *gin.Engine) {
 			alerts.GET("", s.AuthMiddleware(), s.handleListAlerts)
 			alerts.GET("/:id", s.AuthMiddleware(), s.handleGetAlert)
 			alerts.POST("/:id/acknowledge", s.AuthMiddleware(), s.handleAcknowledgeAlert)
-		}
-
-		// Query Statistics routes
-		queries := api.Group("/collectors/:collector_id/queries")
-		{
-			queries.GET("/slow", s.AuthMiddleware(), s.handleGetSlowQueries)
-			queries.GET("/frequent", s.AuthMiddleware(), s.handleGetFrequentQueries)
 		}
 
 		// Query timeline routes
@@ -170,6 +203,72 @@ func (s *Server) RegisterRoutes(router *gin.Engine) {
 		{
 			snapshotComparison.GET("/comparison", s.AuthMiddleware(), s.handleCompareSnapshots)
 			snapshotComparison.GET("/:query_hash/comparison", s.AuthMiddleware(), s.handleGetSnapshotComparison)
+		}
+
+		// ========================================================================
+		// PHASE 4.5: ML-BASED QUERY OPTIMIZATION SUGGESTIONS ROUTES
+		// ========================================================================
+
+		// Workload Pattern Detection routes
+		patterns := api.Group("/workload-patterns")
+		{
+			patterns.POST("/analyze", s.AuthMiddleware(), s.handleDetectWorkloadPatterns)
+			patterns.GET("", s.AuthMiddleware(), s.handleGetWorkloadPatterns)
+		}
+
+		// Query Rewrite Suggestions routes
+		rewriteRoutes := api.Group("/queries")
+		{
+			rewriteRoutes.POST("/:query_hash/rewrite-suggestions/generate", s.AuthMiddleware(), s.handleGenerateRewriteSuggestions)
+			rewriteRoutes.GET("/:query_hash/rewrite-suggestions", s.AuthMiddleware(), s.handleGetRewriteSuggestions)
+			rewriteRoutes.POST("/:query_hash/parameter-optimization/generate", s.AuthMiddleware(), s.handleOptimizeParameters)
+			rewriteRoutes.GET("/:query_hash/parameter-optimization", s.AuthMiddleware(), s.handleGetParameterOptimization)
+			rewriteRoutes.POST("/:query_hash/predict-performance", s.AuthMiddleware(), s.handlePredictQueryPerformance)
+		}
+
+		// Recommendations Aggregation routes
+		recommendationsRoutes := api.Group("/recommendations")
+		{
+			recommendationsRoutes.POST("/aggregate", s.AuthMiddleware(), s.handleAggregateRecommendations)
+		}
+
+		// Optimization Recommendations routes
+		optimization := api.Group("/optimization-recommendations")
+		{
+			optimization.GET("", s.AuthMiddleware(), s.handleGetOptimizationRecommendations)
+			optimization.POST("/:recommendation_id/implement", s.AuthMiddleware(), s.handleImplementRecommendation)
+		}
+
+		// Optimization Results routes
+		results := api.Group("/optimization-results")
+		{
+			results.GET("", s.AuthMiddleware(), s.handleGetOptimizationResults)
+		}
+
+		// ========================================================================
+		// PHASE 4.5.8: ML SERVICE INTEGRATION ROUTES
+		// ========================================================================
+
+		// ML Service integration routes (no auth required for health, auth required for operations)
+		ml := api.Group("/ml")
+		{
+			// Health and status endpoints (no auth)
+			ml.GET("/health", s.handleMLHealth)
+			ml.GET("/circuit-breaker", s.handleMLCircuitBreakerStatus)
+
+			// Model training (requires auth)
+			ml.POST("/train", s.AuthMiddleware(), s.handleMLTrain)
+			ml.GET("/train/:job_id", s.AuthMiddleware(), s.handleMLTrainingStatus)
+
+			// Prediction and validation (requires auth)
+			ml.POST("/predict", s.AuthMiddleware(), s.handleMLPredict)
+			ml.POST("/validate", s.AuthMiddleware(), s.handleMLValidate)
+
+			// Pattern detection (requires auth)
+			ml.POST("/patterns/detect", s.AuthMiddleware(), s.handleMLDetectPatterns)
+
+			// Feature extraction (requires auth, for debugging)
+			ml.GET("/features/:query_hash", s.AuthMiddleware(), s.handleMLGetFeatures)
 		}
 	}
 

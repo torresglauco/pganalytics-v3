@@ -3,12 +3,13 @@ package storage
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
 
-	apperrors "github.com/dextra/pganalytics-v3/backend/pkg/errors"
-	"github.com/dextra/pganalytics-v3/backend/pkg/models"
+	apperrors "github.com/torresglauco/pganalytics-v3/backend/pkg/errors"
+	"github.com/torresglauco/pganalytics-v3/backend/pkg/models"
 	"github.com/lib/pq"
 )
 
@@ -33,9 +34,10 @@ func NewPostgresDB(connString string) (*PostgresDB, error) {
 	}
 
 	// Configure connection pool
-	db.SetMaxOpenConns(25)
-	db.SetMaxIdleConns(5)
+	db.SetMaxOpenConns(50)
+	db.SetMaxIdleConns(15)
 	db.SetConnMaxLifetime(5 * time.Minute)
+	db.SetConnMaxIdleTime(10 * time.Minute)
 
 	return &PostgresDB{db: db}, nil
 }
@@ -1008,7 +1010,18 @@ func (p *PostgresDB) StoreIndexRecommendations(ctx context.Context, recommendati
 
 	for _, rec := range recommendations {
 		// Convert column names array to string for unique constraint
-		columnNamesStr := strings.Join(rec.ColumnNames, ",")
+		var columnNamesStr string
+		if cols, ok := rec.ColumnNames.([]string); ok {
+			columnNamesStr = strings.Join(cols, ",")
+		} else if cols, ok := rec.ColumnNames.([]interface{}); ok {
+			var colStrs []string
+			for _, c := range cols {
+				if s, ok := c.(string); ok {
+					colStrs = append(colStrs, s)
+				}
+			}
+			columnNamesStr = strings.Join(colStrs, ",")
+		}
 
 		_, err := p.db.ExecContext(ctx, query,
 			rec.CollectorID, rec.DatabaseName, rec.SchemaName, rec.TableName, pq.Array(rec.ColumnNames), columnNamesStr,
@@ -1361,5 +1374,617 @@ func (p *PostgresDB) ResolveAnomaly(ctx context.Context, anomalyID int64) error 
 		return apperrors.NotFound("anomaly", fmt.Sprintf("%d", anomalyID))
 	}
 
+	return nil
+}
+
+// ============================================================================
+// PHASE 4.5: ML-BASED QUERY OPTIMIZATION SUGGESTIONS
+// ============================================================================
+
+// DetectWorkloadPatterns detects recurring patterns in query execution
+// Analyzes 30-day rolling window by default, minimum 7 days, maximum 365 days
+func (p *PostgresDB) DetectWorkloadPatterns(ctx context.Context, databaseName string, lookbackDays int) (int, error) {
+	// Validate database name
+	if databaseName == "" {
+		return 0, apperrors.BadRequest("database_name", "Database name is required")
+	}
+
+	// Validate lookback days
+	if lookbackDays < 7 {
+		lookbackDays = 7
+	}
+	if lookbackDays > 365 {
+		lookbackDays = 365
+	}
+
+	// Call PostgreSQL function to analyze patterns
+	// Returns number of patterns detected
+	query := `SELECT COUNT(*) FROM detect_workload_patterns($1, $2)`
+
+	var count int
+	err := p.db.QueryRowContext(
+		ctx,
+		query,
+		databaseName,
+		lookbackDays,
+	).Scan(&count)
+
+	if err != nil && err != sql.ErrNoRows {
+		return 0, apperrors.DatabaseError("detect workload patterns", err.Error())
+	}
+
+	if err == sql.ErrNoRows {
+		return 0, nil
+	}
+
+	return count, nil
+}
+
+// GetWorkloadPatterns retrieves detected workload patterns
+func (p *PostgresDB) GetWorkloadPatterns(ctx context.Context, databaseName, patternType string, limit int) ([]models.WorkloadPattern, error) {
+	query := `
+		SELECT id, database_name, pattern_type, pattern_metadata, detection_timestamp, description, affected_query_count
+		FROM workload_patterns
+		WHERE 1=1`
+
+	args := []interface{}{}
+	argNum := 1
+
+	if databaseName != "" {
+		query += fmt.Sprintf(` AND database_name = $%d`, argNum)
+		args = append(args, databaseName)
+		argNum++
+	}
+
+	if patternType != "" {
+		query += fmt.Sprintf(` AND pattern_type = $%d`, argNum)
+		args = append(args, patternType)
+		argNum++
+	}
+
+	query += fmt.Sprintf(` ORDER BY detection_timestamp DESC LIMIT $%d`, argNum)
+	args = append(args, limit)
+
+	rows, err := p.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, apperrors.DatabaseError("get workload patterns", err.Error())
+	}
+	defer rows.Close()
+
+	var patterns []models.WorkloadPattern
+	for rows.Next() {
+		var p models.WorkloadPattern
+		var metadata interface{}
+
+		err := rows.Scan(
+			&p.ID,
+			&p.DatabaseName,
+			&p.PatternType,
+			&metadata,
+			&p.DetectionTimestamp,
+			&p.Description,
+			&p.AffectedQueryCount,
+		)
+		if err != nil {
+			return nil, apperrors.DatabaseError("scan pattern", err.Error())
+		}
+
+		// Convert metadata to map
+		if metadata != nil {
+			p.PatternMetadata = metadata.(map[string]interface{})
+		}
+
+		patterns = append(patterns, p)
+	}
+
+	return patterns, rows.Err()
+}
+
+// GenerateRewriteSuggestions analyzes a query and generates rewrite suggestions
+// Detects anti-patterns: N+1, inefficient joins, missing indexes, subqueries, IN vs ANY
+func (p *PostgresDB) GenerateRewriteSuggestions(ctx context.Context, queryHash int64) (int, error) {
+	// Validate query_hash
+	if queryHash <= 0 {
+		return 0, apperrors.BadRequest("query_hash", "Must be a positive integer")
+	}
+
+	// Call PostgreSQL function to generate suggestions
+	// Returns count of suggestions generated for this query
+	query := `SELECT COUNT(*) FROM generate_rewrite_suggestions($1)`
+
+	var count int
+	err := p.db.QueryRowContext(
+		ctx,
+		query,
+		queryHash,
+	).Scan(&count)
+
+	if err != nil && err != sql.ErrNoRows {
+		return 0, apperrors.DatabaseError("generate rewrite suggestions", err.Error())
+	}
+
+	if err == sql.ErrNoRows {
+		return 0, nil
+	}
+
+	return count, nil
+}
+
+// GetRewriteSuggestions retrieves rewrite suggestions for a query
+func (p *PostgresDB) GetRewriteSuggestions(ctx context.Context, queryHash int64, limit int) ([]models.QueryRewriteSuggestion, error) {
+	query := `
+		SELECT id, query_hash, fingerprint_hash, suggestion_type, description, original_query,
+		       suggested_rewrite, reasoning, estimated_improvement_percent, confidence_score,
+		       dismissed, implemented, implementation_notes, created_at, updated_at
+		FROM query_rewrite_suggestions
+		WHERE query_hash = $1 AND dismissed = FALSE
+		ORDER BY confidence_score DESC, estimated_improvement_percent DESC
+		LIMIT $2`
+
+	rows, err := p.db.QueryContext(ctx, query, queryHash, limit)
+	if err != nil {
+		return nil, apperrors.DatabaseError("get rewrite suggestions", err.Error())
+	}
+	defer rows.Close()
+
+	var suggestions []models.QueryRewriteSuggestion
+	for rows.Next() {
+		var s models.QueryRewriteSuggestion
+		err := rows.Scan(
+			&s.ID, &s.QueryHash, &s.FingerprintHash, &s.SuggestionType, &s.Description,
+			&s.OriginalQuery, &s.SuggestedRewrite, &s.Reasoning, &s.EstimatedImprovementPct,
+			&s.ConfidenceScore, &s.Dismissed, &s.Implemented, &s.ImplementationNotes,
+			&s.CreatedAt, &s.UpdatedAt,
+		)
+		if err != nil {
+			return nil, apperrors.DatabaseError("scan suggestion", err.Error())
+		}
+		suggestions = append(suggestions, s)
+	}
+
+	return suggestions, rows.Err()
+}
+
+// OptimizeParameters analyzes a query and generates parameter optimization suggestions
+// Detects: missing LIMIT, work_mem optimization opportunities, batch size recommendations
+func (p *PostgresDB) OptimizeParameters(ctx context.Context, queryHash int64) ([]models.ParameterTuningSuggestion, error) {
+	// Validate query_hash
+	if queryHash <= 0 {
+		return nil, apperrors.BadRequest("query_hash", "Must be a positive integer")
+	}
+
+	// Call PostgreSQL function to generate suggestions
+	// Returns list of (suggestion_count, parameter_types[])
+	_, err := p.db.ExecContext(
+		ctx,
+		`SELECT optimize_parameters($1)`,
+		queryHash,
+	)
+	if err != nil {
+		return nil, apperrors.DatabaseError("optimize parameters", err.Error())
+	}
+
+	// Retrieve all generated suggestions for this query
+	query := `
+		SELECT id, query_hash, fingerprint_hash, parameter_name, current_value, recommended_value,
+		       reasoning, estimated_improvement_percent, confidence_score, created_at, updated_at
+		FROM parameter_tuning_suggestions
+		WHERE query_hash = $1
+		ORDER BY confidence_score DESC, estimated_improvement_percent DESC`
+
+	rows, err := p.db.QueryContext(ctx, query, queryHash)
+	if err != nil {
+		return nil, apperrors.DatabaseError("get parameter suggestions", err.Error())
+	}
+	defer rows.Close()
+
+	var suggestions []models.ParameterTuningSuggestion
+	for rows.Next() {
+		var s models.ParameterTuningSuggestion
+		err := rows.Scan(
+			&s.ID, &s.QueryHash, &s.FingerprintHash, &s.ParameterName, &s.CurrentValue,
+			&s.RecommendedValue, &s.Reasoning, &s.EstimatedImprovementPct, &s.ConfidenceScore,
+			&s.CreatedAt, &s.UpdatedAt,
+		)
+		if err != nil {
+			continue
+		}
+		suggestions = append(suggestions, s)
+	}
+	return suggestions, rows.Err()
+}
+
+// GetParameterOptimizationSuggestions retrieves parameter tuning suggestions for a query
+func (p *PostgresDB) GetParameterOptimizationSuggestions(ctx context.Context, queryHash int64, limit int) ([]models.ParameterTuningSuggestion, error) {
+	// Validate inputs
+	if queryHash <= 0 {
+		return nil, apperrors.BadRequest("query_hash", "Must be a positive integer")
+	}
+
+	if limit <= 0 || limit > 100 {
+		limit = 10
+	}
+
+	query := `
+		SELECT id, query_hash, fingerprint_hash, parameter_name, current_value, recommended_value,
+		       reasoning, estimated_improvement_percent, confidence_score, created_at, updated_at
+		FROM parameter_tuning_suggestions
+		WHERE query_hash = $1
+		ORDER BY confidence_score DESC, estimated_improvement_percent DESC
+		LIMIT $2`
+
+	rows, err := p.db.QueryContext(ctx, query, queryHash, limit)
+	if err != nil {
+		return nil, apperrors.DatabaseError("get parameter suggestions", err.Error())
+	}
+	defer rows.Close()
+
+	var suggestions []models.ParameterTuningSuggestion
+	for rows.Next() {
+		var s models.ParameterTuningSuggestion
+		err := rows.Scan(
+			&s.ID, &s.QueryHash, &s.FingerprintHash, &s.ParameterName, &s.CurrentValue,
+			&s.RecommendedValue, &s.Reasoning, &s.EstimatedImprovementPct, &s.ConfidenceScore,
+			&s.CreatedAt, &s.UpdatedAt,
+		)
+		if err != nil {
+			continue
+		}
+		suggestions = append(suggestions, s)
+	}
+
+	if len(suggestions) == 0 {
+		return []models.ParameterTuningSuggestion{}, nil
+	}
+	return suggestions, rows.Err()
+}
+
+// PredictQueryPerformance predicts query execution time
+func (p *PostgresDB) PredictQueryPerformance(ctx context.Context, queryHash int64, parameters map[string]interface{}, scenario string) (*models.PerformancePrediction, error) {
+	// TODO: Implement ML model prediction logic
+	// For now, return nil to trigger fallback behavior
+	// In Phase 4.5.5, this will call the Python ML service
+
+	return nil, nil
+}
+
+// UpdateOptimizationResults updates implementation with post-optimization metrics
+func (p *PostgresDB) UpdateOptimizationResults(ctx context.Context, implementationID int64, postStats map[string]interface{}, actualImprovementPct, actualImprovementSec float64) error {
+	postStatsJSON := "{}"
+	if postStats != nil {
+		if b, err := json.Marshal(postStats); err == nil {
+			postStatsJSON = string(b)
+		}
+	}
+
+	query := `
+		UPDATE optimization_implementations
+		SET post_optimization_stats = $1::jsonb,
+		    actual_improvement_percent = $2,
+		    actual_improvement_seconds = $3,
+		    status = 'implemented',
+		    measured_at = NOW()
+		WHERE id = $4`
+
+	result, err := p.db.ExecContext(ctx, query, postStatsJSON, actualImprovementPct, actualImprovementSec, implementationID)
+	if err != nil {
+		return apperrors.DatabaseError("update implementation results", err.Error())
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return apperrors.DatabaseError("check rows affected", err.Error())
+	}
+
+	if rowsAffected == 0 {
+		return apperrors.NotFound("implementation", fmt.Sprintf("%d", implementationID))
+	}
+
+	return nil
+}
+
+// GetOptimizationResults retrieves implementation results
+func (p *PostgresDB) GetOptimizationResults(ctx context.Context, recommendationID *int64, status string, limit int) ([]models.OptimizationResult, error) {
+	query := `
+		SELECT i.id, r.id, r.query_hash, r.recommendation_text, r.estimated_improvement_percent,
+		       i.actual_improvement_percent, i.status, i.implementation_timestamp, i.measured_at,
+		       r.confidence_score, i.actual_improvement_seconds
+		FROM optimization_implementations i
+		JOIN optimization_recommendations r ON i.recommendation_id = r.id
+		WHERE 1=1`
+
+	args := []interface{}{}
+	argNum := 1
+
+	if recommendationID != nil {
+		query += fmt.Sprintf(` AND r.id = $%d`, argNum)
+		args = append(args, recommendationID)
+		argNum++
+	}
+
+	if status != "" {
+		query += fmt.Sprintf(` AND i.status = $%d`, argNum)
+		args = append(args, status)
+		argNum++
+	}
+
+	query += fmt.Sprintf(` ORDER BY i.implementation_timestamp DESC LIMIT $%d`, argNum)
+	args = append(args, limit)
+
+	rows, err := p.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, apperrors.DatabaseError("get optimization results", err.Error())
+	}
+	defer rows.Close()
+
+	var results []models.OptimizationResult
+	for rows.Next() {
+		var r models.OptimizationResult
+		err := rows.Scan(
+			&r.ImplementationID, &r.RecommendationID, &r.QueryHash, &r.RecommendationText,
+			&r.EstimatedImprovement, &r.ActualImprovement, &r.Status, &r.ImplementationTime,
+			&r.MeasuredAt, &r.ConfidenceScore, &r.ActualImprovementSec,
+		)
+		if err != nil {
+			return nil, apperrors.DatabaseError("scan result", err.Error())
+		}
+
+		// Calculate prediction error if both values available
+		if r.ActualImprovement != nil && r.EstimatedImprovement != 0 {
+			errorPct := (*r.ActualImprovement - r.EstimatedImprovement) / r.EstimatedImprovement * 100
+			r.PredictionErrorPct = &errorPct
+		}
+
+		results = append(results, r)
+	}
+
+	return results, rows.Err()
+}
+
+// DismissOptimizationRecommendation marks a recommendation as dismissed
+func (p *PostgresDB) DismissOptimizationRecommendation(ctx context.Context, recommendationID int64, reason string) error {
+	query := `
+		UPDATE optimization_recommendations
+		SET is_dismissed = TRUE, dismissal_reason = $1, updated_at = NOW()
+		WHERE id = $2`
+
+	result, err := p.db.ExecContext(ctx, query, reason, recommendationID)
+	if err != nil {
+		return apperrors.DatabaseError("dismiss recommendation", err.Error())
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return apperrors.DatabaseError("check rows affected", err.Error())
+	}
+
+	if rowsAffected == 0 {
+		return apperrors.NotFound("recommendation", fmt.Sprintf("%d", recommendationID))
+	}
+
+	return nil
+}
+
+// GetRecommendationByID retrieves a specific recommendation
+func (p *PostgresDB) GetRecommendationByID(ctx context.Context, recommendationID int64) (*models.OptimizationRecommendation, error) {
+	query := `
+		SELECT id, query_hash, source_type, source_id, recommendation_text, detailed_explanation,
+		       estimated_improvement_percent, confidence_score, urgency_score, roi_score,
+		       implementation_complexity, dismissal_reason, is_dismissed, created_at, updated_at
+		FROM optimization_recommendations
+		WHERE id = $1`
+
+	var r models.OptimizationRecommendation
+	err := p.db.QueryRowContext(ctx, query, recommendationID).Scan(
+		&r.ID, &r.QueryHash, &r.SourceType, &r.SourceID, &r.RecommendationText,
+		&r.DetailedExplanation, &r.EstimatedImprovementPct, &r.ConfidenceScore,
+		&r.UrgencyScore, &r.ROIScore, &r.ImplementationComplexity, &r.DismissalReason,
+		&r.IsDismissed, &r.CreatedAt, &r.UpdatedAt,
+	)
+
+	if err == sql.ErrNoRows {
+		return nil, apperrors.NotFound("recommendation", fmt.Sprintf("%d", recommendationID))
+	}
+	if err != nil {
+		return nil, apperrors.DatabaseError("get recommendation", err.Error())
+	}
+
+	return &r, nil
+}
+
+// PHASE 4.5.4: ML-POWERED OPTIMIZATION WORKFLOW
+// ============================================================================
+
+// AggregateRecommendationsForQuery aggregates all suggestions into optimization_recommendations table
+func (p *PostgresDB) AggregateRecommendationsForQuery(ctx context.Context, queryHash int64) (int, []string, error) {
+	// Validate input
+	if queryHash <= 0 {
+		return 0, nil, apperrors.BadRequest("query_hash", "Must be a positive integer")
+	}
+
+
+	// Call SQL function to aggregate recommendations
+	rows, err := p.db.QueryContext(
+		ctx,
+		`SELECT recommendation_count, source_types FROM aggregate_recommendations_for_query($1)`,
+		queryHash,
+	)
+	if err != nil {
+		return 0, nil, apperrors.DatabaseError("aggregate recommendations", err.Error())
+	}
+	defer rows.Close()
+
+	var count int
+	var sourceTypes pq.StringArray
+
+	if rows.Next() {
+		err := rows.Scan(&count, &sourceTypes)
+		if err != nil {
+			return 0, nil, apperrors.DatabaseError("scan results", err.Error())
+		}
+	}
+
+	return count, sourceTypes, nil
+}
+
+// GetOptimizationRecommendations retrieves top recommendations ranked by ROI
+func (p *PostgresDB) GetOptimizationRecommendations(
+	ctx context.Context,
+	limit int,
+	minImpact float64,
+	sourceType string,
+) ([]models.OptimizationRecommendation, error) {
+	// Validate limits
+	if limit <= 0 || limit > 100 {
+		limit = 20
+	}
+
+	if minImpact < 0 {
+		minImpact = 5.0
+	}
+
+	query := `
+		SELECT id, query_hash, source_type, source_id, recommendation_text, detailed_explanation,
+		       estimated_improvement_percent, confidence_score, urgency_score, roi_score,
+		       implementation_complexity, dismissal_reason, is_dismissed, created_at, updated_at
+		FROM optimization_recommendations
+		WHERE is_dismissed = FALSE
+		AND estimated_improvement_percent >= $1`
+
+	args := []interface{}{minImpact}
+	argNum := 2
+
+	if sourceType != "" {
+		query += fmt.Sprintf(` AND source_type = $%d`, argNum)
+		args = append(args, sourceType)
+		argNum++
+	}
+
+	query += fmt.Sprintf(` ORDER BY roi_score DESC, confidence_score DESC LIMIT $%d`, argNum)
+	args = append(args, limit)
+
+
+	rows, err := p.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, apperrors.DatabaseError("get recommendations", err.Error())
+	}
+	defer rows.Close()
+
+	var recommendations []models.OptimizationRecommendation
+	for rows.Next() {
+		var r models.OptimizationRecommendation
+		err := rows.Scan(
+			&r.ID, &r.QueryHash, &r.SourceType, &r.SourceID, &r.RecommendationText,
+			&r.DetailedExplanation, &r.EstimatedImprovementPct, &r.ConfidenceScore,
+			&r.UrgencyScore, &r.ROIScore, &r.ImplementationComplexity, &r.DismissalReason,
+			&r.IsDismissed, &r.CreatedAt, &r.UpdatedAt,
+		)
+		if err != nil {
+			continue
+		}
+		recommendations = append(recommendations, r)
+	}
+
+	if len(recommendations) == 0 {
+		return []models.OptimizationRecommendation{}, nil
+	}
+
+	return recommendations, rows.Err()
+}
+
+// ImplementRecommendation records that a recommendation was implemented
+func (p *PostgresDB) ImplementRecommendation(
+	ctx context.Context,
+	recommendationID int64,
+	queryHash int64,
+	notes string,
+) (*models.OptimizationImplementation, error) {
+	// Validate inputs
+	if recommendationID <= 0 {
+		return nil, apperrors.BadRequest("recommendation_id", "Must be a positive integer")
+	}
+
+	if queryHash <= 0 {
+		return nil, apperrors.BadRequest("query_hash", "Must be a positive integer")
+	}
+
+
+	// Call SQL function to record implementation
+	var implID int64
+	var status string
+	var preMetadata interface{}
+
+	err := p.db.QueryRowContext(
+		ctx,
+		`SELECT impl_id, status, pre_snapshot FROM record_recommendation_implementation($1, $2, $3)`,
+		recommendationID,
+		queryHash,
+		notes,
+	).Scan(&implID, &status, &preMetadata)
+
+	if err != nil {
+		return nil, apperrors.DatabaseError("record implementation", err.Error())
+	}
+
+
+	t := time.Now().UTC()
+	return &models.OptimizationImplementation{
+		ID:                       implID,
+		RecommendationID:         recommendationID,
+		QueryHash:                queryHash,
+		Status:                   status,
+		ImplementationNotes:      &notes,
+		ImplementationTimestamp:  t,
+	}, nil
+}
+
+// MeasureImplementationResults measures actual improvement from implementation
+func (p *PostgresDB) MeasureImplementationResults(
+	ctx context.Context,
+	implementationID int64,
+) (*models.OptimizationResult, error) {
+	// Validate input
+	if implementationID <= 0 {
+		return nil, apperrors.BadRequest("implementation_id", "Must be a positive integer")
+	}
+
+
+	// Call SQL function to measure results
+	var implID int64
+	var actualImprovement float64
+	var predictedImprovement float64
+	var finalStatus string
+	var accuracyScore float64
+
+	err := p.db.QueryRowContext(
+		ctx,
+		`SELECT impl_id, actual_improvement_percent, predicted_improvement_percent, status, accuracy_score
+		 FROM measure_implementation_results($1)`,
+		implementationID,
+	).Scan(&implID, &actualImprovement, &predictedImprovement, &finalStatus, &accuracyScore)
+
+	if err != nil && err != sql.ErrNoRows {
+		return nil, apperrors.DatabaseError("measure results", err.Error())
+	}
+
+	if err == sql.ErrNoRows {
+		return nil, apperrors.NotFound("implementation", fmt.Sprintf("%d", implementationID))
+	}
+
+	t := time.Now().UTC()
+	return &models.OptimizationResult{
+		ImplementationID:   implID,
+		ActualImprovement:  &actualImprovement,
+		PredictionErrorPct: &predictedImprovement,
+		ConfidenceScore:    accuracyScore,
+		Status:             finalStatus,
+		MeasuredAt:         &t,
+	}, nil
+}
+
+// TrainPerformanceModel trains a new ML model for performance prediction
+func (p *PostgresDB) TrainPerformanceModel(ctx context.Context, databaseName string, lookbackDays int) error {
+	// TODO: Implement model training logic
+	// This will be called from Python ML service or Go backend
 	return nil
 }

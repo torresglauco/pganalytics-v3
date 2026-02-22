@@ -9,13 +9,13 @@ import (
 // Config holds all application configuration
 type Config struct {
 	// Server
-	Port                 int
-	Environment          string
-	LogLevel             string
+	Port        int
+	Environment string
+	LogLevel    string
 
 	// Databases
-	DatabaseURL          string
-	TimescaleURL         string
+	DatabaseURL  string
+	TimescaleURL string
 
 	// JWT
 	JWTSecret            string
@@ -23,13 +23,36 @@ type Config struct {
 	JWTRefreshExpiration time.Duration
 
 	// TLS
-	TLSCertPath          string
-	TLSKeyPath           string
-	TLSEnabled           bool
+	TLSCertPath string
+	TLSKeyPath  string
+	TLSEnabled  bool
 
 	// Timeouts
-	RequestTimeout       time.Duration
-	ShutdownTimeout      time.Duration
+	RequestTimeout  time.Duration
+	ShutdownTimeout time.Duration
+
+	// ML Service
+	MLServiceURL     string
+	MLServiceTimeout time.Duration
+	MLServiceEnabled bool
+
+	// Caching
+	CacheEnabled          bool
+	CacheMaxSize          int
+	FeatureCacheTTL       time.Duration
+	PredictionCacheTTL    time.Duration
+	QueryResultsCacheTTL  time.Duration
+
+	// Connection Pooling
+	MaxDatabaseConns    int
+	MaxIdleDatabaseConns int
+	MaxHTTPConns        int
+	MaxHTTPConnsPerHost int
+
+	// Retry Policy
+	RetryMaxAttempts      int
+	RetryBackoffMultiplier float64
+	RetryInitialBackoff   time.Duration
 }
 
 // Load loads configuration from environment variables
@@ -48,6 +71,21 @@ func Load() *Config {
 		TLSEnabled:           getBoolEnv("TLS_ENABLED", false),
 		RequestTimeout:       time.Duration(getIntEnv("REQUEST_TIMEOUT", 30)) * time.Second,
 		ShutdownTimeout:      time.Duration(getIntEnv("SHUTDOWN_TIMEOUT", 10)) * time.Second,
+		MLServiceURL:         getEnv("ML_SERVICE_URL", "http://localhost:8081"),
+		MLServiceTimeout:     time.Duration(getIntEnv("ML_SERVICE_TIMEOUT", 5)) * time.Second,
+		MLServiceEnabled:     getBoolEnv("ML_SERVICE_ENABLED", true),
+		CacheEnabled:         getBoolEnv("CACHE_ENABLED", true),
+		CacheMaxSize:         getIntEnv("CACHE_MAX_SIZE", 10000),
+		FeatureCacheTTL:      time.Duration(getIntEnv("FEATURE_CACHE_TTL", 900)) * time.Second,
+		PredictionCacheTTL:   time.Duration(getIntEnv("PREDICTION_CACHE_TTL", 300)) * time.Second,
+		QueryResultsCacheTTL: time.Duration(getIntEnv("QUERY_RESULTS_CACHE_TTL", 600)) * time.Second,
+		MaxDatabaseConns:     getIntEnv("MAX_DATABASE_CONNS", 50),
+		MaxIdleDatabaseConns: getIntEnv("MAX_IDLE_DATABASE_CONNS", 15),
+		MaxHTTPConns:         getIntEnv("MAX_HTTP_CONNS", 10),
+		MaxHTTPConnsPerHost:  getIntEnv("MAX_HTTP_CONNS_PER_HOST", 5),
+		RetryMaxAttempts:     getIntEnv("RETRY_MAX_ATTEMPTS", 3),
+		RetryBackoffMultiplier: getFloatEnv("RETRY_BACKOFF_MULTIPLIER", 2.0),
+		RetryInitialBackoff:  time.Duration(getIntEnv("RETRY_INITIAL_BACKOFF", 100)) * time.Millisecond,
 	}
 
 	return cfg
@@ -75,6 +113,15 @@ func getBoolEnv(key string, defaultValue bool) bool {
 	if value := os.Getenv(key); value != "" {
 		if boolVal, err := strconv.ParseBool(value); err == nil {
 			return boolVal
+		}
+	}
+	return defaultValue
+}
+
+func getFloatEnv(key string, defaultValue float64) float64 {
+	if value := os.Getenv(key); value != "" {
+		if floatVal, err := strconv.ParseFloat(value, 64); err == nil {
+			return floatVal
 		}
 	}
 	return defaultValue

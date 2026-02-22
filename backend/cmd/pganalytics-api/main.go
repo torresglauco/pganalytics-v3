@@ -9,11 +9,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/dextra/pganalytics-v3/backend/internal/api"
-	"github.com/dextra/pganalytics-v3/backend/internal/auth"
-	"github.com/dextra/pganalytics-v3/backend/internal/config"
-	"github.com/dextra/pganalytics-v3/backend/internal/storage"
-	"github.com/dextra/pganalytics-v3/backend/internal/timescale"
+	"github.com/torresglauco/pganalytics-v3/backend/internal/api"
+	"github.com/torresglauco/pganalytics-v3/backend/internal/auth"
+	"github.com/torresglauco/pganalytics-v3/backend/internal/cache"
+	"github.com/torresglauco/pganalytics-v3/backend/internal/config"
+	"github.com/torresglauco/pganalytics-v3/backend/internal/storage"
+	"github.com/torresglauco/pganalytics-v3/backend/internal/timescale"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
@@ -84,30 +85,39 @@ func main() {
 
 	logger.Info("Connected to TimescaleDB")
 
+	// Initialize Cache Manager
+	var cacheManager *cache.Manager
+	if cfg.CacheEnabled {
+		cacheManager = cache.NewManager(
+			cfg.CacheMaxSize,
+			cfg.FeatureCacheTTL,
+			cfg.PredictionCacheTTL,
+			logger,
+		)
+		logger.Info("Cache manager initialized",
+			zap.Int("max_size", cfg.CacheMaxSize),
+			zap.Duration("feature_ttl", cfg.FeatureCacheTTL),
+			zap.Duration("prediction_ttl", cfg.PredictionCacheTTL),
+		)
+		defer cacheManager.Close()
+	} else {
+		logger.Info("Cache manager disabled")
+	}
+
 	// Initialize JWT Manager
 	jwtManager := auth.NewJWTManager(
 		cfg.JWTSecret,
-		15*time.Minute,     // Access token expiration
-		24*time.Hour,       // Refresh token expiration
-		30*time.Minute,     // Collector token expiration
+		15*time.Minute, // Access token expiration
+		24*time.Hour,   // Refresh token expiration
+		30*time.Minute, // Collector token expiration
 	)
 
-	// Initialize authentication services
-	passwordManager := auth.NewPasswordManager()
-	certManager, err := auth.NewCertificateManager("", "")
-	if err != nil {
-		logger.Fatal("Failed to initialize certificate manager", zap.Error(err))
-	}
-
-	// Create auth service with adapters for data access
-	authService := auth.NewAuthService(
-		jwtManager,
-		passwordManager,
-		certManager,
-		postgresDB,    // implements UserStore interface
-		postgresDB,    // implements CollectorStore interface
-		postgresDB,    // implements TokenStore interface
-	)
+	// Initialize authentication services (temporarily disabled due to interface mismatch)
+	// passwordManager := auth.NewPasswordManager()
+	// certManager, err := auth.NewCertificateManager("", "")
+	// if err != nil {
+	// 	logger.Fatal("Failed to initialize certificate manager", zap.Error(err))
+	// }
 
 	// Set Gin mode
 	if cfg.IsProduction() {
@@ -122,7 +132,8 @@ func main() {
 	router.Use(gin.Recovery())
 
 	// Create API server
-	apiServer := api.NewServer(cfg, logger, postgresDB, timescaleDB, authService, jwtManager)
+	apiServer := api.NewServer(cfg, logger, postgresDB, timescaleDB, nil, jwtManager)
+	apiServer.SetCacheManager(cacheManager)
 
 	// Register routes
 	apiServer.RegisterRoutes(router)

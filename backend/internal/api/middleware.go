@@ -2,11 +2,11 @@ package api
 
 import (
 	"net/http"
-	"strings"
 
-	"github.com/dextra/pganalytics-v3/backend/internal/auth"
-	apperrors "github.com/dextra/pganalytics-v3/backend/pkg/errors"
+	"github.com/torresglauco/pganalytics-v3/backend/internal/auth"
+	apperrors "github.com/torresglauco/pganalytics-v3/backend/pkg/errors"
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 // AuthMiddleware validates JWT tokens
@@ -41,9 +41,9 @@ func (s *Server) AuthMiddleware() gin.HandlerFunc {
 		c.Set("claims", claims)
 
 		s.logger.Debug("User authenticated",
-			"user_id", claims.UserID,
-			"username", claims.Username,
-			"role", claims.Role,
+			zap.Int("user_id", claims.UserID),
+			zap.String("username", claims.Username),
+			zap.String("role", claims.Role),
 		)
 
 		c.Next()
@@ -80,8 +80,8 @@ func (s *Server) CollectorAuthMiddleware() gin.HandlerFunc {
 		c.Set("collector_claims", claims)
 
 		s.logger.Debug("Collector authenticated",
-			"collector_id", claims.CollectorID,
-			"hostname", claims.Hostname,
+			zap.String("collector_id", claims.CollectorID),
+			zap.String("hostname", claims.Hostname),
 		)
 
 		c.Next()
@@ -168,18 +168,18 @@ func (s *Server) LoggingMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Log request details
 		s.logger.Debug("Request",
-			"method", c.Request.Method,
-			"path", c.Request.URL.Path,
-			"remote_ip", c.ClientIP(),
+			zap.String("method", c.Request.Method),
+			zap.String("path", c.Request.URL.Path),
+			zap.String("remote_ip", c.ClientIP()),
 		)
 
 		c.Next()
 
 		// Log response status
 		s.logger.Debug("Response",
-			"status_code", c.Writer.Status(),
-			"method", c.Request.Method,
-			"path", c.Request.URL.Path,
+			zap.Int("status_code", c.Writer.Status()),
+			zap.String("method", c.Request.Method),
+			zap.String("path", c.Request.URL.Path),
 		)
 	}
 }

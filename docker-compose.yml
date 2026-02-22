@@ -50,8 +50,8 @@ services:
       dockerfile: backend/Dockerfile
     container_name: pganalytics-backend
     environment:
-      DATABASE_URL: "postgres://postgres:pganalytics@postgres:5432/pganalytics"
-      TIMESCALE_URL: "postgres://postgres:pganalytics@timescale:5432/metrics"
+      DATABASE_URL: "postgres://postgres:pganalytics@postgres:5432/pganalytics?sslmode=disable"
+      TIMESCALE_URL: "postgres://postgres:pganalytics@timescale:5432/metrics?sslmode=disable"
       JWT_SECRET: "demo-secret-key-change-in-production"
       JWT_EXPIRATION: "900"  # 15 minutes
       TLS_CERT: "/etc/pganalytics/tls/server.crt"

@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/dextra/pganalytics-v3/backend/pkg/models"
-	apperrors "github.com/dextra/pganalytics-v3/backend/pkg/errors"
+	apperrors "github.com/torresglauco/pganalytics-v3/backend/pkg/errors"
+	"github.com/torresglauco/pganalytics-v3/backend/pkg/models"
 	"github.com/golang-jwt/jwt/v5"
 )
 
@@ -29,17 +29,17 @@ type Claims struct {
 
 // CollectorClaims represents JWT claims for collectors
 type CollectorClaims struct {
-	CollectorID string `json:"collector_id"`
-	Hostname    string `json:"hostname"`
+	CollectorID string    `json:"collector_id"`
+	Hostname    string    `json:"hostname"`
 	Type        TokenType `json:"type"`
 	jwt.RegisteredClaims
 }
 
 // JWTManager handles JWT token generation and validation
 type JWTManager struct {
-	secret                  string
-	accessTokenExpiration   time.Duration
-	refreshTokenExpiration  time.Duration
+	secret                   string
+	accessTokenExpiration    time.Duration
+	refreshTokenExpiration   time.Duration
 	collectorTokenExpiration time.Duration
 }
 

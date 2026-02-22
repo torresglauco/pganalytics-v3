@@ -15,6 +15,7 @@ find_package(CURL REQUIRED)
 find_package(PostgreSQL)
 find_package(ZLIB REQUIRED)
 find_package(nlohmann_json 3.2.0 QUIET)
+find_package(zstd QUIET)
 
 # If nlohmann_json not found, include it as header-only
 if(NOT nlohmann_json_FOUND)
@@ -57,6 +58,8 @@ set(COLLECTOR_SOURCES
     src/config_manager.cpp
     src/metrics_serializer.cpp
     src/metrics_buffer.cpp
+    src/binary_protocol.cpp
+    src/connection_pool.cpp
 )
 
 # Header files
@@ -71,6 +74,8 @@ set(COLLECTOR_HEADERS
     include/config_manager.h
     include/metrics_serializer.h
     include/metrics_buffer.h
+    include/binary_protocol.h
+    include/connection_pool.h
 )
 
 # Create executable
@@ -88,6 +93,13 @@ target_link_libraries(pganalytics
 # Add PostgreSQL libraries if found
 if(PostgreSQL_FOUND)
     target_link_libraries(pganalytics PRIVATE ${PostgreSQL_LIBRARIES})
+endif()
+
+# Add zstd if found (for compression)
+if(zstd_FOUND)
+    target_link_libraries(pganalytics PRIVATE zstd::libzstd_shared)
+else()
+    message(STATUS "zstd not found - falling back to zlib compression")
 endif()
 
 # Compiler flags

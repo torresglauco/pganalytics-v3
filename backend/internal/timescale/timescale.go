@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	apperrors "github.com/dextra/pganalytics-v3/backend/pkg/errors"
+	apperrors "github.com/torresglauco/pganalytics-v3/backend/pkg/errors"
 	_ "github.com/lib/pq"
 )
 
@@ -65,7 +65,7 @@ type MetricsPayload struct {
 
 // InsertPgStatsTableMetrics inserts PostgreSQL table statistics
 func (t *TimescaleDB) InsertPgStatsTableMetrics(ctx context.Context, collectorID, serverID, databaseID *string, timestamp time.Time, metrics interface{}) error {
-	metricsJSON, err := json.Marshal(metrics)
+	_, err := json.Marshal(metrics)
 	if err != nil {
 		return apperrors.BadRequest("Invalid metrics format", err.Error())
 	}

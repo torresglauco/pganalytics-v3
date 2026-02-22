@@ -4,19 +4,19 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/dextra/pganalytics-v3/backend/pkg/models"
-	apperrors "github.com/dextra/pganalytics-v3/backend/pkg/errors"
+	apperrors "github.com/torresglauco/pganalytics-v3/backend/pkg/errors"
+	"github.com/torresglauco/pganalytics-v3/backend/pkg/models"
 	"github.com/google/uuid"
 )
 
 // AuthService handles authentication operations
 type AuthService struct {
-	jwtManager        *JWTManager
-	passwordManager   *PasswordManager
-	certManager       *CertificateManager
-	userStore         UserStore
-	collectorStore    CollectorStore
-	tokenStore        TokenStore
+	jwtManager      *JWTManager
+	passwordManager *PasswordManager
+	certManager     *CertificateManager
+	userStore       UserStore
+	collectorStore  CollectorStore
+	tokenStore      TokenStore
 }
 
 // UserStore defines user data access interface

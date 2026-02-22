@@ -55,6 +55,8 @@ set(COLLECTOR_SOURCES_NO_MAIN
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/config_manager.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/metrics_serializer.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/metrics_buffer.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src/binary_protocol.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src/connection_pool.cpp
 )
 
 # Create test executable
@@ -82,6 +84,11 @@ target_link_libraries(pganalytics-tests
     ${ZLIB_LIBRARIES}
     pthread
 )
+
+# Add zstd if found
+if(zstd_FOUND)
+    target_link_libraries(pganalytics-tests PRIVATE zstd::libzstd_shared)
+endif()
 
 # Add PostgreSQL libraries if found
 if(PostgreSQL_FOUND)

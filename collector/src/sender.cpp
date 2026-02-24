@@ -272,20 +272,32 @@ bool Sender::pullConfig(const std::string& collectorId, std::string& configToml,
 bool Sender::setupCurl(void* curl) {
     CURL* curl_handle = static_cast<CURL*>(curl);
 
-    // Force TLS 1.3
-    curl_easy_setopt(curl_handle, CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1_3);
+    // Only configure SSL/TLS if the backend URL uses HTTPS
+    if (backendUrl_.find("https://") == 0) {
+        // Use TLS 1.2 or higher (more compatible than forcing TLS 1.3)
+        curl_easy_setopt(curl_handle, CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1_2);
 
-    // mTLS certificate and key
-    curl_easy_setopt(curl_handle, CURLOPT_SSLCERT, certFile_.c_str());
-    curl_easy_setopt(curl_handle, CURLOPT_SSLKEY, keyFile_.c_str());
+        // mTLS certificate and key (only set if files exist)
+        FILE* cert_file = fopen(certFile_.c_str(), "r");
+        if (cert_file) {
+            fclose(cert_file);
+            curl_easy_setopt(curl_handle, CURLOPT_SSLCERT, certFile_.c_str());
+        }
 
-    // Certificate verification
-    if (tlsVerify_) {
-        curl_easy_setopt(curl_handle, CURLOPT_SSL_VERIFYPEER, 1L);
-        curl_easy_setopt(curl_handle, CURLOPT_SSL_VERIFYHOST, 2L);
-    } else {
-        curl_easy_setopt(curl_handle, CURLOPT_SSL_VERIFYPEER, 0L);
-        curl_easy_setopt(curl_handle, CURLOPT_SSL_VERIFYHOST, 0L);
+        FILE* key_file = fopen(keyFile_.c_str(), "r");
+        if (key_file) {
+            fclose(key_file);
+            curl_easy_setopt(curl_handle, CURLOPT_SSLKEY, keyFile_.c_str());
+        }
+
+        // Certificate verification
+        if (tlsVerify_) {
+            curl_easy_setopt(curl_handle, CURLOPT_SSL_VERIFYPEER, 1L);
+            curl_easy_setopt(curl_handle, CURLOPT_SSL_VERIFYHOST, 2L);
+        } else {
+            curl_easy_setopt(curl_handle, CURLOPT_SSL_VERIFYPEER, 0L);
+            curl_easy_setopt(curl_handle, CURLOPT_SSL_VERIFYHOST, 0L);
+        }
     }
 
     return true;

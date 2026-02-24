@@ -70,6 +70,11 @@ private:
     static bool validatePgLogMetric(const json& metric);
 
     /**
+     * Validate pg_query_stats metric schema
+     */
+    static bool validatePgQueryStatsMetric(const json& metric);
+
+    /**
      * Validate sysstat metric schema
      */
     static bool validateSysstatMetric(const json& metric);

@@ -83,6 +83,7 @@ json PgStatsCollector::execute() {
     // Collect stats for each configured database
     for (const auto& dbname : databases_) {
         json db_stats = json::object();
+        db_stats["type"] = "pg_stats";
         db_stats["database"] = dbname;
         db_stats["timestamp"] = getCurrentTimestamp();
 

@@ -86,8 +86,8 @@ services:
     environment:
       COLLECTOR_ID: "col_demo_001"
       COLLECTOR_NAME: "Demo Collector"
-      BACKEND_URL: "https://backend:8080"
-      BACKEND_TLS_VERIFY: "false"  # Self-signed certs for demo
+      BACKEND_URL: "http://backend:8080"
+      BACKEND_TLS_VERIFY: "false"  # Self-signed certs for demo (if HTTPS is used)
       POSTGRES_HOST: "postgres"
       POSTGRES_PORT: "5432"
       POSTGRES_USER: "postgres"

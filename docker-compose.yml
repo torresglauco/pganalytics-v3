@@ -3,18 +3,19 @@ version: '3.9'
 services:
   # Main PostgreSQL for pgAnalytics metadata & monitoring data
   postgres:
-    image: postgres:16-alpine
+    image: postgres:16-bullseye
     container_name: pganalytics-postgres
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: pganalytics
       POSTGRES_DB: pganalytics
-      POSTGRES_INITDB_ARGS: "-c shared_preload_libraries=timescaledb"
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./backend/migrations:/docker-entrypoint-initdb.d
+      - ./postgresql.conf:/etc/postgresql/postgresql.conf:ro
+    command: -c config_file=/etc/postgresql/postgresql.conf
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
@@ -25,7 +26,7 @@ services:
 
   # TimescaleDB for time-series metrics storage
   timescale:
-    image: timescaledb/timescaledb:latest-pg16-oss
+    image: postgres:16-bullseye
     container_name: pganalytics-timescale
     environment:
       POSTGRES_USER: postgres

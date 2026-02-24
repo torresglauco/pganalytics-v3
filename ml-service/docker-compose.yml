@@ -1,0 +1,70 @@
+# Docker Compose for ML Service Local Development
+version: '3.8'
+
+services:
+  ml-service:
+    build: .
+    container_name: pganalytics-ml-service
+    ports:
+      - "8081:8081"
+    environment:
+      FLASK_APP: app.py
+      FLASK_ENV: development
+      LOG_LEVEL: DEBUG
+      DATABASE_URL: postgresql://pganalytics:password@postgres:5432/pganalytics
+      CELERY_BROKER: redis://redis:6379/0
+      CELERY_BACKEND: redis://redis:6379/1
+      CORS_ORIGINS: "http://localhost:8080,http://localhost:3000"
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - .:/app
+      - /app/__pycache__
+    networks:
+      - pganalytics
+    command: flask run --host=0.0.0.0 --port=8081
+
+  postgres:
+    image: postgres:14-alpine
+    container_name: pganalytics-postgres
+    environment:
+      POSTGRES_USER: pganalytics
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: pganalytics
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - pganalytics
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pganalytics"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: pganalytics-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - pganalytics
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  pganalytics:
+    driver: bridge

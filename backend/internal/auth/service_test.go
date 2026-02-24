@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dextra/pganalytics-v3/backend/pkg/models"
+	"github.com/torresglauco/pganalytics-v3/backend/pkg/models"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

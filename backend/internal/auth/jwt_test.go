@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dextra/pganalytics-v3/backend/pkg/models"
+	"github.com/torresglauco/pganalytics-v3/backend/pkg/models"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -350,7 +350,7 @@ func TestClaims_GetTokenExpiresIn(t *testing.T) {
 
 	expiresIn := claims.GetTokenExpiresIn()
 
-	assert.Greater(t, expiresIn, int64(3500))  // Should be close to 3600 (1 hour)
+	assert.Greater(t, expiresIn, int64(3500)) // Should be close to 3600 (1 hour)
 	assert.Less(t, expiresIn, int64(3700))
 	assert.False(t, claims.IsExpired())
 }

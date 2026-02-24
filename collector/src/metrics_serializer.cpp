@@ -99,6 +99,8 @@ bool MetricsSerializer::validateMetric(const json& metric) {
 
         if (type == "pg_stats") {
             return validatePgStatsMetric(metric);
+        } else if (type == "pg_query_stats") {
+            return validatePgQueryStatsMetric(metric);
         } else if (type == "pg_log") {
             return validatePgLogMetric(metric);
         } else if (type == "sysstat") {
@@ -179,6 +181,35 @@ bool MetricsSerializer::validatePgLogMetric(const json& metric) {
             }
             if (!validateField(entry, "message", {"string"})) {
                 lastValidationError_ = "pg_log entry missing or invalid message field";
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
+
+bool MetricsSerializer::validatePgQueryStatsMetric(const json& metric) {
+    if (!validateField(metric, "database", {"string"})) {
+        lastValidationError_ = "pg_query_stats metric missing or invalid database field";
+        return false;
+    }
+
+    // queries is optional but if present must be array
+    if (metric.contains("queries") && !metric["queries"].is_array()) {
+        lastValidationError_ = "pg_query_stats metric: queries must be an array";
+        return false;
+    }
+
+    // Validate query objects if present
+    if (metric.contains("queries") && metric["queries"].is_array()) {
+        for (const auto& query : metric["queries"]) {
+            if (!validateField(query, "hash", {"number"})) {
+                lastValidationError_ = "pg_query_stats query missing or invalid hash field";
+                return false;
+            }
+            if (!validateField(query, "text", {"string"})) {
+                lastValidationError_ = "pg_query_stats query missing or invalid text field";
                 return false;
             }
         }

@@ -14,7 +14,7 @@ push_interval = ${PUSH_INTERVAL:-60}
 config_pull_interval = ${CONFIG_PULL_INTERVAL:-300}
 
 [backend]
-url = "${BACKEND_URL:-https://localhost:8080}"
+url = "${BACKEND_URL:-http://backend:8080}"
 
 [postgres]
 host = "${POSTGRES_HOST:-postgres}"

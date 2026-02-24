@@ -143,7 +143,20 @@ int runCronMode() {
         // Validate collected metrics
         if (collectedMetrics.contains("metrics") && collectedMetrics["metrics"].is_array()) {
             for (const auto& metric : collectedMetrics["metrics"]) {
-                if (MetricsSerializer::validateMetric(metric)) {
+                // Handle metrics with databases array (pg_stats, pg_query_stats)
+                if (metric.contains("type") && (metric["type"] == "pg_stats" || metric["type"] == "pg_query_stats") &&
+                    metric.contains("databases") && metric["databases"].is_array()) {
+                    // Flatten: add each database as a separate metric
+                    for (const auto& db_metric : metric["databases"]) {
+                        if (MetricsSerializer::validateMetric(db_metric)) {
+                            if (!buffer.append(db_metric)) {
+                                std::cerr << "Failed to append metric to buffer (buffer full)" << std::endl;
+                            }
+                        } else {
+                            std::cerr << "Invalid metric: " << MetricsSerializer::getLastValidationError() << std::endl;
+                        }
+                    }
+                } else if (MetricsSerializer::validateMetric(metric)) {
                     if (!buffer.append(metric)) {
                         std::cerr << "Failed to append metric to buffer (buffer full)" << std::endl;
                     }
@@ -157,13 +170,16 @@ int runCronMode() {
         if (queryStatsCollector && queryStatsCollector->isEnabled()) {
             std::cout << "Collecting query statistics..." << std::endl;
             json queryStats = queryStatsCollector->execute();
-            if (!queryStats.is_null() && queryStats.contains("databases")) {
-                if (MetricsSerializer::validateMetric(queryStats)) {
-                    if (!buffer.append(queryStats)) {
-                        std::cerr << "Failed to append query stats to buffer (buffer full)" << std::endl;
+            if (!queryStats.is_null() && queryStats.contains("databases") && queryStats["databases"].is_array()) {
+                // Flatten: add each database as a separate metric
+                for (const auto& db_metric : queryStats["databases"]) {
+                    if (MetricsSerializer::validateMetric(db_metric)) {
+                        if (!buffer.append(db_metric)) {
+                            std::cerr << "Failed to append query stats to buffer (buffer full)" << std::endl;
+                        }
+                    } else {
+                        std::cerr << "Invalid query stats: " << MetricsSerializer::getLastValidationError() << std::endl;
                     }
-                } else {
-                    std::cerr << "Invalid query stats: " << MetricsSerializer::getLastValidationError() << std::endl;
                 }
             }
         }

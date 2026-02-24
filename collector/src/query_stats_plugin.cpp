@@ -128,6 +128,7 @@ json PgQueryStatsCollector::collectQueryStats(const std::string& dbname) {
 
     // Initialize result object
     json db_stats = {
+        {"type", "pg_query_stats"},
         {"database", dbname},
         {"timestamp", getCurrentTimestamp()},
         {"queries", json::array()}
@@ -153,7 +154,7 @@ json PgQueryStatsCollector::collectQueryStats(const std::string& dbname) {
         "  queryid, "
         "  query, "
         "  calls, "
-        "  COALESCE(mean_exec_time, 0) as total_time, "
+        "  COALESCE(total_exec_time, mean_exec_time, 0) as total_time, "
         "  COALESCE(mean_exec_time, 0), "
         "  COALESCE(min_exec_time, 0), "
         "  COALESCE(max_exec_time, 0), "
@@ -167,15 +168,15 @@ json PgQueryStatsCollector::collectQueryStats(const std::string& dbname) {
         "  COALESCE(local_blks_read, 0), "
         "  COALESCE(local_blks_dirtied, 0), "
         "  COALESCE(local_blks_written, 0), "
-        "  0 as temp_blks_read, "
-        "  0 as temp_blks_written, "
+        "  COALESCE(temp_blks_read, 0), "
+        "  COALESCE(temp_blks_written, 0), "
         "  COALESCE(blk_read_time, 0), "
         "  COALESCE(blk_write_time, 0), "
-        "  0 as wal_records, "
-        "  0 as wal_fpi, "
-        "  0 as wal_bytes, "
-        "  COALESCE(query_time, 0) as query_time, "
-        "  COALESCE(exec_time, 0) as exec_time "
+        "  COALESCE(wal_records, 0) as wal_records, "
+        "  COALESCE(wal_fpi, 0) as wal_fpi, "
+        "  COALESCE(wal_bytes, 0) as wal_bytes, "
+        "  0 as query_plan_time, "
+        "  0 as query_exec_time "
         "FROM pg_stat_statements "
         "WHERE userid != (SELECT usesysid FROM pg_user WHERE usesuper LIMIT 1) "
         "ORDER BY total_time DESC "

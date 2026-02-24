@@ -10,6 +10,16 @@ CREATE SCHEMA IF NOT EXISTS pganalytics;
 SET search_path TO pganalytics, public;
 
 -- ============================================================================
+-- SCHEMA MIGRATION TRACKING
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS schema_versions (
+    version VARCHAR(50) PRIMARY KEY,
+    description TEXT,
+    executed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ============================================================================
 -- USERS & AUTHENTICATION
 -- ============================================================================
 
@@ -305,3 +315,8 @@ GRANT SELECT ON ALL TABLES IN SCHEMA pganalytics TO pganalytics_app_readonly;
 ALTER DEFAULT PRIVILEGES IN SCHEMA pganalytics GRANT ALL ON TABLES TO pganalytics_app_master;
 ALTER DEFAULT PRIVILEGES IN SCHEMA pganalytics GRANT SELECT, INSERT, UPDATE ON TABLES TO pganalytics_app_user;
 ALTER DEFAULT PRIVILEGES IN SCHEMA pganalytics GRANT SELECT ON TABLES TO pganalytics_app_readonly;
+
+-- Record this migration
+INSERT INTO schema_versions (version, description, executed_at)
+	VALUES ('001_init', 'Initial database schema', NOW())
+	ON CONFLICT (version) DO NOTHING;

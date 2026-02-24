@@ -65,7 +65,7 @@
       "targets": [
         {
           "format": "table",
-          "rawSql": "SELECT query_text as \"Query\", total_time as \"Total Time (ms)\" FROM metrics_pg_stats_query_1h WHERE time >= NOW() - INTERVAL '24 hours' ORDER BY total_time DESC LIMIT 10",
+          "rawSql": "SELECT query_text as \"Query\", max_max_time as \"Total Time (ms)\" FROM metrics_pg_stats_query_1h WHERE hour >= NOW() - INTERVAL '24 hours' ORDER BY max_max_time DESC LIMIT 10",
           "refId": "A"
         }
       ],
@@ -155,7 +155,7 @@
       "targets": [
         {
           "format": "table",
-          "rawSql": "SELECT time, avg(mean_time) as \"Avg Execution Time\" FROM metrics_pg_stats_query_1h WHERE time >= NOW() - INTERVAL '24 hours' GROUP BY time ORDER BY time",
+          "rawSql": "SELECT time, avg(avg_mean_time) as \"Avg Execution Time\" FROM metrics_pg_stats_query_1h WHERE hour >= NOW() - INTERVAL '24 hours' GROUP BY time ORDER BY time",
           "refId": "A"
         }
       ],
@@ -320,7 +320,7 @@
       "targets": [
         {
           "format": "table",
-          "rawSql": "SELECT time, SUM(calls) as \"Total Queries\" FROM metrics_pg_stats_query_1h WHERE time >= NOW() - INTERVAL '24 hours' GROUP BY time ORDER BY time",
+          "rawSql": "SELECT time, SUM(calls) as \"Total Queries\" FROM metrics_pg_stats_query_1h WHERE hour >= NOW() - INTERVAL '24 hours' GROUP BY time ORDER BY time",
           "refId": "A"
         }
       ],
@@ -418,11 +418,10 @@
       "targets": [
         {
           "format": "table",
-          "rawSql": "SELECT time, (SUM(shared_blks_hit) * 100.0 / (SUM(shared_blks_hit) + SUM(shared_blks_read))) as \"Cache Hit Ratio\" FROM metrics_pg_stats_query_1h WHERE time >= NOW() - INTERVAL '24 hours' AND (shared_blks_hit + shared_blks_read) > 0 GROUP BY time ORDER BY time",
+          "rawSql": "SELECT time, (SUM(shared_blks_hit) * 100.0 / (SUM(shared_blks_hit) + SUM(shared_blks_read))) as \"Cache Hit Ratio\" FROM metrics_pg_stats_query_1h WHERE hour >= NOW() - INTERVAL '24 hours' AND (shared_blks_hit + shared_blks_read) > 0 GROUP BY time ORDER BY time",
           "refId": "A"
         }
       ],
-      "title": "Buffer Cache Hit Ratio Trend",
       "title": "Buffer Cache Hit Ratio Trend",
       "type": "timeseries"
     },
@@ -589,7 +588,7 @@
       "targets": [
         {
           "format": "table",
-          "rawSql": "SELECT time, AVG(blk_read_time) as \"Avg I/O Read Time\", MAX(blk_read_time) as \"Max I/O Read Time\" FROM metrics_pg_stats_query_1h WHERE time >= NOW() - INTERVAL '24 hours' GROUP BY time ORDER BY time",
+          "rawSql": "SELECT time, AVG(blk_read_time) as \"Avg I/O Read Time\", MAX(blk_read_time) as \"Max I/O Read Time\" FROM metrics_pg_stats_query_1h WHERE hour >= NOW() - INTERVAL '24 hours' GROUP BY time ORDER BY time",
           "refId": "A"
         }
       ],
@@ -683,7 +682,7 @@
       "targets": [
         {
           "format": "table",
-          "rawSql": "SELECT time, AVG(blk_write_time) as \"Avg I/O Write Time\", MAX(blk_write_time) as \"Max I/O Write Time\" FROM metrics_pg_stats_query_1h WHERE time >= NOW() - INTERVAL '24 hours' GROUP BY time ORDER BY time",
+          "rawSql": "SELECT time, AVG(blk_write_time) as \"Avg I/O Write Time\", MAX(blk_write_time) as \"Max I/O Write Time\" FROM metrics_pg_stats_query_1h WHERE hour >= NOW() - INTERVAL '24 hours' GROUP BY time ORDER BY time",
           "refId": "A"
         }
       ],

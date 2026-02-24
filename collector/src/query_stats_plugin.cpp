@@ -99,15 +99,24 @@ json PgQueryStatsCollector::execute() {
         {"databases", json::array()}
     };
 
+    std::cerr << "DEBUG: PgQueryStatsCollector::execute() - databases count: " << databases_.size() << std::endl;
+
     if (databases_.empty()) {
-        std::cerr << "No databases configured for query stats collection" << std::endl;
+        std::cerr << "ERROR: No databases configured for query stats collection" << std::endl;
         return result;
     }
 
     // Collect stats for each configured database
     for (const auto& dbname : databases_) {
+        std::cerr << "DEBUG: Collecting query stats for database: " << dbname << std::endl;
         auto db_stats = collectQueryStats(dbname);
-        if (!db_stats.is_null() && db_stats.contains("queries")) {
+
+        if (db_stats.is_null()) {
+            std::cerr << "DEBUG: db_stats is null for " << dbname << std::endl;
+        } else if (!db_stats.contains("queries")) {
+            std::cerr << "DEBUG: db_stats doesn't contain queries for " << dbname << std::endl;
+        } else {
+            std::cerr << "DEBUG: Successfully collected " << db_stats["queries"].size() << " queries from " << dbname << std::endl;
             result["databases"].push_back(db_stats);
         }
     }
@@ -120,11 +129,15 @@ json PgQueryStatsCollector::execute() {
  */
 json PgQueryStatsCollector::collectQueryStats(const std::string& dbname) {
 #ifdef HAVE_LIBPQ
+    std::cout << "DEBUG: collectQueryStats() called for " << dbname << std::endl;
+
     // Connect to database
     PGconn* conn = connectToDatabase(postgresHost_, postgresPort_, dbname, postgresUser_, postgresPassword_);
     if (!conn) {
+        std::cout << "DEBUG: Connection failed for " << dbname << std::endl;
         return json::object();
     }
+    std::cout << "DEBUG: Connected to " << dbname << std::endl;
 
     // Initialize result object
     json db_stats = {
@@ -145,47 +158,16 @@ json PgQueryStatsCollector::collectQueryStats(const std::string& dbname) {
         return db_stats;  // Return empty queries array
     }
 
-    // Query pg_stat_statements
-    // Get top 100 queries by execution time (or calls)
-    // Note: query text is already normalized by PostgreSQL
-    // PostgreSQL 16+ renamed total_time/mean_time/etc to *_exec_time/*_plan_time
-    const char* query =
-        "SELECT "
-        "  queryid, "
-        "  query, "
-        "  calls, "
-        "  COALESCE(total_exec_time, mean_exec_time, 0) as total_time, "
-        "  COALESCE(mean_exec_time, 0), "
-        "  COALESCE(min_exec_time, 0), "
-        "  COALESCE(max_exec_time, 0), "
-        "  COALESCE((max_exec_time - min_exec_time), 0), "
-        "  COALESCE(rows, 0), "
-        "  COALESCE(shared_blks_hit, 0), "
-        "  COALESCE(shared_blks_read, 0), "
-        "  COALESCE(shared_blks_dirtied, 0), "
-        "  COALESCE(shared_blks_written, 0), "
-        "  COALESCE(local_blks_hit, 0), "
-        "  COALESCE(local_blks_read, 0), "
-        "  COALESCE(local_blks_dirtied, 0), "
-        "  COALESCE(local_blks_written, 0), "
-        "  COALESCE(temp_blks_read, 0), "
-        "  COALESCE(temp_blks_written, 0), "
-        "  COALESCE(blk_read_time, 0), "
-        "  COALESCE(blk_write_time, 0), "
-        "  COALESCE(wal_records, 0) as wal_records, "
-        "  COALESCE(wal_fpi, 0) as wal_fpi, "
-        "  COALESCE(wal_bytes, 0) as wal_bytes, "
-        "  0 as query_plan_time, "
-        "  0 as query_exec_time "
-        "FROM pg_stat_statements "
-        "WHERE userid != (SELECT usesysid FROM pg_user WHERE usesuper LIMIT 1) "
-        "ORDER BY total_time DESC "
-        "LIMIT 100";
+    // Query pg_stat_statements - minimal query
+    // Start with just basic fields to test if query execution works at all
+    const char* query = "SELECT queryid, query, calls, COALESCE(total_exec_time, 0), COALESCE(mean_exec_time, 0), COALESCE(min_exec_time, 0), COALESCE(max_exec_time, 0), COALESCE(stddev_exec_time, 0), COALESCE(rows, 0), COALESCE(shared_blks_hit, 0), COALESCE(shared_blks_read, 0), COALESCE(shared_blks_dirtied, 0), COALESCE(shared_blks_written, 0), COALESCE(local_blks_hit, 0), COALESCE(local_blks_read, 0), COALESCE(local_blks_dirtied, 0), COALESCE(local_blks_written, 0), COALESCE(temp_blks_read, 0), COALESCE(temp_blks_written, 0), COALESCE(blk_read_time, 0), COALESCE(blk_write_time, 0), COALESCE(wal_records, 0), COALESCE(wal_fpi, 0), COALESCE(wal_bytes, 0) FROM pg_stat_statements ORDER BY COALESCE(total_exec_time, 0) DESC LIMIT 100";
+
+    std::cerr << "DEBUG: About to execute query on database: " << dbname << std::endl;
 
     PGresult* res = PQexec(conn, query);
 
     if (PQresultStatus(res) != PGRES_TUPLES_OK) {
-        std::cerr << "Query execution failed on " << dbname << ": " << PQerrorMessage(conn) << std::endl;
+        std::cerr << "ERROR: Query execution failed on " << dbname << ". Status: " << PQresultStatus(res) << " Error: " << PQerrorMessage(conn) << std::endl;
         PQclear(res);
         PQfinish(conn);
         return db_stats;
@@ -194,61 +176,38 @@ json PgQueryStatsCollector::collectQueryStats(const std::string& dbname) {
     int nrows = PQntuples(res);
     int nfields = PQnfields(res);
 
+    std::cerr << "DEBUG: Query returned " << nrows << " rows and " << nfields << " fields from " << dbname << std::endl;
+
     // Parse each row from pg_stat_statements
+    // Query now returns exactly 25 fields: queryid through wal_bytes
     for (int i = 0; i < nrows; ++i) {
         try {
             json query_entry = {
-                {"hash", std::stoll(PQgetvalue(res, i, 0))},           // queryid
-                {"text", PQgetvalue(res, i, 1)},                       // query
-                {"calls", std::stoll(PQgetvalue(res, i, 2))},          // calls
-                {"total_time", std::stod(PQgetvalue(res, i, 3))},      // total_time
-                {"mean_time", std::stod(PQgetvalue(res, i, 4))},       // mean_time
-                {"min_time", std::stod(PQgetvalue(res, i, 5))},        // min_time
-                {"max_time", std::stod(PQgetvalue(res, i, 6))},        // max_time
-                {"stddev_time", std::stod(PQgetvalue(res, i, 7))},     // stddev_time
-                {"rows", std::stoll(PQgetvalue(res, i, 8))},           // rows
-                {"shared_blks_hit", std::stoll(PQgetvalue(res, i, 9))},
-                {"shared_blks_read", std::stoll(PQgetvalue(res, i, 10))},
-                {"shared_blks_dirtied", std::stoll(PQgetvalue(res, i, 11))},
-                {"shared_blks_written", std::stoll(PQgetvalue(res, i, 12))},
-                {"local_blks_hit", std::stoll(PQgetvalue(res, i, 13))},
-                {"local_blks_read", std::stoll(PQgetvalue(res, i, 14))},
-                {"local_blks_dirtied", std::stoll(PQgetvalue(res, i, 15))},
-                {"local_blks_written", std::stoll(PQgetvalue(res, i, 16))},
-                {"temp_blks_read", std::stoll(PQgetvalue(res, i, 17))},
-                {"temp_blks_written", std::stoll(PQgetvalue(res, i, 18))},
-                {"blk_read_time", std::stod(PQgetvalue(res, i, 19))},
-                {"blk_write_time", std::stod(PQgetvalue(res, i, 20))}
+                {"hash", std::stoll(PQgetvalue(res, i, 0))},           // queryid (0)
+                {"text", PQgetvalue(res, i, 1)},                       // query (1)
+                {"calls", std::stoll(PQgetvalue(res, i, 2))},          // calls (2)
+                {"total_time", std::stod(PQgetvalue(res, i, 3))},      // total_time (3)
+                {"mean_time", std::stod(PQgetvalue(res, i, 4))},       // mean_time (4)
+                {"min_time", std::stod(PQgetvalue(res, i, 5))},        // min_time (5)
+                {"max_time", std::stod(PQgetvalue(res, i, 6))},        // max_time (6)
+                {"stddev_time", std::stod(PQgetvalue(res, i, 7))},     // stddev_time (7)
+                {"rows", std::stoll(PQgetvalue(res, i, 8))},           // rows (8)
+                {"shared_blks_hit", std::stoll(PQgetvalue(res, i, 9))},     // (9)
+                {"shared_blks_read", std::stoll(PQgetvalue(res, i, 10))},   // (10)
+                {"shared_blks_dirtied", std::stoll(PQgetvalue(res, i, 11))},// (11)
+                {"shared_blks_written", std::stoll(PQgetvalue(res, i, 12))},// (12)
+                {"local_blks_hit", std::stoll(PQgetvalue(res, i, 13))},     // (13)
+                {"local_blks_read", std::stoll(PQgetvalue(res, i, 14))},    // (14)
+                {"local_blks_dirtied", std::stoll(PQgetvalue(res, i, 15))}, // (15)
+                {"local_blks_written", std::stoll(PQgetvalue(res, i, 16))}, // (16)
+                {"temp_blks_read", std::stoll(PQgetvalue(res, i, 17))},     // (17)
+                {"temp_blks_written", std::stoll(PQgetvalue(res, i, 18))},  // (18)
+                {"blk_read_time", std::stod(PQgetvalue(res, i, 19))},       // (19)
+                {"blk_write_time", std::stod(PQgetvalue(res, i, 20))},      // (20)
+                {"wal_records", std::stoll(PQgetvalue(res, i, 21))},        // (21)
+                {"wal_fpi", std::stoll(PQgetvalue(res, i, 22))},            // (22)
+                {"wal_bytes", std::stoll(PQgetvalue(res, i, 23))}          // (23)
             };
-
-            // Optional fields (PG13+) - WAL and timing statistics
-            if (nfields >= 25) {
-                const char* wal_records_val = PQgetvalue(res, i, 21);
-                const char* wal_fpi_val = PQgetvalue(res, i, 22);
-                const char* wal_bytes_val = PQgetvalue(res, i, 23);
-
-                if (wal_records_val && std::string(wal_records_val) != "0") {
-                    query_entry["wal_records"] = std::stoll(wal_records_val);
-                }
-                if (wal_fpi_val && std::string(wal_fpi_val) != "0") {
-                    query_entry["wal_fpi"] = std::stoll(wal_fpi_val);
-                }
-                if (wal_bytes_val && std::string(wal_bytes_val) != "0") {
-                    query_entry["wal_bytes"] = std::stoll(wal_bytes_val);
-                }
-            }
-
-            if (nfields >= 27) {
-                const char* query_time_val = PQgetvalue(res, i, 24);
-                const char* exec_time_val = PQgetvalue(res, i, 25);
-
-                if (query_time_val && std::string(query_time_val) != "0") {
-                    query_entry["query_plan_time"] = std::stod(query_time_val);
-                }
-                if (exec_time_val && std::string(exec_time_val) != "0") {
-                    query_entry["query_exec_time"] = std::stod(exec_time_val);
-                }
-            }
 
             db_stats["queries"].push_back(query_entry);
         } catch (const std::exception& e) {

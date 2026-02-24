@@ -175,7 +175,7 @@ ConfigManager::PostgreSQLConfig ConfigManager::getPostgreSQLConfig() const {
 
 ConfigManager::TLSConfig ConfigManager::getTLSConfig() const {
     TLSConfig cfg;
-    cfg.verify = getBool("tls", "verify", true);
+    cfg.verify = getBool("tls", "verify", false);  // Default to false for self-signed certs
     cfg.certFile = getString("tls", "cert_file", "/etc/pganalytics/collector.crt");
     cfg.keyFile = getString("tls", "key_file", "/etc/pganalytics/collector.key");
     cfg.caFile = getString("tls", "ca_file", "");

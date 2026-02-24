@@ -14,7 +14,7 @@ datasources:
     isDefault: false
     editable: true
 
-  - name: TimescaleDB (Metrics)
+  - name: TimescaleDB
     type: postgres
     access: proxy
     url: timescale:5432

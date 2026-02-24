@@ -51,12 +51,6 @@ bool Sender::pushMetrics(const json& metrics) {
     // Serialize metrics to JSON string
     std::string jsonData = metrics.dump();
 
-    // Compress with gzip
-    std::string compressed = compressJson(jsonData);
-    if (compressed.empty()) {
-        return false;
-    }
-
     // Initialize CURL
     CURL* curl = curl_easy_init();
     if (!curl) {
@@ -73,7 +67,6 @@ bool Sender::pushMetrics(const json& metrics) {
     std::string url = backendUrl_ + "/api/v1/metrics/push";
     struct curl_slist* headers = nullptr;
     headers = curl_slist_append(headers, "Content-Type: application/json");
-    headers = curl_slist_append(headers, "Content-Encoding: gzip");
 
     // Add Authorization header
     std::string authHeader = "Authorization: Bearer " + getAuthToken();
@@ -82,8 +75,8 @@ bool Sender::pushMetrics(const json& metrics) {
     // Set CURL options
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, compressed.c_str());
-    curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, compressed.size());
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, jsonData.c_str());
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, jsonData.size());
 
     // Response callback
     std::string responseData;

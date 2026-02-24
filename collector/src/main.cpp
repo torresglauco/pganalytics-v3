@@ -191,23 +191,31 @@ int runCronMode() {
         if (secsSincePush >= pushInterval && !buffer.isEmpty()) {
             std::cout << "Pushing " << buffer.getMetricCount() << " metrics to backend..." << std::endl;
 
-            // Create payload - metrics are stored in the buffer, we just send the metadata
-            // The buffer will be serialized and sent as compressed JSON in the metrics field
+            // Create payload with uncompressed metrics from buffer
             int metricCount = buffer.getMetricCount();
+            json metricsArray;
+            std::vector<json> metricsVector;
+
+            if (buffer.getUncompressed(metricsArray) && metricsArray.is_array()) {
+                // Convert JSON array to vector for createPayload
+                for (const auto& metric : metricsArray) {
+                    metricsVector.push_back(metric);
+                }
+            }
+
             json payload = MetricsSerializer::createPayload(
                 gConfig->getCollectorId(),
                 gConfig->getHostname(),
                 "3.0.0",
-                std::vector<json>()  // Empty for now - metrics in buffer
+                metricsVector
             );
             payload["metrics_count"] = metricCount;
 
             if (sender.pushMetrics(payload)) {
-                    std::cout << "Metrics pushed successfully" << std::endl;
-                    buffer.clear();
-                } else {
-                    std::cerr << "Failed to push metrics" << std::endl;
-                }
+                std::cout << "Metrics pushed successfully" << std::endl;
+                buffer.clear();
+            } else {
+                std::cerr << "Failed to push metrics" << std::endl;
             }
 
             lastPushTime = now;

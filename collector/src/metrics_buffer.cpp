@@ -27,6 +27,20 @@ bool MetricsBuffer::append(const json& metrics) {
     return true;
 }
 
+bool MetricsBuffer::getUncompressed(json& metrics) {
+    if (metrics_.empty()) {
+        return false;
+    }
+
+    // Serialize all metrics to JSON array
+    metrics = json::array();
+    for (const auto& metric : metrics_) {
+        metrics.push_back(metric);
+    }
+
+    return true;
+}
+
 bool MetricsBuffer::getCompressed(std::string& compressed) {
     if (metrics_.empty()) {
         compressed.clear();

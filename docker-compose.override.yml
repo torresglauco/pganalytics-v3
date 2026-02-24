@@ -1,0 +1,35 @@
+version: '3.9'
+
+services:
+  postgres:
+    environment:
+      POSTGRES_INITDB_ARGS: ""
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # Skip the problematic migrations that need timescaledb
+      - /dev/null:/docker-entrypoint-initdb.d/002_timescale.sql
+
+  timescale:
+    image: postgres:16-alpine
+    container_name: pganalytics-timescale
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: pganalytics
+      POSTGRES_DB: metrics
+    ports:
+      - "5433:5432"
+    volumes:
+      - timescale_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - pganalytics
+
+volumes:
+  postgres_data:
+    driver: local
+  timescale_data:
+    driver: local

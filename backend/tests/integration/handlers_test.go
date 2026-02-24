@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dextra/pganalytics-v3/backend/internal/api"
-	"github.com/dextra/pganalytics-v3/backend/internal/auth"
-	"github.com/dextra/pganalytics-v3/backend/internal/config"
-	"github.com/dextra/pganalytics-v3/backend/pkg/models"
+	"github.com/torresglauco/pganalytics-v3/backend/internal/api"
+	"github.com/torresglauco/pganalytics-v3/backend/internal/auth"
+	"github.com/torresglauco/pganalytics-v3/backend/internal/config"
+	"github.com/torresglauco/pganalytics-v3/backend/pkg/models"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -142,17 +142,19 @@ func (m *TestTokenStore) UpdateAPITokenLastUsed(id int, timestamp time.Time) err
 // Nil stores for database access (handlers don't use them in these tests)
 type NilPostgresDB struct{}
 
-func (n *NilPostgresDB) GetUserByUsername(username string) (*models.User, error)                { return nil, nil }
-func (n *NilPostgresDB) GetUserByID(id int) (*models.User, error)                              { return nil, nil }
-func (n *NilPostgresDB) UpdateUserLastLogin(userID int, timestamp time.Time) error             { return nil }
-func (n *NilPostgresDB) CreateCollector(collector *models.Collector) (uuid.UUID, error)        { return uuid.Nil, nil }
-func (n *NilPostgresDB) GetCollectorByID(id uuid.UUID) (*models.Collector, error)              { return nil, nil }
-func (n *NilPostgresDB) UpdateCollectorStatus(id uuid.UUID, status string) error               { return nil }
+func (n *NilPostgresDB) GetUserByUsername(username string) (*models.User, error)   { return nil, nil }
+func (n *NilPostgresDB) GetUserByID(id int) (*models.User, error)                  { return nil, nil }
+func (n *NilPostgresDB) UpdateUserLastLogin(userID int, timestamp time.Time) error { return nil }
+func (n *NilPostgresDB) CreateCollector(collector *models.Collector) (uuid.UUID, error) {
+	return uuid.Nil, nil
+}
+func (n *NilPostgresDB) GetCollectorByID(id uuid.UUID) (*models.Collector, error) { return nil, nil }
+func (n *NilPostgresDB) UpdateCollectorStatus(id uuid.UUID, status string) error  { return nil }
 func (n *NilPostgresDB) UpdateCollectorCertificate(id uuid.UUID, thumbprint string, expiresAt time.Time) error {
 	return nil
 }
-func (n *NilPostgresDB) CreateAPIToken(token *models.APIToken) (int, error)    { return 0, nil }
-func (n *NilPostgresDB) GetAPITokenByHash(hash string) (*models.APIToken, error) { return nil, nil }
+func (n *NilPostgresDB) CreateAPIToken(token *models.APIToken) (int, error)       { return 0, nil }
+func (n *NilPostgresDB) GetAPITokenByHash(hash string) (*models.APIToken, error)  { return nil, nil }
 func (n *NilPostgresDB) UpdateAPITokenLastUsed(id int, timestamp time.Time) error { return nil }
 
 // Helper to create test server

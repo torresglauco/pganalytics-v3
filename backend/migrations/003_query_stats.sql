@@ -2,6 +2,13 @@
 -- This migration creates the necessary tables and structures for storing pg_stat_statements data
 -- Note: TimescaleDB extension is optional; this version uses regular PostgreSQL tables
 
+-- Ensure schema_versions table exists for migration tracking
+CREATE TABLE IF NOT EXISTS schema_versions (
+    version VARCHAR(50) PRIMARY KEY,
+    description TEXT,
+    executed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Enable required extensions (timescaledb is optional - will be skipped if not available)
 -- CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;
 

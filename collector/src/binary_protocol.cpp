@@ -1,5 +1,7 @@
 #include "../include/binary_protocol.h"
+#ifdef HAVE_ZSTD
 #include <zstd.h>
+#endif
 #include <cstring>
 #include <iostream>
 #include <algorithm>
@@ -317,6 +319,7 @@ std::vector<uint8_t> CompressionUtil::compress(
             return data;
 
         case CompressionType::Zstd: {
+#ifdef HAVE_ZSTD
             // Zstandard compression
             size_t bound = ZSTD_compressBound(data.size());
             std::vector<uint8_t> compressed(bound);
@@ -336,6 +339,10 @@ std::vector<uint8_t> CompressionUtil::compress(
 
             compressed.resize(compressed_size);
             return compressed;
+#else
+            std::cerr << "ZSTD compression not available" << std::endl;
+            return data;  // Fallback to uncompressed
+#endif
         }
 
         case CompressionType::Snappy: {
@@ -359,6 +366,7 @@ std::vector<uint8_t> CompressionUtil::decompress(
             return data;
 
         case CompressionType::Zstd: {
+#ifdef HAVE_ZSTD
             // Get original size
             unsigned long long original_size = ZSTD_getFrameContentSize(data.data(), data.size());
 
@@ -382,6 +390,10 @@ std::vector<uint8_t> CompressionUtil::decompress(
             }
 
             return decompressed;
+#else
+            std::cerr << "ZSTD decompression not available" << std::endl;
+            return {};
+#endif
         }
 
         case CompressionType::Snappy: {

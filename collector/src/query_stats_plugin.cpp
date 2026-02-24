@@ -65,7 +65,7 @@ static PGconn* connectToDatabase(
         connstr += " password=" + password;
     }
 
-    connstr += " connect_timeout=5 statement_timeout=30000"; // 30 second timeout
+    connstr += " connect_timeout=5";
 
     PGconn* conn = PQconnectdb(connstr.c_str());
 
@@ -74,6 +74,16 @@ static PGconn* connectToDatabase(
         PQfinish(conn);
         return nullptr;
     }
+
+    // Set statement timeout to 30 seconds
+    PGresult* res = PQexec(conn, "SET statement_timeout = '30s'");
+    if (PQresultStatus(res) != PGRES_COMMAND_OK) {
+        std::cerr << "Failed to set statement timeout: " << PQerrorMessage(conn) << std::endl;
+        PQclear(res);
+        PQfinish(conn);
+        return nullptr;
+    }
+    PQclear(res);
 
     return conn;
 }

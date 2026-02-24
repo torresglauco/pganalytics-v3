@@ -30,7 +30,7 @@ cert_file = "${TLS_CERT_FILE:-/etc/pganalytics/collector.crt}"
 key_file = "${TLS_KEY_FILE:-/etc/pganalytics/collector.key}"
 
 [pg_stats]
-enabled = true
+enabled = false
 interval = ${COLLECTOR_INTERVAL_PG_STATS:-60}
 
 [sysstat]

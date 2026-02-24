@@ -40,6 +40,13 @@ public:
     bool getCompressed(std::string& compressed);
 
     /**
+     * Get uncompressed metrics as JSON array
+     * @param metrics Output JSON array with all buffered metrics
+     * @return true if successful, false if no metrics
+     */
+    bool getUncompressed(json& metrics);
+
+    /**
      * Get uncompressed size of buffered metrics
      * @return Size in bytes
      */

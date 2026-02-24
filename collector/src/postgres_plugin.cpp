@@ -201,10 +201,10 @@ json PgStatsCollector::collectTableStats(const std::string& dbname) {
 
     // Query: Get top tables by row count
     const char* query =
-        "SELECT schemaname, tablename, "
+        "SELECT schemaname, relname, "
         "       n_live_tup, n_dead_tup, "
         "       n_mod_since_analyze, "
-        "       pg_total_relation_size(schemaname||'.'||tablename) as size_bytes, "
+        "       pg_total_relation_size(schemaname||'.'||relname) as size_bytes, "
         "       last_vacuum, last_autovacuum, "
         "       last_analyze, last_autoanalyze, "
         "       vacuum_count, autovacuum_count "
@@ -255,7 +255,7 @@ json PgStatsCollector::collectIndexStats(const std::string& dbname) {
 
     // Query: Get index statistics - both unused and frequently used
     const char* query =
-        "SELECT schemaname, indexname, tablename, "
+        "SELECT schemaname, indexrelname, relname, "
         "       idx_scan, idx_tup_read, idx_tup_fetch, "
         "       pg_relation_size(indexrelid) as size_bytes, "
         "       CASE WHEN idx_scan = 0 THEN 'UNUSED' ELSE 'USED' END as status "

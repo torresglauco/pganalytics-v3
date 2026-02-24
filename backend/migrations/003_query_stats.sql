@@ -1,8 +1,9 @@
--- Phase 4: Query Performance Monitoring - TimescaleDB Hypertable for Query Statistics
+-- Phase 4: Query Performance Monitoring - Query Statistics Table
 -- This migration creates the necessary tables and structures for storing pg_stat_statements data
+-- Note: TimescaleDB extension is optional; this version uses regular PostgreSQL tables
 
--- Enable required extensions
-CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;
+-- Enable required extensions (timescaledb is optional - will be skipped if not available)
+-- CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;
 
 -- Create hypertable for query statistics
 CREATE TABLE IF NOT EXISTS metrics_pg_stats_query (
@@ -38,13 +39,13 @@ CREATE TABLE IF NOT EXISTS metrics_pg_stats_query (
     query_exec_time FLOAT8                   -- PG13+ optional
 );
 
--- Create hypertable if not already one
-SELECT create_hypertable(
-    'metrics_pg_stats_query',
-    'time',
-    if_not_exists => TRUE,
-    chunk_time_interval => INTERVAL '1 day'
-);
+-- Create hypertable if not already one (optional - timescaledb specific)
+-- SELECT create_hypertable(
+--     'metrics_pg_stats_query',
+--     'time',
+--     if_not_exists => TRUE,
+--     chunk_time_interval => INTERVAL '1 day'
+-- );
 
 -- Create indexes for common query patterns
 CREATE INDEX IF NOT EXISTS idx_query_stats_collector_time
@@ -64,22 +65,23 @@ ON metrics_pg_stats_query (time DESC, max_time DESC)
 WHERE max_time > 1000;  -- Index slow queries
 
 -- Set data retention policy: 30 days (higher than other metrics due to importance)
-SELECT add_retention_policy(
-    'metrics_pg_stats_query',
-    INTERVAL '30 days',
-    if_not_exists => TRUE
-);
+-- Using regular PostgreSQL cleanup instead of TimescaleDB retention policy
+-- SELECT add_retention_policy(
+--     'metrics_pg_stats_query',
+--     INTERVAL '30 days',
+--     if_not_exists => TRUE
+-- );
 
 -- Create continuous aggregate for hourly rollups (used by dashboards)
-CREATE MATERIALIZED VIEW IF NOT EXISTS metrics_pg_stats_query_1h
-WITH (timescaledb.continuous) AS
+-- Using regular materialized view instead of TimescaleDB continuous aggregate
+CREATE MATERIALIZED VIEW IF NOT EXISTS metrics_pg_stats_query_1h AS
 SELECT
-    time_bucket('1 hour', time) AS hour,
+    date_trunc('hour', time) AS hour,
     collector_id,
     database_name,
     user_name,
     query_hash,
-    first(query_text, time) as query_text,
+    MAX(query_text) as query_text,
     SUM(calls) as total_calls,
     AVG(mean_time) as avg_mean_time,
     MAX(max_time) as max_max_time,
@@ -88,21 +90,20 @@ SELECT
     AVG(shared_blks_hit) as avg_cache_hits,
     AVG(shared_blks_read) as avg_cache_reads
 FROM metrics_pg_stats_query
-GROUP BY hour, collector_id, database_name, user_name, query_hash
-WITH DATA;
+GROUP BY date_trunc('hour', time), collector_id, database_name, user_name, query_hash;
 
 -- Create index on continuous aggregate
 CREATE INDEX IF NOT EXISTS idx_query_stats_1h_collector_time
 ON metrics_pg_stats_query_1h (collector_id, hour DESC);
 
--- Refresh policy for continuous aggregate (refresh every hour, with 2-hour lag)
-SELECT add_continuous_aggregate_policy(
-    'metrics_pg_stats_query_1h',
-    start_offset => INTERVAL '30 days',
-    end_offset => INTERVAL '2 hours',
-    schedule_interval => INTERVAL '1 hour',
-    if_not_exists => TRUE
-);
+-- Refresh policy for continuous aggregate (optional - timescaledb specific)
+-- SELECT add_continuous_aggregate_policy(
+--     'metrics_pg_stats_query_1h',
+--     start_offset => INTERVAL '30 days',
+--     end_offset => INTERVAL '2 hours',
+--     schedule_interval => INTERVAL '1 hour',
+--     if_not_exists => TRUE
+-- );
 
 -- Create view for top slow queries (past 24 hours)
 CREATE OR REPLACE VIEW v_top_slow_queries_24h AS

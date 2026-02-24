@@ -115,8 +115,8 @@ int runCronMode() {
         std::cout << "Added PgQueryStatsCollector" << std::endl;
     }
 
-    // Initialize metrics buffer and sender
-    MetricsBuffer buffer;
+    // Initialize metrics buffer with larger capacity (50MB to handle query stats with 100 queries × 2 databases)
+    MetricsBuffer buffer(50 * 1024 * 1024);
     Sender sender(
         gConfig->getBackendUrl(),
         gConfig->getCollectorId(),
@@ -177,10 +177,20 @@ int runCronMode() {
             std::cout << "Collecting query statistics..." << std::endl;
             json queryStats = queryStatsCollector->execute();
             if (!queryStats.is_null() && queryStats.contains("databases") && queryStats["databases"].is_array()) {
-                // Flatten: add each database as a separate metric
+                // Flatten: create individual metrics for each database with type and timestamp
+                std::string timestamp = queryStats.contains("timestamp") ? queryStats["timestamp"].get<std::string>() : "";
                 for (const auto& db_metric : queryStats["databases"]) {
-                    if (MetricsSerializer::validateMetric(db_metric)) {
-                        if (!buffer.append(db_metric)) {
+                    // Create a metric object that matches the pg_query_stats validation schema:
+                    // It should have: type, timestamp, database, queries
+                    json metric = {
+                        {"type", "pg_query_stats"},
+                        {"timestamp", timestamp},
+                        {"database", db_metric["database"]},
+                        {"queries", db_metric["queries"]}
+                    };
+
+                    if (MetricsSerializer::validateMetric(metric)) {
+                        if (!buffer.append(metric)) {
                             std::cerr << "Failed to append query stats to buffer (buffer full)" << std::endl;
                         }
                     } else {

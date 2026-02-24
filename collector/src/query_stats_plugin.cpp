@@ -139,11 +139,10 @@ json PgQueryStatsCollector::collectQueryStats(const std::string& dbname) {
     }
     std::cout << "DEBUG: Connected to " << dbname << std::endl;
 
-    // Initialize result object
+    // Initialize result object for this database
+    // Note: type and timestamp are at the top level in execute(), not here
     json db_stats = {
-        {"type", "pg_query_stats"},
         {"database", dbname},
-        {"timestamp", getCurrentTimestamp()},
         {"queries", json::array()}
     };
 

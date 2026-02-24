@@ -46,7 +46,7 @@ enabled = true
 interval = ${COLLECTOR_INTERVAL_DISK_USAGE:-300}
 
 [pg_query_stats]
-enabled = false
+enabled = true
 interval = ${COLLECTOR_INTERVAL_PG_QUERY_STATS:-60}
 EOF
 

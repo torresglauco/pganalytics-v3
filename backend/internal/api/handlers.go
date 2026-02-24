@@ -332,40 +332,87 @@ func (s *Server) handleMetricsPush(c *gin.Context) {
 
 				// Handle query stats metrics
 				if metricType == "pg_query_stats" {
-					// Convert metric to QueryStatsRequest
-					var queryStatsReq models.QueryStatsRequest
+					// Handle both individual database metrics and wrapped metrics with arrays
 					metricsJSON, _ := json.Marshal(metric)
-					if err := json.Unmarshal(metricsJSON, &queryStatsReq); err != nil {
-						s.logger.Error("Failed to unmarshal pg_query_stats metric",
-							zap.Error(err),
+
+					// Log the raw metric JSON before unmarshaling
+					metricStr := string(metricsJSON)
+					if len(metricStr) > 1500 {
+						metricStr = metricStr[:1500]
+					}
+					s.logger.Debug("Raw pg_query_stats JSON", zap.String("json", metricStr))
+
+					// Try to parse as individual database metric first (has "database" field)
+					var singleDB models.QueryStatsDB
+					var timestamp time.Time
+					var databases []models.QueryStatsDB
+
+					// Check if this is an individual database metric or a wrapped one
+					if _, hasDB := metricMap["database"]; hasDB {
+						// Individual database metric format
+						if err := json.Unmarshal(metricsJSON, &singleDB); err != nil {
+							s.logger.Error("Failed to unmarshal individual pg_query_stats metric",
+								zap.Error(err),
+							)
+							continue
+						}
+						databases = append(databases, singleDB)
+
+						// Extract timestamp
+						if tsVal, hasTS := metricMap["timestamp"]; hasTS {
+							if tsStr, ok := tsVal.(string); ok {
+								if ts, err := time.Parse(time.RFC3339, tsStr); err == nil {
+									timestamp = ts
+								}
+							}
+						}
+						s.logger.Debug("Processing individual pg_query_stats metric",
+							zap.String("database", singleDB.Database),
+							zap.Int("queries_count", len(singleDB.Queries)),
+							zap.Time("timestamp", timestamp),
 						)
+					} else if _, hasDBArray := metricMap["databases"]; hasDBArray {
+						// Wrapped format with databases array
+						var queryStatsReq models.QueryStatsRequest
+						if err := json.Unmarshal(metricsJSON, &queryStatsReq); err != nil {
+							s.logger.Error("Failed to unmarshal pg_query_stats metric",
+								zap.Error(err),
+							)
+							continue
+						}
+						databases = queryStatsReq.Databases
+						timestamp = queryStatsReq.Timestamp
+						s.logger.Debug("Processing pg_query_stats metric",
+							zap.Int("databases_count", len(databases)),
+							zap.Time("timestamp", timestamp),
+						)
+					} else {
+						s.logger.Error("Invalid pg_query_stats metric: missing both database and databases fields")
 						continue
 					}
 
-					s.logger.Debug("Processing pg_query_stats metric",
-						zap.Int("databases_count", len(queryStatsReq.Databases)),
-						zap.Time("timestamp", queryStatsReq.Timestamp),
-					)
-
-					// Log the raw metric for debugging
-					metricBytes, _ := json.MarshalIndent(metricMap, "", "  ")
-					metricStr := string(metricBytes)
-					if len(metricStr) > 1000 {
-						metricStr = metricStr[:1000]
-					}
-					s.logger.Debug("Raw pg_query_stats data", zap.String("json", metricStr))
-
 					// Extract and store individual query statistics
-					if queryStatsReq.Databases != nil {
-						for _, db := range queryStatsReq.Databases {
+					if databases != nil {
+						for _, db := range databases {
 							s.logger.Debug("Processing database",
 								zap.String("database", db.Database),
 								zap.Int("queries_count", len(db.Queries)),
 							)
 							for _, queryInfo := range db.Queries {
+								// Parse collector ID - if it's not a valid UUID, try to look it up or use a placeholder
+								collectorUUID := uuid.Nil
+								if uid, err := uuid.Parse(req.CollectorID); err == nil {
+									collectorUUID = uid
+								} else {
+									// For collector IDs like "col_demo_001", we'll create a deterministic UUID
+									// by hashing the string
+									hash := uuid.NewSHA1(uuid.Nil, []byte(req.CollectorID))
+									collectorUUID = hash
+								}
+
 								stat := &models.QueryStats{
-									Time:              queryStatsReq.Timestamp,
-									CollectorID:       uuid.MustParse(req.CollectorID),
+									Time:              timestamp,
+									CollectorID:       collectorUUID,
 									DatabaseName:      db.Database,
 									UserName:          "system", // Set from query info if available
 									QueryHash:         queryInfo.Hash,

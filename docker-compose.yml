@@ -101,7 +101,6 @@ services:
       backend:
         condition: service_healthy
     volumes:
-      - ./collector/config.toml.sample:/etc/pganalytics/collector.toml:ro
       - ./tls:/etc/pganalytics/tls:ro
       - collector_data:/var/lib/pganalytics
     networks:

@@ -1,0 +1,44 @@
+# pgAnalytics Collector v3.0 Configuration
+
+[collector]
+id = "collector-001"
+hostname = "pganalytics-collector-demo"
+interval = 60
+push_interval = 60
+config_pull_interval = 300
+
+[backend]
+url = "https://backend:8080"
+
+[postgres]
+host = "postgres"
+port = 5432
+user = "postgres"
+password = "pganalytics"
+database = "postgres"
+databases = "postgres,pganalytics"
+
+[tls]
+verify = false
+cert_file = "/etc/pganalytics/collector.crt"
+key_file = "/etc/pganalytics/collector.key"
+
+[pg_stats]
+enabled = true
+interval = 60
+
+[sysstat]
+enabled = true
+interval = 60
+
+[pg_log]
+enabled = true
+interval = 300
+
+[disk_usage]
+enabled = true
+interval = 300
+
+[pg_query_stats]
+enabled = true
+interval = 60

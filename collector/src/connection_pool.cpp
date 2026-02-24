@@ -1,6 +1,7 @@
 #include "../include/connection_pool.h"
 #include <iostream>
 #include <sstream>
+#include <algorithm>
 
 #ifdef HAVE_LIBPQ
 // Connection pool implementation only available with libpq
@@ -146,7 +147,7 @@ std::shared_ptr<PooledConnection> ConnectionPool::acquire(int timeout_sec) {
         }
 
         // Wait for a connection to be returned
-        if (!cv_.wait_for(lock, std::chrono::seconds(timeout_sec))) {
+        if (cv_.wait_for(lock, std::chrono::seconds(timeout_sec)) == std::cv_status::timeout) {
             std::cerr << "[ConnectionPool] Timeout waiting for connection" << std::endl;
             return nullptr;
         }

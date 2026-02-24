@@ -191,13 +191,15 @@ int runCronMode() {
         if (secsSincePush >= pushInterval && !buffer.isEmpty()) {
             std::cout << "Pushing " << buffer.getMetricCount() << " metrics to backend..." << std::endl;
 
-            // Create payload
+            // Create payload with actual metric count
+            int metricCount = buffer.getMetricCount();
             json payload = MetricsSerializer::createPayload(
                 gConfig->getCollectorId(),
                 gConfig->getHostname(),
                 "3.0.0",
                 std::vector<json>()  // Metrics will be sent compressed
             );
+            payload["metrics_count"] = metricCount;
 
             // Get compressed data
             std::string compressed;

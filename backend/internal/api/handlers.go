@@ -312,6 +312,11 @@ func (s *Server) handleMetricsPush(c *gin.Context) {
 	startTime := time.Now()
 	metricsInserted := 0
 
+	s.logger.Info("Metrics push received",
+		zap.Int("metrics_count", len(req.Metrics)),
+		zap.String("collector_id", req.CollectorID),
+	)
+
 	if req.Metrics != nil && len(req.Metrics) > 0 {
 		for _, metric := range req.Metrics {
 			// Type assertion to access metric fields
@@ -321,16 +326,42 @@ func (s *Server) handleMetricsPush(c *gin.Context) {
 					metricType = typeVal.(string)
 				}
 
+				s.logger.Debug("Processing metric",
+					zap.String("metric_type", metricType),
+				)
+
 				// Handle query stats metrics
 				if metricType == "pg_query_stats" {
 					// Convert metric to QueryStatsRequest
 					var queryStatsReq models.QueryStatsRequest
 					metricsJSON, _ := json.Marshal(metric)
-					json.Unmarshal(metricsJSON, &queryStatsReq)
+					if err := json.Unmarshal(metricsJSON, &queryStatsReq); err != nil {
+						s.logger.Error("Failed to unmarshal pg_query_stats metric",
+							zap.Error(err),
+						)
+						continue
+					}
+
+					s.logger.Debug("Processing pg_query_stats metric",
+						zap.Int("databases_count", len(queryStatsReq.Databases)),
+						zap.Time("timestamp", queryStatsReq.Timestamp),
+					)
+
+					// Log the raw metric for debugging
+					metricBytes, _ := json.MarshalIndent(metricMap, "", "  ")
+					metricStr := string(metricBytes)
+					if len(metricStr) > 1000 {
+						metricStr = metricStr[:1000]
+					}
+					s.logger.Debug("Raw pg_query_stats data", zap.String("json", metricStr))
 
 					// Extract and store individual query statistics
 					if queryStatsReq.Databases != nil {
 						for _, db := range queryStatsReq.Databases {
+							s.logger.Debug("Processing database",
+								zap.String("database", db.Database),
+								zap.Int("queries_count", len(db.Queries)),
+							)
 							for _, queryInfo := range db.Queries {
 								stat := &models.QueryStats{
 									Time:              queryStatsReq.Timestamp,

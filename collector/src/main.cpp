@@ -49,6 +49,12 @@ int runCronMode() {
 
     // Add collectors
     auto pgConfig = gConfig->getPostgreSQLConfig();
+    std::cout << "DEBUG: PostgreSQL Config - host=" << pgConfig.host << ", port=" << pgConfig.port
+              << ", databases count=" << pgConfig.databases.size() << std::endl;
+    for (const auto& db : pgConfig.databases) {
+        std::cout << "  - " << db << std::endl;
+    }
+
     if (gConfig->isCollectorEnabled("pg_stats")) {
         auto pgStatsCollector = std::make_shared<PgStatsCollector>(
             gConfig->getHostname(),

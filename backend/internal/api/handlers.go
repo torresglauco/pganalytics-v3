@@ -171,6 +171,14 @@ func (s *Server) handleCollectorRegister(c *gin.Context) {
 		return
 	}
 
+	// Verify registration secret
+	registrationSecret := c.GetHeader("X-Registration-Secret")
+	if registrationSecret == "" || registrationSecret != s.config.RegistrationSecret {
+		errResp := apperrors.Unauthorized("Invalid or missing registration secret", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
 	// Register collector
 	if s.authService == nil {
 		// Auth service not initialized - use direct database registration as fallback
@@ -293,20 +301,26 @@ func (s *Server) handleMetricsPush(c *gin.Context) {
 	}
 
 	// Get collector from context (set by CollectorAuthMiddleware)
-	// Temporarily disabled for testing - allow metrics push without authentication
 	collectorClaimsInterface, exists := c.Get("collector_claims")
-	if exists {
-		collectorClaims, ok := collectorClaimsInterface.(*auth.CollectorClaims)
-		if ok {
-			// Validate collector ID matches request
-			if collectorClaims.CollectorID != req.CollectorID {
-				errResp := apperrors.Unauthorized("Collector ID mismatch", "")
-				c.JSON(errResp.StatusCode, errResp)
-				return
-			}
-		}
+	if !exists {
+		errResp := apperrors.Unauthorized("Authentication required", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
 	}
-	// Allow unauthenticated access for testing
+
+	collectorClaims, ok := collectorClaimsInterface.(*auth.CollectorClaims)
+	if !ok {
+		errResp := apperrors.Unauthorized("Invalid authentication claims", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	// Validate collector ID matches request
+	if collectorClaims.CollectorID != req.CollectorID {
+		errResp := apperrors.Unauthorized("Collector ID mismatch", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
 
 	// Process metrics based on type
 	startTime := time.Now()

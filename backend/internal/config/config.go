@@ -22,6 +22,9 @@ type Config struct {
 	JWTExpiration        time.Duration
 	JWTRefreshExpiration time.Duration
 
+	// Security
+	RegistrationSecret string
+
 	// TLS
 	TLSCertPath string
 	TLSKeyPath  string
@@ -66,6 +69,7 @@ func Load() *Config {
 		JWTSecret:            getEnv("JWT_SECRET", "default-insecure-secret"),
 		JWTExpiration:        time.Duration(getIntEnv("JWT_EXPIRATION", 900)) * time.Second,
 		JWTRefreshExpiration: time.Duration(getIntEnv("JWT_REFRESH_EXPIRATION", 86400)) * time.Second,
+		RegistrationSecret:   getEnv("REGISTRATION_SECRET", "change-me-in-production"),
 		TLSCertPath:          getEnv("TLS_CERT", ""),
 		TLSKeyPath:           getEnv("TLS_KEY", ""),
 		TLSEnabled:           getBoolEnv("TLS_ENABLED", false),
@@ -137,6 +141,9 @@ func (c *Config) Validate() error {
 	}
 	if c.JWTSecret == "default-insecure-secret" && c.Environment == "production" {
 		return NewConfigError("JWT_SECRET must be set in production")
+	}
+	if c.RegistrationSecret == "change-me-in-production" && c.Environment == "production" {
+		return NewConfigError("REGISTRATION_SECRET must be set in production")
 	}
 	if c.TLSEnabled && (c.TLSCertPath == "" || c.TLSKeyPath == "") {
 		return NewConfigError("TLS_CERT and TLS_KEY must be set when TLS_ENABLED is true")

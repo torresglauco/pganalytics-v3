@@ -22,6 +22,7 @@ type Server struct {
 	mlClient         *ml.Client
 	featureExtractor ml.IFeatureExtractor
 	cacheManager     *cache.Manager
+	rateLimiter      *RateLimiter
 }
 
 // NewServer creates a new API server
@@ -53,6 +54,9 @@ func NewServer(
 		}
 	}
 
+	// Initialize rate limiter (100 req/min per user, 1000 req/min per collector)
+	rateLimiter := NewRateLimiter(100) // Will be increased for collectors in middleware
+
 	return &Server{
 		config:           cfg,
 		logger:           logger,
@@ -63,6 +67,7 @@ func NewServer(
 		mlClient:         mlClient,
 		featureExtractor: featureExtractor,
 		cacheManager:     nil, // Set via SetCacheManager
+		rateLimiter:      rateLimiter,
 	}
 }
 
@@ -73,12 +78,16 @@ func (s *Server) SetCacheManager(cm *cache.Manager) {
 
 // RegisterRoutes registers all API routes
 func (s *Server) RegisterRoutes(router *gin.Engine) {
+	// Apply global middleware
+	router.Use(s.SecurityHeadersMiddleware())
+
 	// Health check (no auth required)
 	router.GET("/api/v1/health", s.handleHealth)
 	router.GET("/version", s.handleVersion)
 
 	// API v1 routes
 	api := router.Group("/api/v1")
+	api.Use(s.RateLimitMiddleware())
 	{
 		// Authentication routes (no auth required)
 		auth := api.Group("/auth")
@@ -108,8 +117,8 @@ func (s *Server) RegisterRoutes(router *gin.Engine) {
 		// Metrics routes
 		metrics := api.Group("/metrics")
 		{
-			// High-volume endpoint - auth disabled for testing
-			metrics.POST("/push", s.handleMetricsPush)
+			// High-volume endpoint - requires collector authentication
+			metrics.POST("/push", s.CollectorAuthMiddleware(), s.handleMetricsPush)
 			// Cache metrics (protected)
 			metrics.GET("/cache", s.AuthMiddleware(), s.handleCacheMetrics)
 		}

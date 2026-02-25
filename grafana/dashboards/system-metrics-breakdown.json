@@ -1,0 +1,186 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": "-- Grafana --",
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "gnetId": null,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "datasource": {"type": "grafana-postgresql-datasource", "uid": "P4755FD0186DF985F"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {
+            "axisLabel": "Block Count",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineInterpolation": "linear",
+            "lineWidth": 2
+          },
+          "mappings": []
+        }
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+      "id": 1,
+      "options": {
+        "legend": {
+          "calcs": ["mean", "max"],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {"mode": "multi"}
+      },
+      "pluginVersion": "8.0.0",
+      "targets": [
+        {
+          "format": "time_series",
+          "rawSql": "SELECT time, user_name as \"User\", SUM(local_blks_hit) as \"Local Hit\", SUM(local_blks_read) as \"Local Read\", SUM(local_blks_dirtied) as \"Local Dirtied\", SUM(local_blks_written) as \"Local Written\" FROM query_stats WHERE time >= NOW() - INTERVAL '24 hours' GROUP BY time, user_name ORDER BY time DESC",
+          "refId": "A"
+        }
+      ],
+      "title": "Local Buffer Metrics by User",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "grafana-postgresql-datasource", "uid": "P4755FD0186DF985F"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {
+            "axisLabel": "Block Count",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineInterpolation": "linear",
+            "lineWidth": 2
+          }
+        }
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+      "id": 2,
+      "options": {
+        "legend": {
+          "calcs": ["mean", "max"],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {"mode": "multi"}
+      },
+      "pluginVersion": "8.0.0",
+      "targets": [
+        {
+          "format": "time_series",
+          "rawSql": "SELECT time, SUM(temp_blks_read) as \"Temp Read\", SUM(temp_blks_written) as \"Temp Written\" FROM query_stats WHERE time >= NOW() - INTERVAL '24 hours' GROUP BY time ORDER BY time DESC",
+          "refId": "A"
+        }
+      ],
+      "title": "Temporary Storage Usage",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "grafana-postgresql-datasource", "uid": "P4755FD0186DF985F"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {
+            "axisLabel": "Record Count",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineInterpolation": "linear",
+            "lineWidth": 2
+          }
+        }
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+      "id": 3,
+      "options": {
+        "legend": {
+          "calcs": ["mean", "max"],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {"mode": "multi"}
+      },
+      "pluginVersion": "8.0.0",
+      "targets": [
+        {
+          "format": "time_series",
+          "rawSql": "SELECT time, SUM(wal_records) as \"WAL Records\", SUM(wal_fpi) as \"WAL FPI\", SUM(wal_bytes) / 1024.0 / 1024.0 as \"WAL Bytes (MB)\" FROM query_stats WHERE time >= NOW() - INTERVAL '24 hours' GROUP BY time ORDER BY time DESC",
+          "refId": "A"
+        }
+      ],
+      "title": "WAL Activity (PostgreSQL 13+)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "grafana-postgresql-datasource", "uid": "P4755FD0186DF985F"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {
+            "axisLabel": "Time (ms)",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "lineWidth": 0
+          }
+        }
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+      "id": 4,
+      "options": {
+        "legend": {
+          "calcs": ["mean"],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {"mode": "multi"}
+      },
+      "pluginVersion": "8.0.0",
+      "targets": [
+        {
+          "format": "table",
+          "rawSql": "SELECT user_name as \"User\", database_name as \"Database\", COUNT(*) as \"Query Count\", AVG(query_plan_time) as \"Avg Plan Time (ms)\", MAX(query_plan_time) as \"Max Plan Time (ms)\" FROM query_stats WHERE time >= NOW() - INTERVAL '24 hours' GROUP BY user_name, database_name ORDER BY MAX(query_plan_time) DESC LIMIT 20",
+          "refId": "A"
+        }
+      ],
+      "title": "Query Planning Time by User",
+      "type": "table"
+    }
+  ],
+  "schemaVersion": 26,
+  "style": "dark",
+  "tags": ["system", "buffers", "wal"],
+  "templating": {
+    "list": []
+  },
+  "time": {"from": "now-24h", "to": "now"},
+  "timepicker": {},
+  "timezone": "",
+  "title": "System Metrics Breakdown",
+  "uid": "system-metrics-breakdown",
+  "version": 1
+}

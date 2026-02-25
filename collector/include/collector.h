@@ -14,6 +14,7 @@ class PgStatsCollector;
 class DiskUsageCollector;
 class PgLogCollector;
 class SysstatCollector;
+class PgReplicationCollector;
 
 /**
  * Base Collector interface
@@ -29,7 +30,7 @@ public:
     virtual json execute() = 0;
 
     /**
-     * Get the type of this collector (pg_stats, disk_usage, pg_log, sysstat)
+     * Get the type of this collector (pg_stats, disk_usage, pg_log, sysstat, pg_replication)
      */
     virtual std::string getType() const = 0;
 
@@ -150,6 +151,9 @@ private:
 
     json collectLogs();
 };
+
+// Forward declaration only - full definition in replication_plugin.h
+// (Replication collector is defined separately due to complex data structures)
 
 /**
  * Collector Manager

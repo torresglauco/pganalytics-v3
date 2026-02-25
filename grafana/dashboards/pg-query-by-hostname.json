@@ -99,7 +99,7 @@
           "group": [],
           "metricColumn": "metric",
           "rawQuery": true,
-          "rawSql": "SELECT q.time as \"time\", c.hostname as \"metric\", q.mean_time as \"value\" FROM metrics_pg_stats_query q JOIN collectors c ON q.collector_id = c.id WHERE q.time > NOW() - INTERVAL '24 hours' AND c.hostname =~ $hostname ORDER BY q.time",
+          "rawSql": "SELECT q.time as \"time\", c.hostname as \"metric\", q.mean_time as \"value\" FROM metrics_pg_stats_query q JOIN collectors c ON q.collector_id = c.id WHERE q.time > NOW() - INTERVAL '24 hours' AND c.hostname ~ $hostname ORDER BY q.time",
           "refId": "A",
           "select": [
             [
@@ -169,7 +169,7 @@
           "group": [],
           "metricColumn": "none",
           "rawQuery": true,
-          "rawSql": "SELECT c.hostname as \"Hostname\", COUNT(*) as \"Query Count\", ROUND(AVG(q.mean_time)::numeric, 2) as \"Avg Time (ms)\", ROUND(MAX(q.max_time)::numeric, 2) as \"Max Time (ms)\", ROUND(MIN(q.min_time)::numeric, 4) as \"Min Time (ms)\", SUM(q.calls)::numeric as \"Total Calls\", ROUND(100.0 * SUM(q.shared_blks_hit) / NULLIF(SUM(q.shared_blks_hit + q.shared_blks_read), 0), 2)::numeric as \"Cache Hit %\" FROM metrics_pg_stats_query q JOIN collectors c ON q.collector_id = c.id WHERE q.time > NOW() - INTERVAL '24 hours' AND c.hostname =~ $hostname GROUP BY c.hostname",
+          "rawSql": "SELECT c.hostname as \"Hostname\", COUNT(*) as \"Query Count\", ROUND(AVG(q.mean_time)::numeric, 2) as \"Avg Time (ms)\", ROUND(MAX(q.max_time)::numeric, 2) as \"Max Time (ms)\", ROUND(MIN(q.min_time)::numeric, 4) as \"Min Time (ms)\", SUM(q.calls)::numeric as \"Total Calls\", ROUND(100.0 * SUM(q.shared_blks_hit) / NULLIF(SUM(q.shared_blks_hit + q.shared_blks_read), 0), 2)::numeric as \"Cache Hit %\" FROM metrics_pg_stats_query q JOIN collectors c ON q.collector_id = c.id WHERE q.time > NOW() - INTERVAL '24 hours' AND c.hostname ~ $hostname GROUP BY c.hostname",
           "refId": "A",
           "select": [
             [
@@ -283,7 +283,7 @@
           "group": [],
           "metricColumn": "metric",
           "rawQuery": true,
-          "rawSql": "SELECT q.time as \"time\", c.hostname as \"metric\", CASE WHEN (q.shared_blks_hit + q.shared_blks_read) > 0 THEN ROUND(100.0 * q.shared_blks_hit / (q.shared_blks_hit + q.shared_blks_read), 2) ELSE 0 END as \"value\" FROM metrics_pg_stats_query q JOIN collectors c ON q.collector_id = c.id WHERE q.time > NOW() - INTERVAL '24 hours' AND c.hostname =~ $hostname ORDER BY q.time",
+          "rawSql": "SELECT q.time as \"time\", c.hostname as \"metric\", CASE WHEN (q.shared_blks_hit + q.shared_blks_read) > 0 THEN ROUND(100.0 * q.shared_blks_hit / (q.shared_blks_hit + q.shared_blks_read), 2) ELSE 0 END as \"value\" FROM metrics_pg_stats_query q JOIN collectors c ON q.collector_id = c.id WHERE q.time > NOW() - INTERVAL '24 hours' AND c.hostname ~ $hostname ORDER BY q.time",
           "refId": "A",
           "select": [
             [
@@ -391,7 +391,7 @@
           "group": [],
           "metricColumn": "metric",
           "rawQuery": true,
-          "rawSql": "SELECT q.time as \"time\", c.hostname as \"metric\", (q.blk_read_time + q.blk_write_time) as \"value\" FROM metrics_pg_stats_query q JOIN collectors c ON q.collector_id = c.id WHERE q.time > NOW() - INTERVAL '24 hours' AND c.hostname =~ $hostname ORDER BY q.time",
+          "rawSql": "SELECT q.time as \"time\", c.hostname as \"metric\", (q.blk_read_time + q.blk_write_time) as \"value\" FROM metrics_pg_stats_query q JOIN collectors c ON q.collector_id = c.id WHERE q.time > NOW() - INTERVAL '24 hours' AND c.hostname ~ $hostname ORDER BY q.time",
           "refId": "A",
           "select": [
             [

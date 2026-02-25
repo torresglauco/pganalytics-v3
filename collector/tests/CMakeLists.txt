@@ -10,6 +10,7 @@ set(UNIT_TEST_SOURCES
     unit/metrics_buffer_test.cpp
     unit/config_manager_test.cpp
     unit/sender_test.cpp
+    unit/replication_collector_test.cpp
     postgres_plugin_test.cpp
 )
 
@@ -48,6 +49,7 @@ set(TEST_SOURCES
 set(COLLECTOR_SOURCES_NO_MAIN
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/collector.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/postgres_plugin.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src/replication_plugin.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/sysstat_plugin.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/log_plugin.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/sender.cpp

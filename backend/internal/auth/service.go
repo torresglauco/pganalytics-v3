@@ -77,9 +77,8 @@ func (as *AuthService) LoginUser(username, password string) (*models.LoginRespon
 		return nil, apperrors.Unauthorized("User account is inactive", "")
 	}
 
-	// Verify password (would need password hash stored in database)
-	// For now, we'll accept any non-empty password as demo
-	if password == "" {
+	// Verify password
+	if !as.passwordManager.VerifyPassword(user.PasswordHash, password) {
 		return nil, apperrors.InvalidCredentials()
 	}
 

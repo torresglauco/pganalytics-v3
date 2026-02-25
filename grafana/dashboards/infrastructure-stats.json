@@ -1,0 +1,181 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": "-- Grafana --",
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "gnetId": null,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "datasource": {"type": "grafana-postgresql-datasource", "uid": "P4755FD0186DF985F"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {
+            "hideFrom": {"tooltip": false, "viz": false, "legend": false}
+          },
+          "mappings": [],
+          "unit": "bytes"
+        }
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+      "id": 1,
+      "options": {
+        "legend": {
+          "calcs": ["value"],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true
+        },
+        "pieType": "pie",
+        "tooltip": {"mode": "single"}
+      },
+      "pluginVersion": "8.0.0",
+      "targets": [
+        {
+          "format": "table",
+          "rawSql": "SELECT schemaname, tablename, pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) as size FROM pg_tables WHERE schemaname NOT IN ('pg_catalog', 'information_schema') ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC LIMIT 15",
+          "refId": "A"
+        }
+      ],
+      "title": "Top 15 Tables by Size",
+      "type": "piechart"
+    },
+    {
+      "datasource": {"type": "grafana-postgresql-datasource", "uid": "P4755FD0186DF985F"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {
+            "hideFrom": {"tooltip": false, "viz": false}
+          },
+          "mappings": [],
+          "unit": "short"
+        }
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+      "id": 2,
+      "options": {
+        "legend": {
+          "calcs": ["value"],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true
+        },
+        "pieType": "donut",
+        "tooltip": {"mode": "single"}
+      },
+      "pluginVersion": "8.0.0",
+      "targets": [
+        {
+          "format": "table",
+          "rawSql": "SELECT schemaname, indexname, idx_scan as scans FROM pg_stat_user_indexes ORDER BY idx_scan DESC LIMIT 15",
+          "refId": "A"
+        }
+      ],
+      "title": "Top Indexes by Scans",
+      "type": "piechart"
+    },
+    {
+      "datasource": {"type": "grafana-postgresql-datasource", "uid": "P4755FD0186DF985F"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {
+            "axisLabel": "Seq Scans",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "lineWidth": 0
+          },
+          "mappings": [],
+          "unit": "short"
+        }
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+      "id": 3,
+      "options": {
+        "legend": {
+          "calcs": ["max"],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {"mode": "multi"}
+      },
+      "pluginVersion": "8.0.0",
+      "targets": [
+        {
+          "format": "table",
+          "rawSql": "SELECT schemaname, tablename, seq_scan, seq_tup_read FROM pg_stat_user_tables ORDER BY seq_scan DESC LIMIT 20",
+          "refId": "A"
+        }
+      ],
+      "title": "Tables with High Sequential Scans",
+      "type": "table"
+    },
+    {
+      "datasource": {"type": "grafana-postgresql-datasource", "uid": "P4755FD0186DF985F"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {
+            "axisLabel": "Index Usage Efficiency",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "lineWidth": 0
+          },
+          "mappings": []
+        }
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+      "id": 4,
+      "options": {
+        "legend": {
+          "calcs": ["value"],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {"mode": "multi"}
+      },
+      "pluginVersion": "8.0.0",
+      "targets": [
+        {
+          "format": "table",
+          "rawSql": "SELECT datname as \"Database\", numbackends as \"Connections\", xact_commit as \"Commits\", xact_rollback as \"Rollbacks\", blks_hit as \"Cache Hits\", blks_read as \"Cache Misses\" FROM pg_stat_database WHERE datname NOT IN ('postgres', 'template0', 'template1') ORDER BY numbackends DESC",
+          "refId": "A"
+        }
+      ],
+      "title": "Database-level Statistics",
+      "type": "table"
+    }
+  ],
+  "schemaVersion": 26,
+  "style": "dark",
+  "tags": ["infrastructure", "tables", "indexes"],
+  "templating": {
+    "list": []
+  },
+  "time": {"from": "now-24h", "to": "now"},
+  "timepicker": {},
+  "timezone": "",
+  "title": "Infrastructure Statistics",
+  "uid": "infrastructure-stats",
+  "version": 1
+}

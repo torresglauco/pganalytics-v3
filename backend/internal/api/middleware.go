@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/torresglauco/pganalytics-v3/backend/internal/auth"
@@ -125,20 +126,44 @@ func (s *Server) MTLSMiddleware() gin.HandlerFunc {
 // RoleMiddleware checks if user has required role
 func (s *Server) RoleMiddleware(requiredRole string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// TODO: Get role from context (set by AuthMiddleware)
-		// userRole, exists := c.Get("role")
-		// if !exists {
-		// 	c.JSON(http.StatusUnauthorized, gin.H{"error": "No role found"})
-		// 	c.Abort()
-		// 	return
-		// }
+		// Get role from context (set by AuthMiddleware)
+		userRole, exists := c.Get("role")
+		if !exists {
+			errResp := apperrors.Unauthorized("No role found", "")
+			c.JSON(errResp.StatusCode, errResp)
+			c.Abort()
+			return
+		}
 
-		// TODO: Check if user role matches required role
-		// if userRole != requiredRole {
-		// 	c.JSON(http.StatusForbidden, gin.H{"error": "Insufficient permissions"})
-		// 	c.Abort()
-		// 	return
-		// }
+		userRoleStr, ok := userRole.(string)
+		if !ok {
+			errResp := apperrors.Unauthorized("Invalid role format", "")
+			c.JSON(errResp.StatusCode, errResp)
+			c.Abort()
+			return
+		}
+
+		// Role hierarchy: admin > user > viewer
+		roleHierarchy := map[string]int{
+			"admin":  3,
+			"user":   2,
+			"viewer": 1,
+		}
+
+		userRoleLevel := roleHierarchy[userRoleStr]
+		requiredLevel := roleHierarchy[requiredRole]
+
+		if userRoleLevel < requiredLevel {
+			errResp := apperrors.NewAppError(
+				http.StatusForbidden,
+				400,
+				"Insufficient permissions",
+				"Your role does not have access to this resource",
+			)
+			c.JSON(errResp.StatusCode, errResp)
+			c.Abort()
+			return
+		}
 
 		c.Next()
 	}
@@ -201,13 +226,66 @@ func (s *Server) CORSMiddleware() gin.HandlerFunc {
 	}
 }
 
-// RateLimitMiddleware limits request rate (placeholder for future implementation)
-func (s *Server) RateLimitMiddleware() gin.HandlerFunc {
+// SecurityHeadersMiddleware adds security headers
+func (s *Server) SecurityHeadersMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// TODO: Implement rate limiting
-		// Could use libraries like:
-		// - github.com/juju/ratelimit
-		// - github.com/throttled/throttled
+		// Prevent clickjacking attacks
+		c.Writer.Header().Set("X-Frame-Options", "DENY")
+
+		// Prevent MIME type sniffing
+		c.Writer.Header().Set("X-Content-Type-Options", "nosniff")
+
+		// Enable XSS protection in browsers
+		c.Writer.Header().Set("X-XSS-Protection", "1; mode=block")
+
+		// Referrer policy
+		c.Writer.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
+
+		// Content Security Policy (permissive but secure)
+		c.Writer.Header().Set("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none';")
+
+		// HSTS (only in production)
+		if s.config.IsProduction() {
+			c.Writer.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload")
+		}
+
+		c.Next()
+	}
+}
+
+// RateLimitMiddleware limits request rate using token bucket algorithm
+func (s *Server) RateLimitMiddleware() gin.HandlerFunc {
+	if s.rateLimiter == nil {
+		// Rate limiter not initialized, pass through
+		return func(c *gin.Context) {
+			c.Next()
+		}
+	}
+
+	return func(c *gin.Context) {
+		// Get client identifier (user_id for users, collector_id for collectors)
+		clientID := ""
+		if userID, exists := c.Get("user_id"); exists {
+			clientID = "user:" + fmt.Sprintf("%v", userID)
+		} else if collectorID, exists := c.Get("collector_id"); exists {
+			clientID = "collector:" + fmt.Sprintf("%v", collectorID)
+		} else {
+			clientID = c.ClientIP() // fallback to IP
+		}
+
+		// Check rate limit
+		if !s.rateLimiter.Allow(clientID) {
+			errResp := apperrors.NewAppError(
+				http.StatusTooManyRequests,
+				429,
+				"Too many requests",
+				"Rate limit exceeded. Please try again later.",
+			)
+			c.JSON(errResp.StatusCode, errResp)
+			c.Abort()
+			return
+		}
+
 		c.Next()
 	}
 }

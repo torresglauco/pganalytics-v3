@@ -8,7 +8,7 @@ datasources:
     database: pganalytics
     user: postgres
     secureJsonData:
-      password: postgres
+      password: pganalytics
     jsonData:
       sslmode: disable
     isDefault: true

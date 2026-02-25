@@ -8,8 +8,13 @@
 
 using json = nlohmann::json;
 
-// Forward declaration
-class PQconn;
+#ifdef HAVE_LIBPQ
+#include <libpq-fe.h>
+#else
+// Forward declaration when libpq not available
+typedef struct pg_conn PGconn;
+typedef struct pg_result PGresult;
+#endif
 
 /**
  * PostgreSQL Replication Collector
@@ -196,9 +201,9 @@ private:
     /**
      * Connect to a PostgreSQL database
      * @param dbname Database name to connect to (or "postgres" for cluster-wide queries)
-     * @return PQconn pointer or nullptr on failure
+     * @return PGconn pointer or nullptr on failure
      */
-    PQconn* connectToDatabase(const std::string& dbname);
+    PGconn* connectToDatabase(const std::string& dbname);
 
     /**
      * Execute a SELECT query and return results as JSON array
@@ -206,7 +211,7 @@ private:
      * @param query SQL query to execute
      * @return JSON array with query results
      */
-    json executeQuery(PQconn* conn, const std::string& query);
+    json executeQuery(PGconn* conn, const std::string& query);
 
     /**
      * Parse LSN string to bytes for comparison

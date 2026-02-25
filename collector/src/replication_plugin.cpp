@@ -7,10 +7,6 @@
 #include <algorithm>
 #include <cmath>
 
-#ifdef HAVE_LIBPQ
-#include <libpq-fe.h>
-#endif
-
 /**
  * Get current timestamp in ISO8601 format
  */
@@ -61,7 +57,7 @@ int PgReplicationCollector::detectPostgresVersion() {
         return postgres_version_major_;
     }
 
-    PQconn* conn = connectToDatabase("postgres");
+    PGconn* conn = connectToDatabase("postgres");
     if (!conn) {
         std::cerr << "Failed to detect PostgreSQL version" << std::endl;
         return 0;
@@ -95,7 +91,7 @@ int PgReplicationCollector::detectPostgresVersion() {
 /**
  * Connect to PostgreSQL database
  */
-PQconn* PgReplicationCollector::connectToDatabase(const std::string& dbname) {
+PGconn* PgReplicationCollector::connectToDatabase(const std::string& dbname) {
 #ifdef HAVE_LIBPQ
     std::string connstr = "host=" + postgresHost_ +
                          " port=" + std::to_string(postgresPort_) +
@@ -177,7 +173,7 @@ std::vector<PgReplicationCollector::ReplicationSlot> PgReplicationCollector::col
 #ifdef HAVE_LIBPQ
     std::vector<ReplicationSlot> slots;
 
-    PQconn* conn = connectToDatabase("postgres");
+    PGconn* conn = connectToDatabase("postgres");
     if (!conn) {
         std::cerr << "Failed to connect for replication slots collection" << std::endl;
         return slots;
@@ -249,7 +245,7 @@ std::vector<PgReplicationCollector::ReplicationStatus> PgReplicationCollector::c
 #ifdef HAVE_LIBPQ
     std::vector<ReplicationStatus> replicas;
 
-    PQconn* conn = connectToDatabase("postgres");
+    PGconn* conn = connectToDatabase("postgres");
     if (!conn) {
         std::cerr << "Failed to connect for replication status collection" << std::endl;
         return replicas;
@@ -360,7 +356,7 @@ PgReplicationCollector::WalSegmentStatus PgReplicationCollector::collectWalSegme
     wal_status.segments_since_checkpoint = 0;
     wal_status.growth_rate_mb_per_hour = 0.0;
 
-    PQconn* conn = connectToDatabase("postgres");
+    PGconn* conn = connectToDatabase("postgres");
     if (!conn) {
         std::cerr << "Failed to connect for WAL status collection" << std::endl;
         return wal_status;
@@ -413,7 +409,7 @@ std::vector<PgReplicationCollector::VacuumWrapAroundRisk> PgReplicationCollector
 #ifdef HAVE_LIBPQ
     std::vector<VacuumWrapAroundRisk> risks;
 
-    PQconn* conn = connectToDatabase("postgres");
+    PGconn* conn = connectToDatabase("postgres");
     if (!conn) {
         std::cerr << "Failed to connect for wraparound risk collection" << std::endl;
         return risks;

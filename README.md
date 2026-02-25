@@ -29,12 +29,19 @@ A modern, scalable PostgreSQL monitoring and analytics platform with machine lea
 ## Quick Links
 
 **Start Here:**
-- **[QUICK_REFERENCE.md](QUICK_REFERENCE.md)** - Quick start guide (5 min read)
+- **[DEPLOYMENT_START_HERE.md](DEPLOYMENT_START_HERE.md)** - 5-minute deployment overview (read this first!)
+- **[QUICK_REFERENCE.md](QUICK_REFERENCE.md)** - Quick start guide and FAQ
 - **[SETUP.md](SETUP.md)** - Development environment setup
 
+**Configuration (Choose One):**
+- **[DEPLOYMENT_CONFIG_TEMPLATE_OPEN.md](DEPLOYMENT_CONFIG_TEMPLATE_OPEN.md)** - **Infrastructure-agnostic configuration** (works with AWS, on-prem, Kubernetes, Docker, hybrid) ⭐ START HERE
+- **[DEPLOYMENT_CONFIG_TEMPLATE.md](DEPLOYMENT_CONFIG_TEMPLATE.md)** - Full template with all 81 parameters documented
+- **[DEPLOYMENT_CONFIG_ENTERPRISE_SCALE.md](DEPLOYMENT_CONFIG_ENTERPRISE_SCALE.md)** - For massive distributed deployments (hundreds of RDS + thousands of EC2)
+
 **For Production Deployment:**
-- **[DEPLOYMENT_PLAN_v3.2.0.md](DEPLOYMENT_PLAN_v3.2.0.md)** - Complete 4-phase deployment plan
-- **[ENTERPRISE_INSTALLATION.md](ENTERPRISE_INSTALLATION.md)** - Multi-server enterprise installation guide
+- **[DEPLOYMENT_PLAN_v3.2.0.md](DEPLOYMENT_PLAN_v3.2.0.md)** - Complete 4-phase deployment plan (Pre-Deployment → Staging → Production → Monitoring)
+- **[PHASE1_EXECUTION_CHECKLIST_V2.md](PHASE1_EXECUTION_CHECKLIST_V2.md)** - Step-by-step Phase 1 procedures with checklist
+- **[ENTERPRISE_INSTALLATION.md](ENTERPRISE_INSTALLATION.md)** - Multi-server installation guide (separate PostgreSQL, API, Collectors, Grafana)
 - **[docs/COLLECTOR_REGISTRATION_GUIDE.md](docs/COLLECTOR_REGISTRATION_GUIDE.md)** - Collector registration and JWT authentication
 
 **Reference Documentation:**
@@ -157,7 +164,27 @@ make test-integration   # E2E tests (requires docker-compose)
 
 ## Configuration
 
-### Backend (Environment Variables)
+### Deployment Configuration (Production)
+
+pgAnalytics v3.2.0 uses environment variables for infrastructure-agnostic deployment. Choose based on your needs:
+
+**For most users:**
+```bash
+# Copy and fill the open configuration template
+cp DEPLOYMENT_CONFIG_TEMPLATE_OPEN.md ~/.env.pganalytics
+nano ~/.env.pganalytics         # Fill in YOUR infrastructure details
+source ~/.env.pganalytics
+bash scripts/phase1_automated_setup.sh
+```
+
+**Available configuration templates:**
+- `DEPLOYMENT_CONFIG_TEMPLATE_OPEN.md` - **Start here** (no infrastructure assumptions)
+- `DEPLOYMENT_CONFIG_TEMPLATE.md` - Full template with all parameters
+- `DEPLOYMENT_CONFIG_ENTERPRISE_SCALE.md` - For massive distributed deployments
+
+See **[DEPLOYMENT_START_HERE.md](DEPLOYMENT_START_HERE.md)** for complete deployment instructions.
+
+### Backend (Development Environment Variables)
 ```bash
 DATABASE_URL=postgres://user:pass@localhost/pganalytics
 TIMESCALE_URL=postgres://user:pass@localhost/timescale
@@ -217,22 +244,46 @@ See [docs/SECURITY.md](docs/SECURITY.md) for detailed security guidelines.
 
 ## Deployment
 
-### Docker
+### Quick Start (Development)
 ```bash
 docker-compose up -d
 ```
 
-### Kubernetes (Ready)
-Helm charts available in `deployments/helm/`
+### Production Deployment
 
-### Standalone
-1. Build binaries
-2. Set environment variables
-3. Run migrations
-4. Start backend: `./pganalytics-api`
-5. Configure and run collectors
+**Step 1: Choose your configuration template**
+```bash
+cp DEPLOYMENT_CONFIG_TEMPLATE_OPEN.md ~/.env.pganalytics
+nano ~/.env.pganalytics  # Fill with YOUR infrastructure values
+```
 
-See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for detailed instructions.
+**Step 2: Run deployment automation**
+```bash
+source ~/.env.pganalytics
+bash scripts/phase1_automated_setup.sh
+```
+
+**Step 3: Follow Phase 1 checklist**
+```bash
+cat PHASE1_EXECUTION_CHECKLIST_V2.md
+```
+
+**Deployment Options:**
+- **Docker** - `docker-compose up -d` (development/testing)
+- **Standalone** - Manual deployment on physical servers or VMs
+- **AWS EC2** - Deploy using configuration template + scripts
+- **On-Premises** - Deploy using configuration template + scripts
+- **Kubernetes** - Deploy using configuration template + K8s manifests
+- **Hybrid** - Mix and match across regions and infrastructure types
+
+**Works with ANY infrastructure:**
+- ✅ AWS (EC2, RDS, any region)
+- ✅ On-premises (physical machines)
+- ✅ Kubernetes (any cluster)
+- ✅ Docker (local or remote)
+- ✅ Hybrid deployments (mix of everything)
+
+See **[DEPLOYMENT_PLAN_v3.2.0.md](DEPLOYMENT_PLAN_v3.2.0.md)** for complete 4-phase timeline and procedures.
 
 ## Performance
 

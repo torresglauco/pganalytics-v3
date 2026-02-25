@@ -1,0 +1,489 @@
+# pgAnalytics v3.2.0 - API Server Configuration
+# Copy to /etc/pganalytics/config.toml and customize for your environment
+# Reference: docs/API_CONFIGURATION.md
+
+###############################################################################
+# Server Configuration
+###############################################################################
+[server]
+
+# Server hostname/IP for reverse proxy configuration
+# Used for CORS and security header validation
+host = "api.example.com"
+
+# API server port (typically 8080, behind HTTPS reverse proxy)
+port = 8080
+
+# Environment: development, staging, production
+environment = "production"
+
+# Enable debug logging (disable in production)
+debug = false
+
+# Request timeout in seconds
+request_timeout = 30
+
+# Maximum request body size in bytes (10MB)
+max_body_size = 10485760
+
+###############################################################################
+# TLS/SSL Configuration
+###############################################################################
+[tls]
+
+# Enable HTTPS/TLS on API server
+# Recommended: Use reverse proxy (nginx/haproxy) for TLS termination
+enabled = true
+
+# Path to TLS certificate (PEM format)
+cert_file = "/etc/pganalytics/api.crt"
+
+# Path to TLS private key (PEM format)
+key_file = "/etc/pganalytics/api.key"
+
+# Minimum TLS version (1.2, 1.3)
+min_version = "1.2"
+
+# Prefer server ciphers
+prefer_server_ciphers = true
+
+###############################################################################
+# Database Configuration
+###############################################################################
+[database]
+
+# PostgreSQL connection parameters
+# Format: postgresql://user:password@host:port/database?sslmode=require
+host = "localhost"
+port = 5432
+user = "pganalytics"
+password = "${DATABASE_PASSWORD}"  # Set via environment variable
+database = "pganalytics"
+sslmode = "require"  # require, prefer, disable
+
+# Connection pool settings
+max_open_connections = 25
+max_idle_connections = 5
+max_lifetime_seconds = 300
+idle_timeout_seconds = 60
+
+# Query timeout in seconds
+query_timeout = 30
+
+###############################################################################
+# Authentication Configuration
+###############################################################################
+[auth]
+
+# JWT token configuration
+# Secret must be at least 64 characters and cryptographically random
+jwt_secret = "${JWT_SECRET_KEY}"  # Set via environment variable
+
+# Token expiration in minutes
+token_expiration_minutes = 15
+
+# Refresh token expiration in hours
+refresh_token_expiration_hours = 24
+
+# Collector registration secret
+# Must be at least 32 characters and unique per environment
+registration_secret = "${REGISTRATION_SECRET}"  # Set via environment variable
+
+# Password hashing cost (bcrypt)
+# Higher values = more secure but slower (10-14 recommended)
+password_hash_cost = 12
+
+# Enable/disable user registration
+allow_registration = false
+
+###############################################################################
+# API Configuration
+###############################################################################
+[api]
+
+# API version (v1, v2)
+version = "v1"
+
+# API base path
+base_path = "/api/v1"
+
+# Enable API documentation endpoints (/docs, /openapi.json)
+enable_docs = false  # Disable in production
+
+# API response compression
+compress_responses = true
+
+###############################################################################
+# Rate Limiting
+###############################################################################
+[rate_limit]
+
+# Enable rate limiting
+enabled = true
+
+# Per-user rate limit: requests per minute
+user_limit_per_minute = 100
+
+# Per-collector rate limit: requests per minute
+collector_limit_per_minute = 1000
+
+# Per-IP rate limit: requests per minute (anonymous)
+ip_limit_per_minute = 10
+
+# Cleanup interval for rate limit buckets (seconds)
+cleanup_interval = 60
+
+###############################################################################
+# CORS Configuration
+###############################################################################
+[cors]
+
+# Enable CORS
+enabled = true
+
+# Allowed origins (exact match or wildcard)
+allowed_origins = [
+    "https://api.example.com",
+    "https://grafana.example.com",
+    "https://dashboard.example.com"
+]
+
+# Allowed methods
+allowed_methods = [
+    "GET",
+    "POST",
+    "PUT",
+    "DELETE",
+    "OPTIONS"
+]
+
+# Allowed headers
+allowed_headers = [
+    "Content-Type",
+    "Authorization",
+    "X-Registration-Secret"
+]
+
+# Exposed response headers
+exposed_headers = [
+    "X-Total-Count",
+    "X-Page",
+    "X-PageSize"
+]
+
+# Allow credentials (cookies, authorization headers)
+allow_credentials = true
+
+# Max age for CORS preflight cache (seconds)
+max_age = 3600
+
+###############################################################################
+# Security Headers
+###############################################################################
+[security]
+
+# Strict-Transport-Security header
+# Format: max-age=31536000; includeSubDomains
+strict_transport_security = "max-age=31536000; includeSubDomains"
+
+# X-Frame-Options (prevent clickjacking)
+# Options: DENY, SAMEORIGIN, ALLOW-FROM uri
+frame_options = "DENY"
+
+# X-Content-Type-Options (prevent MIME sniffing)
+content_type_options = "nosniff"
+
+# X-XSS-Protection (legacy XSS protection)
+xss_protection = "1; mode=block"
+
+# Content-Security-Policy
+# Restrictive default: only allow from same origin
+content_security_policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';"
+
+# Referrer-Policy
+referrer_policy = "strict-origin-when-cross-origin"
+
+# Permissions-Policy
+permissions_policy = "geolocation=(), microphone=(), camera=()"
+
+###############################################################################
+# Logging Configuration
+###############################################################################
+[logging]
+
+# Log level: debug, info, warn, error
+level = "info"
+
+# Log format: json, text
+format = "json"
+
+# Log output: stdout, stderr, file
+output = "stdout"
+
+# Log file path (if output = file)
+file_path = "/var/log/pganalytics/api.log"
+
+# Maximum log file size in MB (for rotation)
+max_size_mb = 100
+
+# Maximum number of log files to keep
+max_backups = 7
+
+# Maximum age of log file in days
+max_age_days = 30
+
+# Exclude sensitive fields from logs
+exclude_fields = [
+    "password",
+    "token",
+    "secret",
+    "authorization"
+]
+
+###############################################################################
+# Metrics Collection
+###############################################################################
+[metrics]
+
+# Enable Prometheus metrics endpoint (/metrics)
+enabled = true
+
+# Metrics endpoint path
+endpoint = "/metrics"
+
+# Include query performance metrics
+include_query_metrics = true
+
+# Include authentication metrics
+include_auth_metrics = true
+
+# Include rate limit metrics
+include_ratelimit_metrics = true
+
+###############################################################################
+# Caching
+###############################################################################
+[cache]
+
+# Enable response caching
+enabled = true
+
+# Cache backend: memory, redis
+backend = "memory"
+
+# Cache TTL in seconds
+ttl_seconds = 300
+
+# Maximum cache size in MB (memory backend)
+max_size_mb = 100
+
+# Redis configuration (if backend = redis)
+[cache.redis]
+host = "localhost"
+port = 6379
+database = 0
+password = ""
+max_connections = 10
+
+###############################################################################
+# Monitoring & Alerting Integration
+###############################################################################
+[monitoring]
+
+# Send metrics to Prometheus Pushgateway
+pushgateway_enabled = false
+pushgateway_url = "http://localhost:9091"
+pushgateway_job = "pganalytics-api"
+
+# Send logs to syslog
+syslog_enabled = false
+syslog_address = "/dev/log"
+syslog_facility = "local0"
+
+###############################################################################
+# Backup Configuration
+###############################################################################
+[backup]
+
+# Enable automatic backups
+enabled = true
+
+# Backup schedule (cron format)
+schedule = "0 2 * * *"  # 2 AM daily
+
+# Backup directory
+directory = "/var/lib/postgresql/backups"
+
+# Encryption enabled
+encryption = true
+
+# Encryption key (from vault)
+encryption_key = "${BACKUP_ENCRYPTION_KEY}"  # Set via environment variable
+
+# Retention policy
+retention_days = 30
+
+###############################################################################
+# Feature Flags
+###############################################################################
+[features]
+
+# Enable collector registration endpoint
+enable_collector_registration = true
+
+# Enable metrics push endpoint
+enable_metrics_push = true
+
+# Enable admin API endpoints
+enable_admin_api = true
+
+# Enable experimental features
+enable_experimental = false
+
+###############################################################################
+# Advanced Configuration
+###############################################################################
+[advanced]
+
+# Request ID generation method: uuid, random, snowflake
+request_id_method = "uuid"
+
+# Enable query parameter binding logging
+log_query_params = false
+
+# Enable response body logging (can be verbose)
+log_response_body = false
+
+# Database connection retry policy
+retry_max_attempts = 3
+retry_initial_delay_ms = 100
+retry_max_delay_ms = 1000
+
+# Circuit breaker for database connections
+circuit_breaker_enabled = true
+circuit_breaker_failure_threshold = 5
+circuit_breaker_success_threshold = 2
+circuit_breaker_timeout_seconds = 60
+
+###############################################################################
+# Email Configuration (for alerts/notifications)
+###############################################################################
+[email]
+
+# Enable email notifications
+enabled = false
+
+# SMTP server
+smtp_host = "smtp.example.com"
+smtp_port = 587
+smtp_user = "${SMTP_USER}"
+smtp_password = "${SMTP_PASSWORD}"
+
+# From address
+from_address = "alerts@pganalytics.com"
+
+# TLS required
+tls_required = true
+
+###############################################################################
+# Integration: Slack (for alerts)
+###############################################################################
+[slack]
+
+# Enable Slack notifications
+enabled = false
+
+# Slack webhook URL
+webhook_url = "${SLACK_WEBHOOK_URL}"
+
+# Channel to post alerts
+channel = "#pganalytics-alerts"
+
+# Username for bot
+username = "pgAnalytics"
+
+###############################################################################
+# Integration: PagerDuty (for incident management)
+###############################################################################
+[pagerduty]
+
+# Enable PagerDuty integration
+enabled = false
+
+# PagerDuty integration key
+integration_key = "${PAGERDUTY_INTEGRATION_KEY}"
+
+###############################################################################
+# Documentation
+###############################################################################
+
+# Configuration Environment Variables
+# All ${VAR_NAME} placeholders must be set as environment variables:
+#
+# Required:
+#   JWT_SECRET_KEY          - JWT signing secret (minimum 64 chars)
+#   REGISTRATION_SECRET     - Collector registration secret (minimum 32 chars)
+#   DATABASE_PASSWORD       - PostgreSQL pganalytics user password
+#
+# Optional:
+#   BACKUP_ENCRYPTION_KEY   - Encryption key for backups
+#   SMTP_USER               - SMTP authentication user
+#   SMTP_PASSWORD           - SMTP authentication password
+#   SLACK_WEBHOOK_URL       - Slack webhook for notifications
+#   PAGERDUTY_INTEGRATION_KEY - PagerDuty integration key
+#
+# Set environment variables before starting the API server:
+#   export JWT_SECRET_KEY="$(cat /vault/secrets/jwt_secret)"
+#   export DATABASE_PASSWORD="$(cat /vault/secrets/db_password)"
+#   ./pganalytics-api --config config.toml
+
+# Example systemd service file:
+# [Unit]
+# Description=pgAnalytics API Server
+# After=network.target postgresql.service
+#
+# [Service]
+# Type=simple
+# User=postgres
+# WorkingDirectory=/opt/pganalytics
+# ExecStart=/opt/pganalytics/pganalytics-api --config /etc/pganalytics/config.toml
+# Restart=always
+# RestartSec=10
+# StandardOutput=journal
+# StandardError=journal
+#
+# Environment="JWT_SECRET_KEY=..."
+# Environment="REGISTRATION_SECRET=..."
+# Environment="DATABASE_PASSWORD=..."
+# Environment="TLS_ENABLED=true"
+#
+# [Install]
+# WantedBy=multi-user.target
+
+# Security Best Practices:
+# 1. Store all secrets in a vault (AWS Secrets Manager, Vault, K8s Secrets)
+# 2. Never commit this file with secrets to version control
+# 3. Use .gitignore to prevent accidental commits
+# 4. Rotate secrets regularly (90 days recommended)
+# 5. Use HTTPS/TLS for all API traffic
+# 6. Monitor failed authentication attempts
+# 7. Enable audit logging
+# 8. Review rate limiting thresholds for your workload
+# 9. Keep PostgreSQL updated
+# 10. Regular backup and disaster recovery testing
+
+# Deployment Checklist:
+# [ ] Update all placeholder values (example.com, etc.)
+# [ ] Set environment variables from vault
+# [ ] Configure TLS certificates
+# [ ] Test database connectivity
+# [ ] Enable security headers
+# [ ] Configure CORS for your domains
+# [ ] Enable rate limiting
+# [ ] Set up monitoring/alerting
+# [ ] Perform security review
+# [ ] Test backup/restore
+# [ ] Load test the configuration
+# [ ] Deploy to staging
+# [ ] Validate all endpoints
+# [ ] Deploy to production

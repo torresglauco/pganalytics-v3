@@ -20,7 +20,7 @@
   "liveNow": false,
   "panels": [
     {
-      "datasource": {"type": "postgres", "uid": "P40AE60E18F02DE32"},
+      "datasource": {"type": "grafana-postgresql-datasource", "uid": "cfe97m9p6hrlse"},
       "fieldConfig": {
         "defaults": {
           "color": {"mode": "palette-classic"},
@@ -70,7 +70,7 @@
       "pluginVersion": "10.0.0",
       "targets": [
         {
-          "datasource": {"type": "postgres", "uid": "P40AE60E18F02DE32"},
+          "datasource": {"type": "grafana-postgresql-datasource", "uid": "cfe97m9p6hrlse"},
           "format": "time_series",
           "group": [],
           "metricColumn": "none",
@@ -87,7 +87,7 @@
       "type": "timeseries"
     },
     {
-      "datasource": {"type": "postgres", "uid": "P40AE60E18F02DE32"},
+      "datasource": {"type": "grafana-postgresql-datasource", "uid": "cfe97m9p6hrlse"},
       "fieldConfig": {
         "defaults": {
           "custom": {"align": "auto", "cellOptions": {"type": "auto"}, "inspect": false},
@@ -113,7 +113,7 @@
       "pluginVersion": "10.0.0",
       "targets": [
         {
-          "datasource": {"type": "postgres", "uid": "P40AE60E18F02DE32"},
+          "datasource": {"type": "grafana-postgresql-datasource", "uid": "cfe97m9p6hrlse"},
           "format": "table",
           "group": [],
           "metricColumn": "none",
@@ -130,7 +130,7 @@
       "type": "table"
     },
     {
-      "datasource": {"type": "postgres", "uid": "P40AE60E18F02DE32"},
+      "datasource": {"type": "grafana-postgresql-datasource", "uid": "cfe97m9p6hrlse"},
       "fieldConfig": {
         "defaults": {
           "color": {"mode": "palette-classic"},
@@ -181,7 +181,7 @@
       "pluginVersion": "10.0.0",
       "targets": [
         {
-          "datasource": {"type": "postgres", "uid": "P40AE60E18F02DE32"},
+          "datasource": {"type": "grafana-postgresql-datasource", "uid": "cfe97m9p6hrlse"},
           "format": "time_series",
           "rawQuery": true,
           "rawSql": "SELECT\n  time as \"time\",\n  CASE WHEN (shared_blks_hit + shared_blks_read) > 0 \n    THEN ROUND(100.0 * shared_blks_hit / (shared_blks_hit + shared_blks_read), 2)\n    ELSE 0 END as \"value\",\n  database_name as \"metric\"\nFROM metrics_pg_stats_query\nWHERE time > NOW() - INTERVAL '24 hours'\nORDER BY time",
@@ -192,7 +192,7 @@
       "type": "timeseries"
     },
     {
-      "datasource": {"type": "postgres", "uid": "P40AE60E18F02DE32"},
+      "datasource": {"type": "grafana-postgresql-datasource", "uid": "cfe97m9p6hrlse"},
       "fieldConfig": {
         "defaults": {
           "color": {"mode": "palette-classic"},
@@ -219,7 +219,7 @@
       "pluginVersion": "10.0.0",
       "targets": [
         {
-          "datasource": {"type": "postgres", "uid": "P40AE60E18F02DE32"},
+          "datasource": {"type": "grafana-postgresql-datasource", "uid": "cfe97m9p6hrlse"},
           "format": "table",
           "rawQuery": true,
           "rawSql": "SELECT\n  SUBSTRING(query_text, 1, 30) || '...' as \"Query\",\n  SUM(calls) as \"Total Calls\"\nFROM metrics_pg_stats_query\nWHERE time > NOW() - INTERVAL '24 hours'\nGROUP BY query_text\nORDER BY SUM(calls) DESC\nLIMIT 10",
@@ -230,7 +230,7 @@
       "type": "piechart"
     },
     {
-      "datasource": {"type": "postgres", "uid": "P40AE60E18F02DE32"},
+      "datasource": {"type": "grafana-postgresql-datasource", "uid": "cfe97m9p6hrlse"},
       "fieldConfig": {
         "defaults": {
           "color": {"mode": "palette-classic"},
@@ -280,7 +280,7 @@
       "pluginVersion": "10.0.0",
       "targets": [
         {
-          "datasource": {"type": "postgres", "uid": "P40AE60E18F02DE32"},
+          "datasource": {"type": "grafana-postgresql-datasource", "uid": "cfe97m9p6hrlse"},
           "format": "time_series",
           "rawQuery": true,
           "rawSql": "SELECT\n  time as \"time\",\n  database_name as \"metric\",\n  (blk_read_time + blk_write_time) as \"value\"\nFROM metrics_pg_stats_query\nWHERE time > NOW() - INTERVAL '24 hours'\nORDER BY time",
@@ -291,7 +291,7 @@
       "type": "timeseries"
     },
     {
-      "datasource": {"type": "postgres", "uid": "P40AE60E18F02DE32"},
+      "datasource": {"type": "grafana-postgresql-datasource", "uid": "cfe97m9p6hrlse"},
       "fieldConfig": {
         "defaults": {
           "color": {"mode": "thresholds"},
@@ -326,7 +326,7 @@
       "pluginVersion": "10.0.0",
       "targets": [
         {
-          "datasource": {"type": "postgres", "uid": "P40AE60E18F02DE32"},
+          "datasource": {"type": "grafana-postgresql-datasource", "uid": "cfe97m9p6hrlse"},
           "format": "table",
           "rawQuery": true,
           "rawSql": "SELECT COUNT(DISTINCT query_hash) as \"Unique Queries (24h)\" FROM metrics_pg_stats_query WHERE time > NOW() - INTERVAL '24 hours'",
@@ -337,7 +337,7 @@
       "type": "gauge"
     },
     {
-      "datasource": {"type": "postgres", "uid": "P40AE60E18F02DE32"},
+      "datasource": {"type": "grafana-postgresql-datasource", "uid": "cfe97m9p6hrlse"},
       "fieldConfig": {
         "defaults": {
           "color": {"mode": "thresholds"},
@@ -365,7 +365,7 @@
       "pluginVersion": "10.0.0",
       "targets": [
         {
-          "datasource": {"type": "postgres", "uid": "P40AE60E18F02DE32"},
+          "datasource": {"type": "grafana-postgresql-datasource", "uid": "cfe97m9p6hrlse"},
           "format": "table",
           "rawQuery": true,
           "rawSql": "SELECT ROUND(AVG(mean_time)::numeric, 2) as \"Avg Query Time (ms)\" FROM metrics_pg_stats_query WHERE time > NOW() - INTERVAL '24 hours'",

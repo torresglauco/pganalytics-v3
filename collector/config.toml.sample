@@ -67,6 +67,14 @@ interval = 300
 enabled = true
 interval = 300
 
+[pg_replication]
+# Replication metrics collector (requires SUPERUSER or pg_monitor role)
+# Monitors streaming replication, replication slots, WAL segments, and XID wraparound risk
+enabled = true
+interval = 60
+
 # Example: Disable a collector
 # [pg_log]
+# enabled = false
+# [pg_replication]
 # enabled = false

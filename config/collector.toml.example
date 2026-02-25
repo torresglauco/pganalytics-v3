@@ -1,0 +1,519 @@
+# pgAnalytics v3.2.0 - Collector Configuration
+# Copy to /etc/pganalytics/collector.toml and customize for your environment
+# Reference: docs/REPLICATION_COLLECTOR_GUIDE.md
+
+###############################################################################
+# Collector Identity
+###############################################################################
+[collector]
+
+# Unique identifier for this collector (assigned during registration)
+# Will be generated as UUID during: curl POST /api/v1/collectors/register
+id = "collector-001"
+
+# Friendly name for this collector (must be unique)
+name = "production-db-01"
+
+# Hostname where collector is running (for identification)
+# Should match: hostname -f
+hostname = "db-server-01.example.com"
+
+# Optional IP address (for network debugging)
+address = "192.168.1.10"
+
+# Collection interval in seconds (default: 60)
+# How often to collect metrics from PostgreSQL
+interval = 60
+
+# Metrics push interval in seconds (default: 60)
+# How often to send collected metrics to API server
+push_interval = 60
+
+# Configuration pull interval in seconds (default: 300)
+# How often to fetch config updates from API server
+config_pull_interval = 300
+
+# Collector version (informational)
+version = "3.2.0"
+
+###############################################################################
+# Backend API Server Configuration
+###############################################################################
+[backend]
+
+# Backend API server URL (HTTPS required in production)
+# Format: https://hostname:port or https://ip:port
+url = "https://api.example.com:8080"
+
+# Collector authentication token (obtained during registration)
+# Generate with: curl -X POST https://api/api/v1/collectors/register \
+#   -H "X-Registration-Secret: $REGISTRATION_SECRET" \
+#   -d '{"name":"production-db-01","hostname":"db-server-01.example.com"}'
+token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+
+# Token refresh strategy: manual, auto
+# auto: automatically refresh token before expiration
+token_refresh = "auto"
+
+# Request timeout in seconds
+timeout = 30
+
+# Maximum retries for failed requests
+max_retries = 3
+
+# Retry backoff strategy: fixed, exponential
+retry_backoff = "exponential"
+
+# Initial retry delay in seconds
+retry_delay = 1
+
+# Maximum retry delay in seconds
+max_retry_delay = 30
+
+###############################################################################
+# PostgreSQL Connection Settings
+###############################################################################
+[postgres]
+
+# PostgreSQL server connection details
+host = "localhost"
+port = 5432
+
+# PostgreSQL monitoring user
+user = "pganalytics"
+
+# Password for monitoring user
+# IMPORTANT: Store in vault or environment variable, not in this file
+# password = "${PG_PASSWORD}"  # Use environment variable
+password = ""
+
+# Primary database name (used for initial connection)
+database = "postgres"
+
+# Comma-separated list of databases to monitor
+# If empty, uses the database specified above
+# Example: "postgres,myapp,analytics"
+databases = "postgres"
+
+# SSL/TLS configuration for PostgreSQL connection
+sslmode = "require"  # disable, allow, prefer, require
+
+# Path to SSL certificate (for mTLS to PostgreSQL)
+# sslcert = "/etc/pganalytics/pg_client.crt"
+
+# Path to SSL private key (for mTLS to PostgreSQL)
+# sslkey = "/etc/pganalytics/pg_client.key"
+
+# Path to CA certificate for verifying PostgreSQL server
+# sslrootcert = "/etc/pganalytics/pg_ca.crt"
+
+# Connection pool settings
+max_connections = 5
+idle_timeout = 300
+
+# Connection test interval (seconds)
+# Periodically test connection health
+test_interval = 300
+
+# Query timeout in seconds
+query_timeout = 30
+
+###############################################################################
+# TLS/SSL Configuration (Collector to API Server)
+###############################################################################
+[tls]
+
+# Verify TLS certificates from API server
+# false = accept self-signed certificates (development only)
+# true = require valid certificates (production)
+verify = true
+
+# Client certificate for mutual TLS (mTLS)
+# Path to PEM-formatted certificate
+cert_file = "/etc/pganalytics/collector.crt"
+
+# Client private key for mutual TLS (mTLS)
+# Path to PEM-formatted private key
+key_file = "/etc/pganalytics/collector.key"
+
+# CA certificate for verifying API server
+# Optional: path to CA certificate for verification
+ca_file = "/etc/pganalytics/ca.crt"
+
+# Minimum TLS version
+min_version = "1.2"
+
+# Prefer server ciphers
+prefer_server_ciphers = true
+
+###############################################################################
+# Metric Collection: PostgreSQL Statistics
+###############################################################################
+[pg_stats]
+
+# Enable PostgreSQL statistics collection
+enabled = true
+
+# Collection interval in seconds
+interval = 60
+
+# Metrics to collect:
+# - table_stats: pg_stat_user_tables (scans, inserts, updates, deletes)
+# - index_stats: pg_stat_user_indexes (scans, tuples read/written)
+# - function_stats: pg_stat_user_functions (calls, time)
+# - statement_stats: pg_stat_statements (queries, durations)
+
+###############################################################################
+# Metric Collection: System Statistics
+###############################################################################
+[sysstat]
+
+# Enable system statistics collection (CPU, memory, disk, network)
+enabled = true
+
+# Collection interval in seconds
+interval = 60
+
+# Metrics collected:
+# - CPU: user, system, idle, iowait percentages
+# - Memory: used, free, cached, available
+# - Disk: read/write bytes and operations
+# - Network: bytes in/out, packets, errors, dropped
+
+###############################################################################
+# Metric Collection: PostgreSQL Logs
+###############################################################################
+[pg_log]
+
+# Enable log file analysis
+enabled = true
+
+# Collection interval in seconds
+interval = 300
+
+# Log directory to monitor
+log_directory = "/var/log/postgresql"
+
+# Log file pattern
+log_pattern = "postgresql-*.log"
+
+# Metrics collected:
+# - Error counts by type
+# - Query duration distribution
+# - Lock wait times
+# - Autovacuum activity
+
+###############################################################################
+# Metric Collection: Disk Usage
+###############################################################################
+[disk_usage]
+
+# Enable disk usage collection
+enabled = true
+
+# Collection interval in seconds
+interval = 300
+
+# Directories to monitor
+monitor_paths = [
+    "/var/lib/postgresql",
+    "/var/log/postgresql"
+]
+
+# Metrics collected:
+# - Total disk size
+# - Used disk space
+# - Free space
+# - Inode usage
+
+###############################################################################
+# Metric Collection: PostgreSQL Replication
+###############################################################################
+# CRITICAL: This is the new v3.2.0 replication metrics collector
+# Requires pg_monitor role or SUPERUSER
+# Monitors: streaming replication, replication slots, WAL segments, XID wraparound
+[pg_replication]
+
+# Enable replication metrics collection
+enabled = true
+
+# Collection interval in seconds
+interval = 60
+
+# Streaming Replication Metrics:
+# - Number of connected replicas
+# - Replication lag (bytes behind primary)
+# - Replica flush/replay LSN positions
+# - Replication state (streaming, catching up, etc.)
+
+# Replication Slots Metrics:
+# - Slot name and type
+# - Active status
+# - Restart LSN
+# - Retained WAL bytes
+# - Remaining retention (for logical slots)
+
+# WAL Archiving Metrics:
+# - Archive success/failure count
+# - Last successful archive timestamp
+# - Archiving lag
+
+# XID Wraparound Risk Metrics:
+# - Current XID position
+# - Percent to wraparound (2^31 limit)
+# - Rows affected by full table scans
+# - Time estimate to wraparound (based on transaction rate)
+
+# Transaction Rate Metrics:
+# - Transactions per second
+# - Database size growth rate
+
+###############################################################################
+# Metric Collection: Custom Queries
+###############################################################################
+[custom_queries]
+
+# Enable custom query execution
+enabled = false
+
+# Custom query file (optional)
+# Path to file containing custom SQL queries to execute
+# Format: Each query on separate line, separated by semicolon
+# query_file = "/etc/pganalytics/custom_queries.sql"
+
+# Example custom queries (if not using file):
+# queries = [
+#     "SELECT COUNT(*) as table_count FROM information_schema.tables WHERE table_schema='public';",
+#     "SELECT sum(heap_blks_read) as cache_hits FROM pg_statio_user_tables;"
+# ]
+
+###############################################################################
+# Logging Configuration
+###############################################################################
+[logging]
+
+# Log level: debug, info, warn, error
+level = "info"
+
+# Log format: json, text
+format = "json"
+
+# Log output: stdout, stderr, file
+output = "stdout"
+
+# Log file path (if output = file)
+file_path = "/var/log/pganalytics/collector.log"
+
+# Maximum log file size in MB (for rotation)
+max_size_mb = 100
+
+# Maximum number of log files to keep
+max_backups = 7
+
+# Maximum age of log file in days
+max_age_days = 30
+
+# Include query details in logs (may expose sensitive data)
+log_queries = false
+
+# Include metric values in logs
+log_metrics = false
+
+###############################################################################
+# Performance & Resource Limits
+###############################################################################
+[performance]
+
+# Maximum concurrent database connections
+max_db_connections = 5
+
+# Maximum concurrent API requests
+max_api_requests = 10
+
+# Memory limit in MB (0 = unlimited)
+memory_limit_mb = 500
+
+# CPU time limit in seconds per collection cycle (0 = unlimited)
+cpu_time_limit = 60
+
+# Buffer size for metrics (before pushing to API)
+metric_buffer_size = 1000
+
+# Flush metrics if buffer reaches this percentage
+buffer_flush_percentage = 80
+
+###############################################################################
+# Filtering & Exclusions
+###############################################################################
+[filters]
+
+# Exclude specific databases from monitoring
+exclude_databases = [
+    "template0",
+    "template1"
+]
+
+# Exclude specific tables from statistics collection
+exclude_tables = [
+    "pg_*",
+    "information_schema.*"
+]
+
+# Exclude specific metrics (metric names)
+exclude_metrics = [
+    # Examples:
+    # "pg_stat_database",
+    # "pg_stat_user_tables"
+]
+
+# Include only specific databases (if set, excludes others)
+# include_databases = []
+
+###############################################################################
+# Collector Registration Details
+###############################################################################
+# The collector can self-register with the API server on startup.
+# This section documents the registration process.
+#
+# Registration Workflow:
+# 1. On first run, if [collector].id is empty, collector will self-register
+# 2. Registration request:
+#    POST https://api.example.com:8080/api/v1/collectors/register
+#    Header: X-Registration-Secret: ${REGISTRATION_SECRET}
+#    Body: {
+#      "name": "production-db-01",
+#      "hostname": "db-server-01.example.com",
+#      "address": "192.168.1.10"
+#    }
+#
+# 3. Response contains:
+#    {
+#      "id": "550e8400-e29b-41d4-a716-446655440000",
+#      "token": "eyJhbGc...",
+#      "certificate": "-----BEGIN CERTIFICATE-----...",
+#      "private_key": "-----BEGIN PRIVATE KEY-----...",
+#      "expires_at": "2027-02-24T00:00:00Z"
+#    }
+#
+# 4. Collector configuration is automatically updated with:
+#    - id: from response
+#    - token: from response (for subsequent API calls)
+#    - cert_file: from response
+#    - key_file: from response
+
+###############################################################################
+# Proxy Configuration (if required)
+###############################################################################
+# [proxy]
+# Use proxy to connect to API server (optional)
+# enabled = false
+# host = "proxy.example.com"
+# port = 3128
+# user = ""
+# password = ""
+# no_proxy = "localhost,127.0.0.1"
+
+###############################################################################
+# Health Check Configuration
+###############################################################################
+[health_check]
+
+# Enable periodic health checks
+enabled = true
+
+# Health check interval in seconds
+interval = 60
+
+# Health check endpoints:
+# - PostgreSQL connection status
+# - API server connectivity
+# - Metrics collection success rate
+# - Recent error count
+
+###############################################################################
+# Alert/Notification Configuration (collector-level)
+###############################################################################
+[alerts]
+
+# Enable collector alerts
+enabled = false
+
+# Alert on connection failures
+alert_on_connection_failure = true
+
+# Alert on collection failures
+alert_on_collection_failure = true
+
+# Alert on API push failures
+alert_on_push_failure = true
+
+# Maximum consecutive failures before alerting (e.g., 3)
+failure_threshold = 3
+
+###############################################################################
+# Documentation
+###############################################################################
+
+# Configuration Environment Variables
+# These can be set in environment instead of config file:
+#
+# PG_PASSWORD              - PostgreSQL password (instead of config)
+# REGISTRATION_SECRET      - Collector registration secret (for registration)
+# COLLECTOR_ID             - Override collector.id
+# COLLECTOR_NAME           - Override collector.name
+# BACKEND_URL              - Override backend.url
+# BACKEND_TOKEN            - Override backend.token
+# PG_HOST                  - Override postgres.host
+# PG_PORT                  - Override postgres.port
+# LOG_LEVEL                - Override logging.level
+
+# Example environment setup:
+# export PG_PASSWORD=$(vault kv get -field=password secret/pganalytics/db)
+# export BACKEND_TOKEN=$(vault kv get -field=token secret/pganalytics/collector)
+# ./pganalytics --config collector.toml
+
+# Security Best Practices:
+# 1. Use TLS for PostgreSQL connection (sslmode=require)
+# 2. Use TLS for API server communication (https://)
+# 3. Store passwords in vault, never in config file
+# 4. Restrict file permissions: chmod 600 collector.toml
+# 5. Use separate collector users for each instance
+# 6. Rotate credentials regularly (90 days)
+# 7. Monitor collector logs for errors
+# 8. Test failover and recovery procedures
+# 9. Keep collector binary updated
+# 10. Verify TLS certificates periodically
+
+# Replication Monitoring Best Practices:
+# 1. Ensure pg_monitor role is granted to pganalytics user
+# 2. Monitor WAL segment growth (indicates archiving issues)
+# 3. Track replication lag on all replicas
+# 4. Alert if XID wraparound risk exceeds 75%
+# 5. Monitor replication slot retention (risk of slots filling disk)
+# 6. Test WAL archiving to ensure backups complete
+# 7. Verify replication works after backup restoration
+# 8. Monitor for blocked replication (long-running queries)
+
+# Troubleshooting:
+# - Check collector logs: tail -f /var/log/pganalytics/collector.log
+# - Verify PostgreSQL connection: psql -h localhost -U pganalytics -d postgres
+# - Test API connectivity: curl https://api.example.com/api/v1/health
+# - Verify metrics: SELECT COUNT(*) FROM metrics;
+# - Check replication status: SELECT * FROM pg_stat_replication;
+
+# Deployment Checklist:
+# [ ] PostgreSQL 16.12+ with SSL enabled
+# [ ] pganalytics role created with pg_monitor
+# [ ] Collector binary compiled
+# [ ] TLS certificates obtained
+# [ ] Backend API URL verified
+# [ ] Registration secret available
+# [ ] Collector can reach PostgreSQL
+# [ ] Collector can reach API server
+# [ ] All replication metrics enabled
+# [ ] Logging configured
+# [ ] Health checks passing
+# [ ] Backup and restore tested
+# [ ] Security review completed
+# [ ] Load testing passed
+# [ ] Ready for production deployment

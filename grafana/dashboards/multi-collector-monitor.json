@@ -20,7 +20,7 @@
   "liveNow": false,
   "panels": [
     {
-      "datasource": {"type": "grafana-postgresql-datasource", "name": "pganalytics"},
+      "datasource": {"type": "grafana-postgresql-datasource", "uid": "P4755FD0186DF985F"},
       "fieldConfig": {
         "defaults": {
           "color": {"mode": "palette-classic"},
@@ -72,7 +72,7 @@
       "pluginVersion": "10.0.0",
       "targets": [
         {
-          "datasource": {"type": "grafana-postgresql-datasource", "name": "pganalytics"},
+          "datasource": {"type": "grafana-postgresql-datasource", "uid": "P4755FD0186DF985F"},
           "format": "time_series",
           "rawQuery": true,
           "rawSql": "SELECT\n  q.time as \"time\",\n  c.hostname as \"metric\",\n  q.mean_time as \"value\"\nFROM metrics_pg_stats_query q\nJOIN collectors c ON q.collector_id = c.id\nWHERE q.time > NOW() - INTERVAL '24 hours'\nORDER BY q.time, c.hostname",
@@ -83,7 +83,7 @@
       "type": "timeseries"
     },
     {
-      "datasource": {"type": "grafana-postgresql-datasource", "name": "pganalytics"},
+      "datasource": {"type": "grafana-postgresql-datasource", "uid": "P4755FD0186DF985F"},
       "fieldConfig": {
         "defaults": {
           "custom": {
@@ -112,7 +112,7 @@
       "pluginVersion": "10.0.0",
       "targets": [
         {
-          "datasource": {"type": "grafana-postgresql-datasource", "name": "pganalytics"},
+          "datasource": {"type": "grafana-postgresql-datasource", "uid": "P4755FD0186DF985F"},
           "format": "table",
           "rawQuery": true,
           "rawSql": "SELECT\n  c.hostname as \"Hostname\",\n  c.collector_id as \"Collector ID\",\n  c.database_name as \"Database\",\n  COUNT(*) as \"Records\",\n  ROUND(AVG(q.mean_time)::numeric, 2) as \"Avg Time (ms)\",\n  ROUND(MAX(q.max_time)::numeric, 2) as \"Max Time (ms)\",\n  SUM(q.calls) as \"Total Calls\"\nFROM metrics_pg_stats_query q\nJOIN collectors c ON q.collector_id = c.id\nWHERE q.time > NOW() - INTERVAL '24 hours'\nGROUP BY c.hostname, c.collector_id, c.database_name\nORDER BY SUM(q.calls) DESC",
@@ -123,7 +123,7 @@
       "type": "table"
     },
     {
-      "datasource": {"type": "grafana-postgresql-datasource", "name": "pganalytics"},
+      "datasource": {"type": "grafana-postgresql-datasource", "uid": "P4755FD0186DF985F"},
       "fieldConfig": {
         "defaults": {
           "color": {"mode": "palette-classic"},
@@ -150,7 +150,7 @@
       "pluginVersion": "10.0.0",
       "targets": [
         {
-          "datasource": {"type": "grafana-postgresql-datasource", "name": "pganalytics"},
+          "datasource": {"type": "grafana-postgresql-datasource", "uid": "P4755FD0186DF985F"},
           "format": "table",
           "rawQuery": true,
           "rawSql": "SELECT\n  c.hostname as \"Collector\",\n  SUM(q.calls) as \"Total Calls\"\nFROM metrics_pg_stats_query q\nJOIN collectors c ON q.collector_id = c.id\nWHERE q.time > NOW() - INTERVAL '24 hours'\nGROUP BY c.hostname\nORDER BY SUM(q.calls) DESC",
@@ -161,7 +161,7 @@
       "type": "piechart"
     },
     {
-      "datasource": {"type": "grafana-postgresql-datasource", "name": "pganalytics"},
+      "datasource": {"type": "grafana-postgresql-datasource", "uid": "P4755FD0186DF985F"},
       "fieldConfig": {
         "defaults": {
           "color": {"mode": "palette-classic"},
@@ -213,7 +213,7 @@
       "pluginVersion": "10.0.0",
       "targets": [
         {
-          "datasource": {"type": "grafana-postgresql-datasource", "name": "pganalytics"},
+          "datasource": {"type": "grafana-postgresql-datasource", "uid": "P4755FD0186DF985F"},
           "format": "time_series",
           "rawQuery": true,
           "rawSql": "SELECT\n  q.time as \"time\",\n  c.hostname as \"metric\",\n  CASE WHEN (q.shared_blks_hit + q.shared_blks_read) > 0 \n    THEN ROUND(100.0 * q.shared_blks_hit / (q.shared_blks_hit + q.shared_blks_read), 2)\n    ELSE 0 END as \"value\"\nFROM metrics_pg_stats_query q\nJOIN collectors c ON q.collector_id = c.id\nWHERE q.time > NOW() - INTERVAL '24 hours'\nORDER BY q.time, c.hostname",
@@ -224,7 +224,7 @@
       "type": "timeseries"
     },
     {
-      "datasource": {"type": "grafana-postgresql-datasource", "name": "pganalytics"},
+      "datasource": {"type": "grafana-postgresql-datasource", "uid": "P4755FD0186DF985F"},
       "fieldConfig": {
         "defaults": {
           "color": {"mode": "palette-classic"},
@@ -276,7 +276,7 @@
       "pluginVersion": "10.0.0",
       "targets": [
         {
-          "datasource": {"type": "grafana-postgresql-datasource", "name": "pganalytics"},
+          "datasource": {"type": "grafana-postgresql-datasource", "uid": "P4755FD0186DF985F"},
           "format": "time_series",
           "rawQuery": true,
           "rawSql": "SELECT\n  q.time as \"time\",\n  c.hostname as \"metric\",\n  (q.blk_read_time + q.blk_write_time) as \"value\"\nFROM metrics_pg_stats_query q\nJOIN collectors c ON q.collector_id = c.id\nWHERE q.time > NOW() - INTERVAL '24 hours'\nORDER BY q.time, c.hostname",
@@ -287,7 +287,7 @@
       "type": "timeseries"
     },
     {
-      "datasource": {"type": "grafana-postgresql-datasource", "name": "pganalytics"},
+      "datasource": {"type": "grafana-postgresql-datasource", "uid": "P4755FD0186DF985F"},
       "fieldConfig": {
         "defaults": {
           "custom": {
@@ -311,7 +311,7 @@
       "pluginVersion": "10.0.0",
       "targets": [
         {
-          "datasource": {"type": "grafana-postgresql-datasource", "name": "pganalytics"},
+          "datasource": {"type": "grafana-postgresql-datasource", "uid": "P4755FD0186DF985F"},
           "format": "table",
           "rawQuery": true,
           "rawSql": "SELECT\n  c.hostname as \"Hostname\",\n  COUNT(*) as \"Query Count\",\n  ROUND(AVG(q.mean_time)::numeric, 2) as \"Avg Execution (ms)\",\n  ROUND(MAX(q.max_time)::numeric, 2) as \"Max Execution (ms)\",\n  ROUND(MIN(q.min_time)::numeric, 4) as \"Min Execution (ms)\",\n  SUM(q.calls)::numeric as \"Total Calls\",\n  ROUND(100.0 * SUM(q.shared_blks_hit) / NULLIF(SUM(q.shared_blks_hit + q.shared_blks_read), 0), 2)::numeric as \"Cache Hit %\"\nFROM metrics_pg_stats_query q\nJOIN collectors c ON q.collector_id = c.id\nWHERE q.time > NOW() - INTERVAL '24 hours'\nGROUP BY c.hostname\nORDER BY ROUND(AVG(q.mean_time)::numeric, 2) DESC",

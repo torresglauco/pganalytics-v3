@@ -11,6 +11,7 @@
 #include "../include/metrics_serializer.h"
 #include "../include/metrics_buffer.h"
 #include "../include/query_stats_plugin.h"
+#include "../include/replication_plugin.h"
 
 // Global state (gConfig is defined in config_manager.cpp)
 volatile sig_atomic_t shouldExit = 0;
@@ -98,6 +99,20 @@ int runCronMode() {
         );
         collectorMgr.addCollector(logCollector);
         std::cout << "Added PgLogCollector" << std::endl;
+    }
+
+    if (gConfig->isCollectorEnabled("pg_replication")) {
+        auto replicationCollector = std::make_shared<PgReplicationCollector>(
+            gConfig->getHostname(),
+            gConfig->getCollectorId(),
+            pgConfig.host,
+            pgConfig.port,
+            pgConfig.user,
+            pgConfig.password,
+            pgConfig.databases
+        );
+        collectorMgr.addCollector(replicationCollector);
+        std::cout << "Added PgReplicationCollector" << std::endl;
     }
 
     // Create query stats collector (will be collected separately if enabled)

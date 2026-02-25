@@ -18,10 +18,10 @@ datasources:
     type: postgres
     access: proxy
     url: timescale:5432
-    database: metrics
+    database: pganalytics
     user: postgres
     secureJsonData:
-      password: pganalytics
+      password: postgres
     jsonData:
       sslmode: disable
     isDefault: true

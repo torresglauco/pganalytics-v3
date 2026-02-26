@@ -1,0 +1,148 @@
+# pgAnalytics Helm Chart - Production Values
+# Override default values for production environment
+
+global:
+  environment: production
+  domain: pganalytics.example.com
+  tls:
+    enabled: true
+    issuer: "letsencrypt-prod"
+
+backend:
+  replicaCount: 3
+
+  service:
+    type: ClusterIP
+
+  ingress:
+    enabled: true
+    className: nginx
+    annotations:
+      cert-manager.io/cluster-issuer: "letsencrypt-prod"
+      nginx.ingress.kubernetes.io/ssl-redirect: "true"
+      nginx.ingress.kubernetes.io/rate-limit: "100"
+      nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+    hosts:
+      - host: api.pganalytics.example.com
+        paths:
+          - path: /
+            pathType: Prefix
+    tls:
+      - secretName: pganalytics-api-tls
+        hosts:
+          - api.pganalytics.example.com
+
+  resources:
+    limits:
+      cpu: 2000m
+      memory: 1Gi
+    requests:
+      cpu: 1000m
+      memory: 512Mi
+
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+
+  env:
+    - name: LOG_LEVEL
+      value: "info"
+    - name: API_WORKERS
+      value: "8"
+
+collector:
+  replicaCount: 1
+
+  resources:
+    limits:
+      cpu: 500m
+      memory: 256Mi
+    requests:
+      cpu: 250m
+      memory: 128Mi
+
+postgresql:
+  persistence:
+    enabled: true
+    storageClass: fast-ssd
+    size: 100Gi
+
+  resources:
+    limits:
+      cpu: 4000m
+      memory: 4Gi
+    requests:
+      cpu: 2000m
+      memory: 2Gi
+
+redis:
+  persistence:
+    enabled: true
+    storageClass: fast-ssd
+    size: 20Gi
+
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 512Mi
+    requests:
+      cpu: 500m
+      memory: 256Mi
+
+grafana:
+  persistence:
+    enabled: true
+    storageClass: fast-ssd
+    size: 20Gi
+
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 250m
+      memory: 256Mi
+
+  env:
+    - name: GF_USERS_ALLOW_SIGN_UP
+      value: "false"
+    - name: GF_SECURITY_ADMIN_USER
+      value: "admin"
+
+networkPolicy:
+  enabled: true
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 2
+
+features:
+  anomalyDetection: true
+  tokenBlacklist: true
+  corsWhitelisting: true
+  mlService: true
+  advancedAuth: true
+
+affinity:
+  podAntiAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchExpressions:
+            - key: app.kubernetes.io/name
+              operator: In
+              values:
+                - pganalytics
+        topologyKey: kubernetes.io/hostname
+
+secrets:
+  create: false
+  # Use external secret management in production (e.g., AWS Secrets Manager, HashiCorp Vault)
+  jwtSecret: "USE_EXTERNAL_SECRETS_MANAGER"
+  dbPassword: "USE_EXTERNAL_SECRETS_MANAGER"
+  redisPassword: "USE_EXTERNAL_SECRETS_MANAGER"
+  postgresRootPassword: "USE_EXTERNAL_SECRETS_MANAGER"
+  grafanaPassword: "USE_EXTERNAL_SECRETS_MANAGER"
+  collectorApiKey: "USE_EXTERNAL_SECRETS_MANAGER"

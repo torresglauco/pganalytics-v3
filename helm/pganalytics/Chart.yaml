@@ -1,0 +1,50 @@
+apiVersion: v2
+name: pganalytics
+description: A Helm chart for pgAnalytics - Enterprise PostgreSQL Monitoring
+type: application
+version: 3.3.0
+appVersion: "3.3.0"
+
+# Maintainers
+maintainers:
+  - name: pgAnalytics Team
+    email: team@pganalytics.io
+    url: https://pganalytics.io
+
+# Chart metadata
+home: https://pganalytics.io
+sources:
+  - https://github.com/pganalytics/pganalytics-v3
+documentation: https://pganalytics.io/docs
+keywords:
+  - postgresql
+  - monitoring
+  - metrics
+  - grafana
+  - timescaledb
+  - observability
+  - enterprise
+
+# Chart requirements
+dependencies: []
+
+# Icon
+icon: https://pganalytics.io/logo.svg
+
+# Annotations
+annotations:
+  category: Monitoring
+  licenses: Apache-2.0
+  images: |
+    - name: pganalytics-api
+      image: pganalytics/api:3.3.0
+    - name: pganalytics-collector
+      image: pganalytics/collector:3.3.0
+    - name: postgresql
+      image: postgres:17-alpine
+    - name: grafana
+      image: grafana/grafana:latest
+  mediaType: image/png
+
+# Chart repository
+kubeVersion: ">=1.24.0"

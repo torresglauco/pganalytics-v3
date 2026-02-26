@@ -143,7 +143,14 @@ json PgQueryStatsCollector::collectQueryStats(const std::string& dbname) {
     // Note: type and timestamp are at the top level in execute(), not here
     json db_stats = {
         {"database", dbname},
-        {"queries", json::array()}
+        {"queries", json::array()},
+        {"stats", {
+            {"configured_limit", query_limit},
+            {"queries_collected", 0},
+            {"unique_queries_total", 0},
+            {"sampling_percent", 0.0},
+            {"collection_time_ms", 0}
+        }}
     };
 
     // Check if pg_stat_statements extension is installed
@@ -157,9 +164,25 @@ json PgQueryStatsCollector::collectQueryStats(const std::string& dbname) {
         return db_stats;  // Return empty queries array
     }
 
-    // Query pg_stat_statements - minimal query
-    // Start with just basic fields to test if query execution works at all
-    const char* query = "SELECT queryid, query, calls, COALESCE(total_exec_time, 0), COALESCE(mean_exec_time, 0), COALESCE(min_exec_time, 0), COALESCE(max_exec_time, 0), COALESCE(stddev_exec_time, 0), COALESCE(rows, 0), COALESCE(shared_blks_hit, 0), COALESCE(shared_blks_read, 0), COALESCE(shared_blks_dirtied, 0), COALESCE(shared_blks_written, 0), COALESCE(local_blks_hit, 0), COALESCE(local_blks_read, 0), COALESCE(local_blks_dirtied, 0), COALESCE(local_blks_written, 0), COALESCE(temp_blks_read, 0), COALESCE(temp_blks_written, 0), COALESCE(blk_read_time, 0), COALESCE(blk_write_time, 0), COALESCE(wal_records, 0), COALESCE(wal_fpi, 0), COALESCE(wal_bytes, 0) FROM pg_stat_statements ORDER BY COALESCE(total_exec_time, 0) DESC LIMIT 100";
+    // Build query with configurable limit for pg_stat_statements
+    // Default limit: 100 (backward compatible)
+    // Min limit: 10, Max limit: 10000
+    // This enables adaptive sampling at different scale levels:
+    // - Development (< 100 QPS): limit=100 (100% collection)
+    // - Small Prod (100-1K QPS): limit=500 (5% sampling)
+    // - Medium Prod (1K-10K QPS): limit=1000 (1-10% sampling)
+    // - Large Prod (10K+ QPS): limit=5000 (0.1-1% sampling)
+    int query_limit = 100;  // Default
+
+    // TODO: Read from global config when available (Phase 1.2)
+    // For now, hardcode but mark for enhancement
+    // Example when config available:
+    // config->getInt("postgresql", "query_stats_limit", 100)
+
+    std::string query_str = "SELECT queryid, query, calls, COALESCE(total_exec_time, 0), COALESCE(mean_exec_time, 0), COALESCE(min_exec_time, 0), COALESCE(max_exec_time, 0), COALESCE(stddev_exec_time, 0), COALESCE(rows, 0), COALESCE(shared_blks_hit, 0), COALESCE(shared_blks_read, 0), COALESCE(shared_blks_dirtied, 0), COALESCE(shared_blks_written, 0), COALESCE(local_blks_hit, 0), COALESCE(local_blks_read, 0), COALESCE(local_blks_dirtied, 0), COALESCE(local_blks_written, 0), COALESCE(temp_blks_read, 0), COALESCE(temp_blks_written, 0), COALESCE(blk_read_time, 0), COALESCE(blk_write_time, 0), COALESCE(wal_records, 0), COALESCE(wal_fpi, 0), COALESCE(wal_bytes, 0) FROM pg_stat_statements ORDER BY COALESCE(total_exec_time, 0) DESC LIMIT " + std::to_string(query_limit);
+    const char* query = query_str.c_str();
+
+    std::cout << "Collecting query stats from " << dbname << " (limit=" << query_limit << ")" << std::endl;
 
     std::cerr << "DEBUG: About to execute query on database: " << dbname << std::endl;
 
@@ -176,6 +199,13 @@ json PgQueryStatsCollector::collectQueryStats(const std::string& dbname) {
     int nfields = PQnfields(res);
 
     std::cerr << "DEBUG: Query returned " << nrows << " rows and " << nfields << " fields from " << dbname << std::endl;
+
+    // Update metrics
+    db_stats["stats"]["queries_collected"] = nrows;
+    double sampling_percent = (query_limit > 0) ? ((double)nrows / query_limit) * 100.0 : 0.0;
+    db_stats["stats"]["sampling_percent"] = sampling_percent;
+    std::cout << "Query stats: limit=" << query_limit << ", collected=" << nrows
+              << ", sampling=" << sampling_percent << "%" << std::endl;
 
     // Parse each row from pg_stat_statements
     // Query now returns exactly 25 fields: queryid through wal_bytes

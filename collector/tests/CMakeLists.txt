@@ -48,6 +48,7 @@ set(TEST_SOURCES
 # Exclude main.cpp from tests
 set(COLLECTOR_SOURCES_NO_MAIN
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/collector.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src/thread_pool.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/postgres_plugin.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/replication_plugin.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/sysstat_plugin.cpp
@@ -59,6 +60,7 @@ set(COLLECTOR_SOURCES_NO_MAIN
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/metrics_buffer.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/binary_protocol.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/connection_pool.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src/query_stats_plugin.cpp
 )
 
 # Create test executable

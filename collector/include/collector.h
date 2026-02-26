@@ -4,7 +4,9 @@
 #include <vector>
 #include <memory>
 #include <map>
+#include <chrono>
 #include <nlohmann/json.hpp>
+#include "thread_pool.h"
 
 using json = nlohmann::json;
 
@@ -164,11 +166,44 @@ public:
     explicit CollectorManager(const std::string& hostname, const std::string& collectorId);
 
     void addCollector(std::shared_ptr<Collector> collector);
+
+    /**
+     * Collect metrics from all enabled collectors (SEQUENTIAL MODE)
+     * Used when thread pool is disabled or not available
+     * @return JSON object with collected metrics from all collectors
+     */
     json collectAll();
+
+    /**
+     * Collect metrics from all enabled collectors (PARALLEL MODE - Phase 1.1)
+     * Uses thread pool for parallel execution
+     * Expected improvement: 75% cycle time reduction (57.7s → 14.4s at 100 collectors)
+     * @return JSON object with collected metrics from all collectors
+     */
+    json collectAllParallel();
+
     void configure(const json& config);
+
+    /**
+     * Get collection cycle time in milliseconds (for monitoring)
+     */
+    int getLastCycleTimeMs() const {
+        return last_cycle_time_ms_;
+    }
 
 private:
     std::string hostname_;
     std::string collectorId_;
     std::vector<std::shared_ptr<Collector>> collectors_;
+
+    // Phase 1.1: Thread pool for parallel collector execution
+    // Pool size configurable via config file (default: 4, min: 1, max: 16)
+    std::unique_ptr<ThreadPool> thread_pool_;
+    int thread_pool_size_;
+    int last_cycle_time_ms_;
+
+    /**
+     * Initialize thread pool (called in constructor)
+     */
+    void initializeThreadPool();
 };

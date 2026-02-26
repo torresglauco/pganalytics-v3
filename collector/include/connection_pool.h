@@ -1,12 +1,13 @@
-#ifndef CONNECTION_POOL_H_
-#define CONNECTION_POOL_H_
+#pragma once
 
 #ifdef HAVE_LIBPQ
 #include <libpq-fe.h>
 #else
 // Forward declare PGconn if libpq is not available
-typedef void PGconn;
+struct pg_conn;
+typedef struct pg_conn PGconn;
 #endif
+
 #include <vector>
 #include <queue>
 #include <mutex>
@@ -162,5 +163,3 @@ private:
      */
     void initialize();
 };
-
-#endif  // CONNECTION_POOL_H_

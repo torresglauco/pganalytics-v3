@@ -49,6 +49,7 @@ endif()
 set(COLLECTOR_SOURCES
     src/main.cpp
     src/collector.cpp
+    src/thread_pool.cpp
     src/postgres_plugin.cpp
     src/query_stats_plugin.cpp
     src/replication_plugin.cpp

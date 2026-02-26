@@ -157,9 +157,9 @@ int runCronMode() {
     auto lastConfigPullTime = std::chrono::steady_clock::now();
 
     while (!shouldExit) {
-        // Collect metrics
+        // Collect metrics (Phase 1.1: now using parallel execution via thread pool)
         std::cout << "Collecting metrics..." << std::endl;
-        json collectedMetrics = collectorMgr.collectAll();
+        json collectedMetrics = collectorMgr.collectAllParallel();
 
         // Validate collected metrics
         if (collectedMetrics.contains("metrics") && collectedMetrics["metrics"].is_array()) {

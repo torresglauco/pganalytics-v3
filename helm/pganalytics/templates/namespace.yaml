@@ -1,0 +1,25 @@
+{{- if .Values.namespace.create }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ include "pganalytics.namespace" . }}
+  labels:
+    {{- include "pganalytics.labels" . | nindent 4 }}
+{{- end }}
+---
+{{- if .Values.podDisruptionBudget.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "pganalytics.fullname" . }}-backend
+  namespace: {{ include "pganalytics.namespace" . }}
+  labels:
+    {{- include "pganalytics.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backend
+spec:
+  minAvailable: {{ .Values.podDisruptionBudget.minAvailable }}
+  selector:
+    matchLabels:
+      {{- include "pganalytics.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: backend
+{{- end }}

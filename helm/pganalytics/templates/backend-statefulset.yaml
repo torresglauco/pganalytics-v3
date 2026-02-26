@@ -1,0 +1,87 @@
+{{- if .Values.backend.enabled }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "pganalytics.fullname" . }}-backend
+  namespace: {{ include "pganalytics.namespace" . }}
+  labels:
+    {{- include "pganalytics.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backend
+spec:
+  serviceName: {{ include "pganalytics.fullname" . }}-backend
+  replicas: {{ .Values.backend.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "pganalytics.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: backend
+  template:
+    metadata:
+      labels:
+        {{- include "pganalytics.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: backend
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+        prometheus.io/path: "/metrics"
+    spec:
+      {{- with .Values.backend.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "pganalytics.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.backend.securityContext | nindent 8 }}
+      initContainers:
+        - name: wait-for-postgresql
+          image: busybox:1.35
+          command: ['sh', '-c', 'until nc -z {{ .Values.postgresql.service.host | default "postgresql" }} {{ .Values.postgresql.service.port | default 5432 }}; do echo waiting for postgresql; sleep 2; done']
+        - name: migrate-database
+          image: "{{ .Values.global.imageRegistry }}/{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}"
+          imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
+          command: ["/app/pganalytics", "migrate", "up"]
+          env:
+            {{- toYaml .Values.backend.env | nindent 12 }}
+      containers:
+        - name: backend
+          image: "{{ .Values.global.imageRegistry }}/{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}"
+          imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.backend.service.targetPort }}
+              protocol: TCP
+            - name: metrics
+              containerPort: 9090
+              protocol: TCP
+          livenessProbe:
+            {{- toYaml .Values.backend.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.backend.readinessProbe | nindent 12 }}
+          startupProbe:
+            {{- toYaml .Values.backend.startupProbe | nindent 12 }}
+          resources:
+            {{- toYaml .Values.backend.resources | nindent 12 }}
+          env:
+            {{- toYaml .Values.backend.env | nindent 12 }}
+          volumeMounts:
+            {{- toYaml .Values.backend.volumeMounts | nindent 12 }}
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "pganalytics.fullname" . }}-backend-config
+        - name: tls-certs
+          secret:
+            secretName: {{ include "pganalytics.fullname" . }}-tls
+            defaultMode: 0400
+        - name: tmp
+          emptyDir: {}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

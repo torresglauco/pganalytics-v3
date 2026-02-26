@@ -1,0 +1,110 @@
+1. Get the status of your pgAnalytics deployment:
+  kubectl rollout status -n {{ include "pganalytics.namespace" . }} statefulset/{{ include "pganalytics.fullname" . }}-backend
+
+2. Wait for all pods to be ready:
+  kubectl get pods -n {{ include "pganalytics.namespace" . }} -w
+
+3. Access the pgAnalytics API:
+{{- if .Values.backend.ingress.enabled }}
+  API is available at: https://{{ (index .Values.backend.ingress.hosts 0).host }}
+{{- else }}
+  Forward the backend service port:
+    kubectl port-forward -n {{ include "pganalytics.namespace" . }} svc/{{ include "pganalytics.fullname" . }}-backend 8080:{{ .Values.backend.service.port }}
+    API will be available at: http://localhost:8080
+{{- end }}
+
+4. Access Grafana dashboards:
+{{- if .Values.grafana.enabled }}
+{{- if .Values.grafana.ingress.enabled }}
+  Grafana is available at: https://{{ (index .Values.grafana.ingress.hosts 0).host }}
+{{- else }}
+  Forward the Grafana service port:
+    kubectl port-forward -n {{ include "pganalytics.namespace" . }} svc/{{ include "pganalytics.fullname" . }}-grafana 3000:{{ .Values.grafana.service.port }}
+    Grafana will be available at: http://localhost:3000
+{{- end }}
+
+  Default credentials:
+    Username: admin
+    Password: Get it from the secret:
+      kubectl get secret -n {{ include "pganalytics.namespace" . }} {{ include "pganalytics.fullname" . }}-secrets -o jsonpath='{.data.grafana-password}' | base64 -d
+{{- end }}
+
+5. Access PostgreSQL (for debugging):
+  kubectl exec -it -n {{ include "pganalytics.namespace" . }} postgresql-0 -- psql -U postgres -d pganalytics
+
+6. Check the health of your pgAnalytics backend:
+  kubectl exec -it -n {{ include "pganalytics.namespace" . }} {{ include "pganalytics.fullname" . }}-backend-0 -- \
+    curl -s http://localhost:8080/api/v1/health | jq .
+
+7. View backend logs:
+  kubectl logs -n {{ include "pganalytics.namespace" . }} -l app.kubernetes.io/name=pganalytics,app.kubernetes.io/component=backend -f
+
+8. View collector logs:
+  kubectl logs -n {{ include "pganalytics.namespace" . }} -l app.kubernetes.io/name=pganalytics,app.kubernetes.io/component=collector -f
+
+9. Get secret values:
+  # JWT Secret:
+    kubectl get secret -n {{ include "pganalytics.namespace" . }} {{ include "pganalytics.fullname" . }}-secrets -o jsonpath='{.data.jwt-secret}' | base64 -d && echo
+
+  # Database Password:
+    kubectl get secret -n {{ include "pganalytics.namespace" . }} {{ include "pganalytics.fullname" . }}-secrets -o jsonpath='{.data.db-password}' | base64 -d && echo
+
+  # Redis Password:
+    kubectl get secret -n {{ include "pganalytics.namespace" . }} {{ include "pganalytics.fullname" . }}-secrets -o jsonpath='{.data.redis-password}' | base64 -d && echo
+
+10. Verify all components are running:
+  kubectl get all -n {{ include "pganalytics.namespace" . }}
+
+11. Check resource usage:
+  kubectl top pods -n {{ include "pganalytics.namespace" . }}
+
+12. Scale the backend:
+  kubectl scale statefulset {{ include "pganalytics.fullname" . }}-backend -n {{ include "pganalytics.namespace" . }} --replicas=5
+
+13. Monitor the deployment:
+  # Watch pod creation:
+    watch -n 1 'kubectl get pods -n {{ include "pganalytics.namespace" . }} -o wide'
+
+  # Check events:
+    kubectl get events -n {{ include "pganalytics.namespace" . }} --sort-by='.lastTimestamp'
+
+IMPORTANT NOTES:
+==================
+
+- Change default secrets before deploying to production:
+  Edit values.yaml or use --set flags during installation
+
+- If using PostgreSQL persistence:
+  Ensure your cluster has a default StorageClass or specify one in values.yaml
+
+- If using TLS/HTTPS:
+  Install cert-manager and configure Let's Encrypt issuer
+
+- For production deployments:
+  Use values-prod.yaml or values-enterprise.yaml
+
+- Enable features as needed:
+  features:
+    anomalyDetection: true/false
+    tokenBlacklist: true/false
+    advancedAuth: true/false
+
+TROUBLESHOOTING:
+================
+
+1. Pods stuck in Pending state:
+  kubectl describe pvc -n {{ include "pganalytics.namespace" . }}
+  kubectl describe pod <pod-name> -n {{ include "pganalytics.namespace" . }}
+
+2. Database connection errors:
+  Check PostgreSQL is running:
+    kubectl get statefulset -n {{ include "pganalytics.namespace" . }} postgresql
+  Check database password is correct:
+    kubectl exec postgresql-0 -n {{ include "pganalytics.namespace" . }} -- psql -U postgres -c "\l"
+
+3. Collector not connecting to backend:
+  kubectl logs -n {{ include "pganalytics.namespace" . }} -l app.kubernetes.io/component=collector -f
+  Check backend service is accessible:
+    kubectl exec <collector-pod> -n {{ include "pganalytics.namespace" . }} -- curl http://{{ include "pganalytics.fullname" . }}-backend:8080/api/v1/health
+
+For more help, visit: https://pganalytics.io/docs/kubernetes

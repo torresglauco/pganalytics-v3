@@ -1,0 +1,56 @@
+{{- if .Values.redis.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: {{ include "pganalytics.namespace" . }}
+  labels:
+    {{- include "pganalytics.labels" . | nindent 4 }}
+    app.kubernetes.io/component: redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "pganalytics.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: redis
+  template:
+    metadata:
+      labels:
+        {{- include "pganalytics.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: redis
+    spec:
+      securityContext:
+        fsGroup: 999
+      containers:
+        - name: redis
+          image: "{{ .Values.global.imageRegistry }}/{{ .Values.redis.image.repository }}:{{ .Values.redis.image.tag }}"
+          imagePullPolicy: {{ .Values.redis.image.pullPolicy }}
+          command:
+            - redis-server
+            - "--appendonly"
+            - "yes"
+            - "--requirepass"
+            - "$(REDIS_PASSWORD)"
+          ports:
+            - name: redis
+              containerPort: 6379
+              protocol: TCP
+          env:
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "pganalytics.fullname" . }}-secrets
+                  key: redis-password
+          livenessProbe:
+            {{- toYaml .Values.redis.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.redis.readinessProbe | nindent 12 }}
+          resources:
+            {{- toYaml .Values.redis.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: data
+          emptyDir: {}
+{{- end }}

@@ -1,0 +1,58 @@
+# Patterns to ignore when building packages.
+# This supports shell glob patterns, relative paths, and negated patterns (prefixed with !).
+
+# Commonly ignored files/directories
+.DS_Store
+.git
+.gitignore
+.travis.yml
+.gitlab-ci.yml
+.circleci
+.github
+helm-docs
+LICENSE
+README.md
+CHANGELOG.md
+.idea
+*.swp
+*.swo
+*~
+*.tmp
+*.bak
+
+# Dependencies
+node_modules/
+venv/
+.venv
+*.egg-info
+
+# Build artifacts
+dist/
+build/
+*.pyc
+__pycache__/
+
+# IDE
+.vscode/
+.idea/
+*.iml
+
+# OS
+Thumbs.db
+.terraform/
+.terraform.lock.hcl
+
+# Helm specific
+Chart.lock
+dependencies.yaml
+
+# Test files
+*_test.go
+*_test.yaml
+test/
+tests/
+
+# Temporary files
+*.tmp
+*.temp
+*~

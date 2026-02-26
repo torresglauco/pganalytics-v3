@@ -1,0 +1,507 @@
+# pgAnalytics Helm Chart - Default Values
+# This is a YAML-formatted file declaring variables to be passed into templates
+# Product: pgAnalytics v3.3.0
+# Generated: 2026-02-26
+
+# Global configuration
+global:
+  projectName: pganalytics
+  environment: development
+  domain: pganalytics.local
+  tls:
+    enabled: false
+    issuer: "letsencrypt-prod"
+  imageRegistry: docker.io
+  imagePullPolicy: IfNotPresent
+
+# Namespace configuration
+namespace:
+  create: true
+  name: pganalytics
+
+# Backend API Configuration
+backend:
+  enabled: true
+  replicaCount: 3
+
+  image:
+    repository: pganalytics/api
+    tag: "3.3.0"
+    pullPolicy: IfNotPresent
+
+  imagePullSecrets: []
+
+  service:
+    type: ClusterIP
+    port: 8080
+    targetPort: 8080
+    annotations: {}
+
+  ingress:
+    enabled: true
+    className: nginx
+    annotations:
+      cert-manager.io/cluster-issuer: "letsencrypt-prod"
+      nginx.ingress.kubernetes.io/ssl-redirect: "true"
+      nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    hosts:
+      - host: api.pganalytics.local
+        paths:
+          - path: /
+            pathType: Prefix
+    tls:
+      - secretName: pganalytics-tls
+        hosts:
+          - api.pganalytics.local
+
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 512Mi
+    requests:
+      cpu: 250m
+      memory: 256Mi
+
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+
+  livenessProbe:
+    httpGet:
+      path: /api/v1/health
+      port: 8080
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+  readinessProbe:
+    httpGet:
+      path: /api/v1/health
+      port: 8080
+    initialDelaySeconds: 10
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 2
+
+  startupProbe:
+    httpGet:
+      path: /api/v1/health
+      port: 8080
+    initialDelaySeconds: 0
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 30
+
+  volumeMounts:
+    - name: config
+      mountPath: /etc/pganalytics/config
+    - name: tls-certs
+      mountPath: /etc/pganalytics/certs
+      readOnly: true
+
+  env:
+    - name: LOG_LEVEL
+      value: "info"
+    - name: API_BIND_ADDR
+      value: "0.0.0.0:8080"
+    - name: API_WORKERS
+      value: "4"
+    - name: CORS_ENABLED
+      value: "true"
+    - name: CORS_ORIGINS
+      value: "http://localhost:3000,https://pganalytics.local"
+    - name: JWT_SECRET
+      valueFrom:
+        secretKeyRef:
+          name: pganalytics-secrets
+          key: jwt-secret
+    - name: DB_HOST
+      value: postgresql
+    - name: DB_PORT
+      value: "5432"
+    - name: DB_USER
+      value: pganalytics
+    - name: DB_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: pganalytics-secrets
+          key: db-password
+    - name: DB_NAME
+      value: pganalytics
+    - name: REDIS_HOST
+      value: redis
+    - name: REDIS_PORT
+      value: "6379"
+    - name: REDIS_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: pganalytics-secrets
+          key: redis-password
+
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    readOnlyRootFilesystem: true
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+
+# Collector Configuration
+collector:
+  enabled: true
+  mode: daemonset  # daemonset or deployment
+
+  image:
+    repository: pganalytics/collector
+    tag: "3.3.0"
+    pullPolicy: IfNotPresent
+
+  resources:
+    limits:
+      cpu: 500m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+  # DaemonSet specific
+  daemonset:
+    updateStrategy:
+      type: RollingUpdate
+      rollingUpdate:
+        maxUnavailable: 1
+
+  # Deployment specific (when mode: deployment)
+  deployment:
+    replicaCount: 1
+
+  volumeMounts:
+    - name: config
+      mountPath: /etc/pganalytics/config
+
+  env:
+    - name: LOG_LEVEL
+      value: "info"
+    - name: COLLECTOR_INTERVAL
+      value: "60"
+    - name: METRICS_BATCH_SIZE
+      value: "100"
+    - name: BUFFER_SIZE_MB
+      value: "50"
+    - name: COMPRESSION
+      value: "gzip"
+    - name: API_ENDPOINT
+      value: "http://backend:8080"
+    - name: API_KEY
+      valueFrom:
+        secretKeyRef:
+          name: pganalytics-secrets
+          key: collector-api-key
+    - name: COLLECTOR_ID
+      valueFrom:
+        fieldRef:
+          fieldPath: spec.nodeName
+
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    readOnlyRootFilesystem: true
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+
+# PostgreSQL Configuration
+postgresql:
+  enabled: true
+
+  image:
+    repository: postgres
+    tag: "17-alpine"
+    pullPolicy: IfNotPresent
+
+  service:
+    type: ClusterIP
+    port: 5432
+
+  resources:
+    limits:
+      cpu: 2000m
+      memory: 2Gi
+    requests:
+      cpu: 500m
+      memory: 1Gi
+
+  persistence:
+    enabled: true
+    storageClass: standard
+    size: 50Gi
+    mountPath: /var/lib/postgresql/data
+    subPath: pgdata
+
+  livenessProbe:
+    exec:
+      command:
+        - /bin/sh
+        - -c
+        - pg_isready -U postgres
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+  readinessProbe:
+    exec:
+      command:
+        - /bin/sh
+        - -c
+        - pg_isready -U postgres
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 2
+
+  env:
+    - name: POSTGRES_USER
+      value: postgres
+    - name: POSTGRES_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: pganalytics-secrets
+          key: postgres-root-password
+    - name: POSTGRES_DB
+      value: pganalytics
+    - name: PGDATA
+      value: /var/lib/postgresql/data/pgdata
+
+  initScripts:
+    - name: init-db.sql
+      content: |
+        CREATE USER pganalytics WITH PASSWORD 'pganalytics';
+        CREATE DATABASE pganalytics OWNER pganalytics;
+        GRANT ALL PRIVILEGES ON DATABASE pganalytics TO pganalytics;
+
+# Grafana Configuration
+grafana:
+  enabled: true
+
+  image:
+    repository: grafana/grafana
+    tag: "11.0.0"
+    pullPolicy: IfNotPresent
+
+  service:
+    type: ClusterIP
+    port: 3000
+
+  ingress:
+    enabled: true
+    className: nginx
+    annotations:
+      cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    hosts:
+      - host: grafana.pganalytics.local
+        paths:
+          - path: /
+            pathType: Prefix
+    tls:
+      - secretName: grafana-tls
+        hosts:
+          - grafana.pganalytics.local
+
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 250m
+      memory: 256Mi
+
+  persistence:
+    enabled: true
+    storageClass: standard
+    size: 10Gi
+
+  env:
+    - name: GF_SECURITY_ADMIN_USER
+      value: admin
+    - name: GF_SECURITY_ADMIN_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: pganalytics-secrets
+          key: grafana-password
+    - name: GF_INSTALL_PLUGINS
+      value: grafana-piechart-panel
+    - name: GF_USERS_ALLOW_SIGN_UP
+      value: "false"
+
+# Redis Configuration (for session storage)
+redis:
+  enabled: true
+
+  image:
+    repository: redis
+    tag: "7-alpine"
+    pullPolicy: IfNotPresent
+
+  service:
+    type: ClusterIP
+    port: 6379
+
+  resources:
+    limits:
+      cpu: 500m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+  persistence:
+    enabled: true
+    storageClass: standard
+    size: 5Gi
+
+  livenessProbe:
+    exec:
+      command:
+        - redis-cli
+        - ping
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+  readinessProbe:
+    exec:
+      command:
+        - redis-cli
+        - ping
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 2
+
+  env:
+    - name: REDIS_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: pganalytics-secrets
+          key: redis-password
+
+# Network Policy Configuration
+networkPolicy:
+  enabled: true
+
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: pganalytics
+      ports:
+        - protocol: TCP
+          port: 8080
+    - from:
+        - podSelector:
+            matchLabels:
+              app: collector
+      ports:
+        - protocol: TCP
+          port: 5432
+
+# RBAC Configuration
+rbac:
+  create: true
+
+  serviceAccount:
+    create: true
+    name: pganalytics
+    annotations: {}
+
+# Pod Disruption Budget
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+# Service Monitor (for Prometheus)
+serviceMonitor:
+  enabled: false
+  interval: 30s
+  scrapeTimeout: 10s
+
+# Config Maps
+configMap:
+  apiVersion: v1
+  kind: ConfigMap
+  data:
+    log-level: "info"
+    api-workers: "4"
+    collector-interval: "60"
+    metrics-batch-size: "100"
+
+# Secrets
+secrets:
+  create: true
+  # These should be overridden during installation or via external secret management
+  jwtSecret: "change-me-in-production"
+  dbPassword: "change-me-in-production"
+  redisPassword: "change-me-in-production"
+  postgresRootPassword: "change-me-in-production"
+  grafanaPassword: "change-me-in-production"
+  collectorApiKey: "change-me-in-production"
+
+# Feature Flags
+features:
+  anomalyDetection: false
+  tokenBlacklist: false
+  corsWhitelisting: true
+  mlService: false
+  multiRegion: false
+  advancedAuth: false
+
+# Labels applied to all resources
+commonLabels:
+  app.kubernetes.io/name: pganalytics
+  app.kubernetes.io/version: "3.3.0"
+  app.kubernetes.io/managed-by: helm
+
+# Node affinity
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app
+                operator: In
+                values:
+                  - backend
+          topologyKey: kubernetes.io/hostname
+
+# Tolerations for node taints
+tolerations: []
+
+# Priority Class
+priorityClassName: ""
+
+# Logging configuration
+logging:
+  level: info
+  format: json
+  outputs:
+    - stdout
+
+# Monitoring
+monitoring:
+  enabled: true
+  prometheus:
+    enabled: false
+    interval: 30s
+  metrics:
+    enabled: true
+    port: 9090

@@ -1,0 +1,88 @@
+{{- if and .Values.collector.enabled (eq .Values.collector.mode "daemonset") }}
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ include "pganalytics.fullname" . }}-collector
+  namespace: {{ include "pganalytics.namespace" . }}
+  labels:
+    {{- include "pganalytics.labels" . | nindent 4 }}
+    app.kubernetes.io/component: collector
+spec:
+  selector:
+    matchLabels:
+      {{- include "pganalytics.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: collector
+  updateStrategy:
+    {{- toYaml .Values.collector.daemonset.updateStrategy | nindent 4 }}
+  template:
+    metadata:
+      labels:
+        {{- include "pganalytics.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: collector
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+        prometheus.io/path: "/metrics"
+    spec:
+      {{- with .Values.collector.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "pganalytics.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.collector.securityContext | nindent 8 }}
+      hostNetwork: false
+      hostPID: false
+      hostIPC: false
+      initContainers:
+        - name: wait-for-backend
+          image: busybox:1.35
+          command: ['sh', '-c', 'until nc -z {{ include "pganalytics.fullname" . }}-backend {{ .Values.backend.service.port | default 8080 }}; do echo waiting for backend; sleep 2; done']
+      containers:
+        - name: collector
+          image: "{{ .Values.global.imageRegistry }}/{{ .Values.collector.image.repository }}:{{ .Values.collector.image.tag }}"
+          imagePullPolicy: {{ .Values.collector.image.pullPolicy }}
+          ports:
+            - name: metrics
+              containerPort: 9090
+              protocol: TCP
+          resources:
+            {{- toYaml .Values.collector.resources | nindent 12 }}
+          env:
+            {{- toYaml .Values.collector.env | nindent 12 }}
+          volumeMounts:
+            {{- toYaml .Values.collector.volumeMounts | nindent 12 }}
+            - name: tmp
+              mountPath: /tmp
+          livenessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - '[ -f /tmp/collector.pid ] && kill -0 $(cat /tmp/collector.pid) || exit 1'
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - 'curl -f http://localhost:9090/metrics || exit 1'
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 2
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "pganalytics.fullname" . }}-collector-config
+        - name: tmp
+          emptyDir: {}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      nodeSelector: {}
+{{- end }}

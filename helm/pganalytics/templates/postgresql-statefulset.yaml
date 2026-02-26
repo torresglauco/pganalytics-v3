@@ -1,0 +1,59 @@
+{{- if .Values.postgresql.enabled }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgresql
+  namespace: {{ include "pganalytics.namespace" . }}
+  labels:
+    {{- include "pganalytics.labels" . | nindent 4 }}
+    app.kubernetes.io/component: postgresql
+spec:
+  serviceName: postgresql
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "pganalytics.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: postgresql
+  template:
+    metadata:
+      labels:
+        {{- include "pganalytics.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: postgresql
+    spec:
+      securityContext:
+        fsGroup: 999
+      containers:
+        - name: postgresql
+          image: "{{ .Values.global.imageRegistry }}/{{ .Values.postgresql.image.repository }}:{{ .Values.postgresql.image.tag }}"
+          imagePullPolicy: {{ .Values.postgresql.image.pullPolicy }}
+          ports:
+            - name: postgresql
+              containerPort: 5432
+              protocol: TCP
+          env:
+            {{- toYaml .Values.postgresql.env | nindent 12 }}
+          livenessProbe:
+            {{- toYaml .Values.postgresql.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.postgresql.readinessProbe | nindent 12 }}
+          resources:
+            {{- toYaml .Values.postgresql.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: {{ .Values.postgresql.persistence.mountPath }}
+            - name: config
+              mountPath: /etc/postgresql
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "pganalytics.fullname" . }}-postgresql-config
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: [ "ReadWriteOnce" ]
+        storageClassName: {{ .Values.postgresql.persistence.storageClass }}
+        resources:
+          requests:
+            storage: {{ .Values.postgresql.persistence.size }}
+{{- end }}

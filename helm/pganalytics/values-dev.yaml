@@ -1,0 +1,101 @@
+# pgAnalytics Helm Chart - Development Values
+# Override default values for development environment
+
+global:
+  environment: development
+  domain: pganalytics.local
+  tls:
+    enabled: false
+
+backend:
+  replicaCount: 1
+
+  service:
+    type: ClusterIP
+
+  ingress:
+    enabled: true
+    hosts:
+      - host: api.pganalytics.local
+        paths:
+          - path: /
+            pathType: Prefix
+
+  resources:
+    limits:
+      cpu: 500m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+  autoscaling:
+    enabled: false
+
+  env:
+    - name: LOG_LEVEL
+      value: "debug"
+    - name: API_BIND_ADDR
+      value: "0.0.0.0:8080"
+
+collector:
+  resources:
+    limits:
+      cpu: 200m
+      memory: 128Mi
+    requests:
+      cpu: 50m
+      memory: 64Mi
+
+postgresql:
+  persistence:
+    enabled: true
+    size: 10Gi
+
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 250m
+      memory: 256Mi
+
+redis:
+  persistence:
+    enabled: true
+    size: 2Gi
+
+  resources:
+    limits:
+      cpu: 200m
+      memory: 128Mi
+    requests:
+      cpu: 100m
+      memory: 64Mi
+
+grafana:
+  persistence:
+    enabled: true
+    size: 5Gi
+
+  resources:
+    limits:
+      cpu: 300m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+features:
+  anomalyDetection: false
+  tokenBlacklist: false
+  corsWhitelisting: true
+  mlService: false
+
+secrets:
+  jwtSecret: "dev-secret-key-change-in-production"
+  dbPassword: "dev-password"
+  redisPassword: "dev-redis-password"
+  postgresRootPassword: "dev-postgres-password"
+  grafanaPassword: "admin"
+  collectorApiKey: "dev-api-key"

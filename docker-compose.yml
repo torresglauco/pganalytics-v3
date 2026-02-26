@@ -1,5 +1,3 @@
-version: '3.9'
-
 services:
   # Main PostgreSQL for pgAnalytics metadata & monitoring data
   postgres:

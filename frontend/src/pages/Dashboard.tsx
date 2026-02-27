@@ -5,6 +5,7 @@ import { CollectorForm } from '../components/CollectorForm'
 import { CollectorList } from '../components/CollectorList'
 import { UserMenuDropdown } from '../components/UserMenuDropdown'
 import { ManagedInstancesTable } from '../components/ManagedInstancesTable'
+import { RegistrationSecretsManager } from '../components/RegistrationSecretsManager'
 import { apiClient } from '../services/api'
 
 interface DashboardProps {
@@ -74,6 +75,19 @@ export const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
                 }
               >
                 Managed Instances
+              </Tab>
+            )}
+            {isAdmin && (
+              <Tab
+                className={({ selected }) =>
+                  `px-4 py-2 font-medium text-sm border-b-2 transition ${
+                    selected
+                      ? 'border-blue-600 text-blue-600'
+                      : 'border-transparent text-gray-600 hover:text-gray-900'
+                  }`
+                }
+              >
+                Registration Secrets
               </Tab>
             )}
           </Tab.List>
@@ -179,6 +193,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
                     }}
                   />
                 </div>
+              </Tab.Panel>
+            )}
+            {isAdmin && (
+              <Tab.Panel>
+                <RegistrationSecretsManager />
               </Tab.Panel>
             )}
           </Tab.Panels>

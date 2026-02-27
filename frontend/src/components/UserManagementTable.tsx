@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Trash2, Lock, Unlock, Shield, User, AlertCircle } from 'lucide-react'
+import { Trash2, Lock, Unlock, Shield, User, AlertCircle, RotateCcw, Copy, CheckCircle } from 'lucide-react'
 import { apiClient } from '../services/api'
 
 interface User {
@@ -23,6 +23,9 @@ export const UserManagementTable: React.FC<UserManagementTableProps> = ({ onSucc
   const [deleting, setDeleting] = useState<number | null>(null)
   const [togglingStatus, setTogglingStatus] = useState<number | null>(null)
   const [changingRole, setChangingRole] = useState<number | null>(null)
+  const [resettingPassword, setResettingPassword] = useState<number | null>(null)
+  const [tempPasswordData, setTempPasswordData] = useState<{ username: string; password: string } | null>(null)
+  const [copiedPassword, setCopiedPassword] = useState(false)
 
   useEffect(() => {
     loadUsers()
@@ -145,6 +148,43 @@ export const UserManagementTable: React.FC<UserManagementTableProps> = ({ onSucc
     }
   }
 
+  const resetPassword = async (userId: number, username: string) => {
+    if (!confirm(`Reset password for user "${username}"? They will receive a temporary password.`)) {
+      return
+    }
+
+    setResettingPassword(userId)
+    try {
+      const response = await fetch(`/api/v1/users/${userId}/reset-password`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+        },
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.message || 'Failed to reset user password')
+      }
+
+      const data = await response.json()
+      setTempPasswordData({ username: data.username, password: data.temp_password })
+      onSuccess(`Password reset for "${username}"`)
+    } catch (error) {
+      onError(error instanceof Error ? error.message : 'Failed to reset user password')
+    } finally {
+      setResettingPassword(null)
+    }
+  }
+
+  const copyPasswordToClipboard = () => {
+    if (tempPasswordData?.password) {
+      navigator.clipboard.writeText(tempPasswordData.password)
+      setCopiedPassword(true)
+      setTimeout(() => setCopiedPassword(false), 2000)
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -236,8 +276,22 @@ export const UserManagementTable: React.FC<UserManagementTableProps> = ({ onSucc
                     {user.is_active ? (
                       <Lock size={18} />
                     ) : (
-                      <LockOpen size={18} />
+                      <Unlock size={18} />
                     )}
+                  </button>
+
+                  {/* Reset Password */}
+                  <button
+                    onClick={() => resetPassword(user.id, user.username)}
+                    disabled={isDefaultAdmin(user) || resettingPassword === user.id}
+                    className={`p-2 rounded transition ${
+                      isDefaultAdmin(user)
+                        ? 'text-gray-300 cursor-not-allowed'
+                        : 'text-orange-600 hover:text-orange-900 hover:bg-orange-100'
+                    }`}
+                    title={isDefaultAdmin(user) ? 'Cannot reset default admin password' : 'Reset password'}
+                  >
+                    <RotateCcw size={18} />
                   </button>
 
                   {/* Change Role */}
@@ -281,6 +335,60 @@ export const UserManagementTable: React.FC<UserManagementTableProps> = ({ onSucc
             The default admin user (username: <strong>admin</strong>) cannot be deleted for security reasons.
             You can change its role or disable it, but cannot remove it.
           </p>
+        </div>
+      )}
+
+      {/* Temporary Password Modal */}
+      {tempPasswordData && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <CheckCircle className="text-green-600" size={24} />
+              <h3 className="text-lg font-semibold text-gray-900">Password Reset Successfully</h3>
+            </div>
+
+            <p className="text-gray-600 mb-4">
+              Temporary password has been generated for user <strong>{tempPasswordData.username}</strong>.
+              Share this password securely. The user should change it on their next login.
+            </p>
+
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
+              <label className="text-sm font-medium text-gray-700 block mb-2">Temporary Password</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={tempPasswordData.password}
+                  readOnly
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md bg-white font-mono text-sm"
+                />
+                <button
+                  onClick={copyPasswordToClipboard}
+                  className={`px-3 py-2 rounded-md transition ${
+                    copiedPassword
+                      ? 'bg-green-500 text-white'
+                      : 'bg-blue-600 text-white hover:bg-blue-700'
+                  }`}
+                >
+                  {copiedPassword ? (
+                    <CheckCircle size={18} />
+                  ) : (
+                    <Copy size={18} />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4 text-sm text-yellow-800">
+              <strong>Important:</strong> This password is shown only once. Store it securely before closing this dialog.
+            </div>
+
+            <button
+              onClick={() => setTempPasswordData(null)}
+              className="w-full px-4 py-2 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700"
+            >
+              Done
+            </button>
+          </div>
         </div>
       )}
     </div>

@@ -1,10 +1,11 @@
 import React, { useState } from 'react'
 import { Tab } from '@headlessui/react'
-import { AlertCircle, LogOut, Users } from 'lucide-react'
+import { AlertCircle, LogOut, Users, Key } from 'lucide-react'
 import { CollectorForm } from '../components/CollectorForm'
 import { CollectorList } from '../components/CollectorList'
 import { CreateUserForm } from '../components/CreateUserForm'
 import { UserManagementTable } from '../components/UserManagementTable'
+import { ChangePasswordForm } from '../components/ChangePasswordForm'
 import { apiClient } from '../services/api'
 
 interface DashboardProps {
@@ -159,6 +160,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
                 }`
               }
             >
+              Change Password
+            </Tab>
+            <Tab
+              className={({ selected }) =>
+                `px-4 py-2 font-medium text-sm border-b-2 transition ${
+                  selected
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-gray-600 hover:text-gray-900'
+                }`
+              }
+            >
               Register Collector
             </Tab>
             <Tab
@@ -211,6 +223,29 @@ export const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
                 </Tab.Panel>
               </>
             )}
+            <Tab.Panel>
+              <div className="bg-white rounded-lg shadow p-6">
+                <div className="mb-4">
+                  <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+                    <Key size={24} />
+                    Change Your Password
+                  </h2>
+                  <p className="text-gray-600 mt-2">Update your account password to keep your account secure.</p>
+                </div>
+                <ChangePasswordForm
+                  onSuccess={(message) => {
+                    setUserMessage(message)
+                    setUserMessageType('success')
+                    setTimeout(() => setUserMessage(''), 5000)
+                  }}
+                  onError={(message) => {
+                    setUserMessage(message)
+                    setUserMessageType('error')
+                    setTimeout(() => setUserMessage(''), 5000)
+                  }}
+                />
+              </div>
+            </Tab.Panel>
             <Tab.Panel>
               <div className="bg-white rounded-lg shadow p-6">
                 {!isSecretValid ? (

@@ -48,11 +48,23 @@ interval = ${COLLECTOR_INTERVAL_DISK_USAGE:-300}
 [pg_query_stats]
 enabled = true
 interval = ${COLLECTOR_INTERVAL_PG_QUERY_STATS:-60}
+
+[registration]
+auto_register = ${AUTO_REGISTER:-false}
+secret = "${REGISTRATION_SECRET:-}"
 EOF
 
 # Ensure pganalytics user can read the config
 chown pganalytics:pganalytics /etc/pganalytics/collector.toml
 chmod 640 /etc/pganalytics/collector.toml
+
+# Auto-register if configured and not already registered
+if [ "${AUTO_REGISTER}" = "true" ] && [ -n "${REGISTRATION_SECRET}" ]; then
+    echo "Auto-registering collector..."
+    su -s /bin/bash pganalytics -c "cd /app && ./pganalytics register" || {
+        echo "Warning: Auto-registration failed, continuing anyway..."
+    }
+fi
 
 # Switch to pganalytics user and execute the collector
 exec su -s /bin/bash pganalytics -c "cd /app && $@"

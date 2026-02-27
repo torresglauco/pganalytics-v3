@@ -296,7 +296,52 @@ int runCronMode() {
 
 int runRegister() {
     std::cout << "Collector registration mode" << std::endl;
-    std::cout << "TODO: Implement registration flow" << std::endl;
+
+    // Load configuration
+    if (!gConfig->loadFromFile()) {
+        std::cerr << "Failed to load configuration: " << gConfig->getLastError() << std::endl;
+        return 1;
+    }
+
+    std::cout << "Configuration loaded successfully" << std::endl;
+    std::cout << "Collector ID: " << gConfig->getCollectorId() << std::endl;
+    std::cout << "Backend URL: " << gConfig->getBackendUrl() << std::endl;
+
+    // Get registration secret from environment variable
+    const char* registrationSecret = std::getenv("REGISTRATION_SECRET");
+    if (!registrationSecret || std::string(registrationSecret).empty()) {
+        std::cerr << "Error: REGISTRATION_SECRET environment variable not set" << std::endl;
+        std::cerr << "Please set it before running registration" << std::endl;
+        return 1;
+    }
+
+    // Load TLS configuration
+    auto tlsConfig = gConfig->getTLSConfig();
+
+    // Initialize sender for registration
+    Sender sender(
+        gConfig->getBackendUrl(),
+        gConfig->getCollectorId(),
+        tlsConfig.certFile,
+        tlsConfig.keyFile,
+        tlsConfig.verify
+    );
+
+    // Attempt registration
+    std::string authToken;
+    std::string collectorName = gConfig->getHostname();
+    std::cout << "Registering with backend as '" << collectorName << "'..." << std::endl;
+
+    if (!sender.registerCollector(registrationSecret, collectorName, authToken)) {
+        std::cerr << "Registration failed" << std::endl;
+        return 1;
+    }
+
+    std::cout << "Registration successful!" << std::endl;
+    std::cout << "Auth Token: " << authToken.substr(0, 20) << "..." << std::endl;
+    std::cout << "Collector ID: " << gConfig->getCollectorId() << std::endl;
+    std::cout << "You can now run the collector in normal mode" << std::endl;
+
     return 0;
 }
 

@@ -112,12 +112,29 @@ func main() {
 		30*time.Minute, // Collector token expiration
 	)
 
-	// Initialize authentication services (temporarily disabled due to interface mismatch)
-	// passwordManager := auth.NewPasswordManager()
-	// certManager, err := auth.NewCertificateManager("", "")
-	// if err != nil {
-	// 	logger.Fatal("Failed to initialize certificate manager", zap.Error(err))
-	// }
+	// Initialize authentication services
+	passwordManager := auth.NewPasswordManager()
+	certManager, err := auth.NewCertificateManager("", "")
+	if err != nil {
+		logger.Fatal("Failed to initialize certificate manager", zap.Error(err))
+	}
+
+	// Initialize data stores
+	userStore := storage.NewUserStore(postgresDB)
+	collectorStore := storage.NewCollectorStore(postgresDB)
+	tokenStore := storage.NewTokenStore(postgresDB)
+
+	// Initialize auth service
+	authService := auth.NewAuthService(
+		jwtManager,
+		passwordManager,
+		certManager,
+		userStore,
+		collectorStore,
+		tokenStore,
+	)
+
+	logger.Info("Authentication service initialized")
 
 	// Set Gin mode
 	if cfg.IsProduction() {
@@ -132,7 +149,7 @@ func main() {
 	router.Use(gin.Recovery())
 
 	// Create API server
-	apiServer := api.NewServer(cfg, logger, postgresDB, timescaleDB, nil, jwtManager)
+	apiServer := api.NewServer(cfg, logger, postgresDB, timescaleDB, authService, jwtManager)
 	apiServer.SetCacheManager(cacheManager)
 
 	// Register routes

@@ -4,6 +4,7 @@ import (
 	"github.com/torresglauco/pganalytics-v3/backend/internal/auth"
 	"github.com/torresglauco/pganalytics-v3/backend/internal/cache"
 	"github.com/torresglauco/pganalytics-v3/backend/internal/config"
+	"github.com/torresglauco/pganalytics-v3/backend/internal/crypto"
 	"github.com/torresglauco/pganalytics-v3/backend/internal/ml"
 	"github.com/torresglauco/pganalytics-v3/backend/internal/storage"
 	"github.com/torresglauco/pganalytics-v3/backend/internal/timescale"
@@ -23,6 +24,7 @@ type Server struct {
 	featureExtractor ml.IFeatureExtractor
 	cacheManager     *cache.Manager
 	rateLimiter      *RateLimiter
+	secretManager    *crypto.SecretManager
 }
 
 // NewServer creates a new API server
@@ -33,6 +35,7 @@ func NewServer(
 	timescale *timescale.TimescaleDB,
 	authService *auth.AuthService,
 	jwtManager *auth.JWTManager,
+	secretManager *crypto.SecretManager,
 ) *Server {
 	// Initialize ML client if enabled
 	var mlClient *ml.Client
@@ -68,6 +71,7 @@ func NewServer(
 		featureExtractor: featureExtractor,
 		cacheManager:     nil, // Set via SetCacheManager
 		rateLimiter:      rateLimiter,
+		secretManager:    secretManager,
 	}
 }
 

@@ -196,10 +196,10 @@ type RDSMetric struct {
 // Requires minimum: name, rds_endpoint, port, environment, master_username, master_password
 type CreateRDSInstanceRequest struct {
 	Name                      string `json:"name" binding:"required,min=3"`
-	AWSRegion                 string `json:"aws_region" binding:"required"`
+	AWSRegion                 string `json:"aws_region"`                 // Optional - defaults to us-east-1
 	RDSEndpoint               string `json:"rds_endpoint" binding:"required"`
 	Port                      int    `json:"port" binding:"required,min=1,max=65535"`
-	Environment               string `json:"environment" binding:"required,oneof=production staging development test"`
+	Environment               string `json:"environment"`               // Optional - defaults to development
 	MasterUsername            string `json:"master_username" binding:"required"`
 	MasterPassword            string `json:"master_password" binding:"required"`
 	Description               string `json:"description"`
@@ -221,10 +221,10 @@ type CreateRDSInstanceRequest struct {
 // UpdateRDSInstanceRequest represents a request to update an RDS instance
 type UpdateRDSInstanceRequest struct {
 	Name                      string `json:"name" binding:"required,min=3"`
-	AWSRegion                 string `json:"aws_region" binding:"required"`
+	AWSRegion                 string `json:"aws_region"`                 // Optional
 	RDSEndpoint               string `json:"rds_endpoint" binding:"required"`
 	Port                      int    `json:"port" binding:"required,min=1,max=65535"`
-	Environment               string `json:"environment" binding:"required,oneof=production staging development test"`
+	Environment               string `json:"environment"`               // Optional
 	MasterUsername            string `json:"master_username" binding:"required"`
 	MasterPassword            string `json:"master_password" binding:"required"`
 	Description               string `json:"description"`
@@ -501,8 +501,8 @@ type ResetPasswordResponse struct {
 
 // TestConnectionRequest represents a request to test RDS connection (for existing instance)
 type TestConnectionRequest struct {
-	Username string `json:"username" binding:"required"`
-	Password string `json:"password" binding:"required"`
+	Username string `json:"username"` // Optional - uses stored username from instance if not provided
+	Password string `json:"password"` // Optional - uses decrypted password from secret if not provided
 }
 
 // TestRDSConnectionRequest represents a request to test RDS connection with endpoint details

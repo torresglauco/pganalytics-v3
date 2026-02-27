@@ -198,6 +198,115 @@ func (s *Server) handleGetRDSInstance(c *gin.Context) {
 	c.JSON(200, instance)
 }
 
+// @Summary Update RDS Instance
+// @Description Update an existing RDS instance (admin only)
+// @Tags RDS Management
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param id path int true "RDS Instance ID"
+// @Param request body models.UpdateRDSInstanceRequest true "RDS instance details to update"
+// @Success 200 {object} models.RDSInstance
+// @Failure 400 {object} apperrors.AppError
+// @Failure 401 {object} apperrors.AppError
+// @Failure 403 {object} apperrors.AppError
+// @Failure 404 {object} apperrors.AppError
+// @Router /api/v1/rds-instances/{id} [put]
+func (s *Server) handleUpdateRDSInstance(c *gin.Context) {
+	// Get current user from context
+	currentUser, exists := c.Get("user")
+	if !exists {
+		errResp := apperrors.Unauthorized("Authentication required", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	user := currentUser.(*models.User)
+
+	// Check if user is admin
+	if user.Role != "admin" {
+		errResp := apperrors.Forbidden("Only admins can update RDS instances", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		errResp := apperrors.BadRequest("Invalid RDS instance ID", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	// Parse request
+	var req models.UpdateRDSInstanceRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		s.logger.Error("Failed to bind RDS instance request", zap.Error(err))
+		errResp := apperrors.BadRequest("Invalid request", err.Error())
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	// Validate request
+	if req.Name == "" {
+		errResp := apperrors.BadRequest("Instance name is required", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	if req.RDSEndpoint == "" {
+		errResp := apperrors.BadRequest("RDS endpoint is required", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	// Set defaults for optional fields
+	if req.Port == 0 {
+		req.Port = 5432 // Default PostgreSQL port
+	}
+	if req.SSLMode == "" {
+		req.SSLMode = "require" // Default SSL mode
+	}
+	if req.MonitoringInterval == 0 {
+		req.MonitoringInterval = 60 // Default to 60 seconds
+	}
+	if req.ConnectionTimeout == 0 {
+		req.ConnectionTimeout = 30 // Default to 30 seconds
+	}
+	if !req.SSLEnabled {
+		req.SSLEnabled = true // Enable SSL by default
+	}
+	if req.Status == "" {
+		req.Status = "registered" // Default status
+	}
+
+	if req.AWSRegion == "" {
+		errResp := apperrors.BadRequest("AWS region is required", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 10*time.Second)
+	defer cancel()
+
+	// Update RDS instance
+	instance, err := s.postgres.UpdateRDSInstance(ctx, id, &req, user.ID)
+	if err != nil {
+		s.logger.Error("Failed to update RDS instance", zap.Error(err))
+		errResp := apperrors.ToAppError(err)
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	s.logger.Info("RDS instance updated",
+		zap.String("instance_name", instance.Name),
+		zap.String("endpoint", instance.RDSEndpoint),
+		zap.String("updated_by", user.Username),
+	)
+
+	c.JSON(200, instance)
+}
+
 // @Summary Delete RDS Instance
 // @Description Delete (soft delete) an RDS instance (admin only)
 // @Tags RDS Management

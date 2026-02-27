@@ -32,7 +32,7 @@ func (p *PostgresDB) CreateRDSInstance(ctx context.Context, instance *models.Cre
 			enable_enhanced_monitoring, monitoring_interval,
 			ssl_enabled, ssl_mode, connection_timeout,
 			multi_az, backup_retention_days, preferred_backup_window,
-			preferred_maintenance_window, tags, is_active,
+			preferred_maintenance_window, tags, is_active, status,
 			created_by, updated_by, created_at, updated_at
 		) VALUES (
 			$1, $2, $3, $4, $5,
@@ -41,7 +41,7 @@ func (p *PostgresDB) CreateRDSInstance(ctx context.Context, instance *models.Cre
 			$12, $13,
 			$14, $15, $16,
 			$17, $18, $19,
-			$20, $21, true,
+			$20, $21, true, 'registered',
 			$22, $22, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
 		) RETURNING id, created_at, updated_at`,
 		instance.Name, instance.Description, instance.AWSRegion,
@@ -78,6 +78,7 @@ func (p *PostgresDB) CreateRDSInstance(ctx context.Context, instance *models.Cre
 		SSLMode:                 instance.SSLMode,
 		ConnectionTimeout:       instance.ConnectionTimeout,
 		IsActive:                true,
+		Status:                  "registered",
 		MultiAZ:                 instance.MultiAZ,
 		BackupRetentionDays:     ptrInt(instance.BackupRetentionDays),
 		PreferredBackupWindow:   ptrString(instance.PreferredBackupWindow),
@@ -104,7 +105,7 @@ func (p *PostgresDB) GetRDSInstance(ctx context.Context, id int) (*models.RDSIns
 			environment, master_username, secret_id,
 			enable_enhanced_monitoring, monitoring_interval,
 			ssl_enabled, ssl_mode, connection_timeout,
-			is_active, last_heartbeat, last_connection_status,
+			is_active, status, last_heartbeat, last_connection_status,
 			last_error_message, last_error_time,
 			multi_az, backup_retention_days, preferred_backup_window,
 			preferred_maintenance_window, tags,
@@ -118,7 +119,7 @@ func (p *PostgresDB) GetRDSInstance(ctx context.Context, id int) (*models.RDSIns
 		&instance.Environment, &instance.MasterUsername, &instance.SecretID,
 		&instance.EnableEnhancedMonitoring, &instance.MonitoringInterval,
 		&instance.SSLEnabled, &instance.SSLMode, &instance.ConnectionTimeout,
-		&instance.IsActive, &instance.LastHeartbeat, &instance.LastConnectionStatus,
+		&instance.IsActive, &instance.Status, &instance.LastHeartbeat, &instance.LastConnectionStatus,
 		&instance.LastErrorMessage, &instance.LastErrorTime,
 		&instance.MultiAZ, &instance.BackupRetentionDays,
 		&instance.PreferredBackupWindow, &instance.PreferredMaintenanceWindow,
@@ -150,7 +151,7 @@ func (p *PostgresDB) ListRDSInstances(ctx context.Context) ([]*models.RDSInstanc
 			environment, master_username, secret_id,
 			enable_enhanced_monitoring, monitoring_interval,
 			ssl_enabled, ssl_mode, connection_timeout,
-			is_active, last_heartbeat, last_connection_status,
+			is_active, status, last_heartbeat, last_connection_status,
 			last_error_message, last_error_time,
 			multi_az, backup_retention_days, preferred_backup_window,
 			preferred_maintenance_window, tags,
@@ -176,7 +177,7 @@ func (p *PostgresDB) ListRDSInstances(ctx context.Context) ([]*models.RDSInstanc
 			&instance.Environment, &instance.MasterUsername, &instance.SecretID,
 			&instance.EnableEnhancedMonitoring, &instance.MonitoringInterval,
 			&instance.SSLEnabled, &instance.SSLMode, &instance.ConnectionTimeout,
-			&instance.IsActive, &instance.LastHeartbeat, &instance.LastConnectionStatus,
+			&instance.IsActive, &instance.Status, &instance.LastHeartbeat, &instance.LastConnectionStatus,
 			&instance.LastErrorMessage, &instance.LastErrorTime,
 			&instance.MultiAZ, &instance.BackupRetentionDays,
 			&instance.PreferredBackupWindow, &instance.PreferredMaintenanceWindow,
@@ -223,6 +224,75 @@ func (p *PostgresDB) UpdateRDSInstanceStatus(ctx context.Context, id int, status
 	}
 
 	return nil
+}
+
+// UpdateRDSInstance updates an RDS instance
+func (p *PostgresDB) UpdateRDSInstance(ctx context.Context, id int, instance *models.UpdateRDSInstanceRequest, userID int) (*models.RDSInstance, error) {
+	tagsJSON, _ := json.Marshal(instance.Tags)
+
+	// Convert nil pointer to interface{} for proper NULL handling
+	var secretIDValue interface{} = nil
+
+	updatedInstance := &models.RDSInstance{}
+	var tags json.RawMessage
+
+	err := p.db.QueryRowContext(
+		ctx,
+		`UPDATE pganalytics.rds_instances SET
+			name = $1, description = $2, aws_region = $3, rds_endpoint = $4, port = $5,
+			engine_version = $6, db_instance_class = $7, allocated_storage_gb = $8,
+			environment = $9, master_username = $10, secret_id = $11,
+			enable_enhanced_monitoring = $12, monitoring_interval = $13,
+			ssl_enabled = $14, ssl_mode = $15, connection_timeout = $16,
+			multi_az = $17, backup_retention_days = $18, preferred_backup_window = $19,
+			preferred_maintenance_window = $20, tags = $21, status = $22,
+			updated_by = $23, updated_at = CURRENT_TIMESTAMP
+		WHERE id = $24
+		RETURNING id, name, description, aws_region, rds_endpoint, port,
+			engine_version, db_instance_class, allocated_storage_gb,
+			environment, master_username, secret_id,
+			enable_enhanced_monitoring, monitoring_interval,
+			ssl_enabled, ssl_mode, connection_timeout,
+			is_active, status, last_heartbeat, last_connection_status,
+			last_error_message, last_error_time,
+			multi_az, backup_retention_days, preferred_backup_window,
+			preferred_maintenance_window, tags,
+			created_at, updated_at, created_by, updated_by`,
+		instance.Name, instance.Description, instance.AWSRegion, instance.RDSEndpoint, instance.Port,
+		instance.EngineVersion, instance.DBInstanceClass, instance.AllocatedStorageGB,
+		instance.Environment, instance.MasterUsername, secretIDValue,
+		instance.EnableEnhancedMonitoring, instance.MonitoringInterval,
+		instance.SSLEnabled, instance.SSLMode, instance.ConnectionTimeout,
+		instance.MultiAZ, instance.BackupRetentionDays, instance.PreferredBackupWindow,
+		instance.PreferredMaintenanceWindow, tagsJSON, instance.Status,
+		userID, id,
+	).Scan(
+		&updatedInstance.ID, &updatedInstance.Name, &updatedInstance.Description, &updatedInstance.AWSRegion,
+		&updatedInstance.RDSEndpoint, &updatedInstance.Port, &updatedInstance.EngineVersion,
+		&updatedInstance.DBInstanceClass, &updatedInstance.AllocatedStorageGB,
+		&updatedInstance.Environment, &updatedInstance.MasterUsername, &updatedInstance.SecretID,
+		&updatedInstance.EnableEnhancedMonitoring, &updatedInstance.MonitoringInterval,
+		&updatedInstance.SSLEnabled, &updatedInstance.SSLMode, &updatedInstance.ConnectionTimeout,
+		&updatedInstance.IsActive, &updatedInstance.Status, &updatedInstance.LastHeartbeat, &updatedInstance.LastConnectionStatus,
+		&updatedInstance.LastErrorMessage, &updatedInstance.LastErrorTime,
+		&updatedInstance.MultiAZ, &updatedInstance.BackupRetentionDays,
+		&updatedInstance.PreferredBackupWindow, &updatedInstance.PreferredMaintenanceWindow,
+		&tags,
+		&updatedInstance.CreatedAt, &updatedInstance.UpdatedAt, &updatedInstance.CreatedBy, &updatedInstance.UpdatedBy,
+	)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, apperrors.NotFound("RDS instance not found", fmt.Sprintf("ID: %d", id))
+		}
+		return nil, apperrors.DatabaseError("update RDS instance", err.Error())
+	}
+
+	if len(tags) > 0 {
+		_ = json.Unmarshal(tags, &updatedInstance.Tags)
+	}
+
+	return updatedInstance, nil
 }
 
 // DeleteRDSInstance deletes an RDS instance (soft delete)

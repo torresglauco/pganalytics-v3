@@ -131,6 +131,7 @@ type RDSInstance struct {
 	SSLMode                 string     `db:"ssl_mode" json:"ssl_mode"`
 	ConnectionTimeout       int        `db:"connection_timeout" json:"connection_timeout"`
 	IsActive                bool       `db:"is_active" json:"is_active"`
+	Status                  string     `db:"status" json:"status"`
 	LastHeartbeat           *time.Time `db:"last_heartbeat" json:"last_heartbeat,omitempty"`
 	LastConnectionStatus    string     `db:"last_connection_status" json:"last_connection_status"`
 	LastErrorMessage        *string    `db:"last_error_message" json:"last_error_message,omitempty"`
@@ -183,6 +184,32 @@ type CreateRDSInstanceRequest struct {
 	MasterUsername            string `json:"master_username" binding:"required"`
 	MasterPassword            string `json:"master_password" binding:"required"`
 	Description               string `json:"description"`
+	EngineVersion             string `json:"engine_version"`
+	DBInstanceClass           string `json:"db_instance_class"`
+	AllocatedStorageGB        int    `json:"allocated_storage_gb"`
+	EnableEnhancedMonitoring  bool   `json:"enable_enhanced_monitoring"`
+	MonitoringInterval        int    `json:"monitoring_interval" binding:"min=0"`
+	SSLEnabled                bool   `json:"ssl_enabled"`
+	SSLMode                   string `json:"ssl_mode"`
+	ConnectionTimeout         int    `json:"connection_timeout" binding:"min=0"`
+	MultiAZ                   bool   `json:"multi_az"`
+	BackupRetentionDays       int    `json:"backup_retention_days"`
+	PreferredBackupWindow     string `json:"preferred_backup_window"`
+	PreferredMaintenanceWindow string `json:"preferred_maintenance_window"`
+	Tags                      map[string]interface{} `json:"tags"`
+}
+
+// UpdateRDSInstanceRequest represents a request to update an RDS instance
+type UpdateRDSInstanceRequest struct {
+	Name                      string `json:"name" binding:"required,min=3"`
+	AWSRegion                 string `json:"aws_region" binding:"required"`
+	RDSEndpoint               string `json:"rds_endpoint" binding:"required"`
+	Port                      int    `json:"port" binding:"required,min=1,max=65535"`
+	Environment               string `json:"environment" binding:"required,oneof=production staging development test"`
+	MasterUsername            string `json:"master_username" binding:"required"`
+	MasterPassword            string `json:"master_password" binding:"required"`
+	Description               string `json:"description"`
+	Status                    string `json:"status" binding:"required,oneof=registering registered monitoring paused"`
 	EngineVersion             string `json:"engine_version"`
 	DBInstanceClass           string `json:"db_instance_class"`
 	AllocatedStorageGB        int    `json:"allocated_storage_gb"`

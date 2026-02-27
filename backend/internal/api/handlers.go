@@ -798,8 +798,35 @@ func (s *Server) handleGetCollector(c *gin.Context) {
 // @Failure 404 {object} models.ErrorResponse
 // @Router /api/v1/collectors/{id} [delete]
 func (s *Server) handleDeleteCollector(c *gin.Context) {
-	// TODO: Implement delete collector
-	c.JSON(http.StatusNotImplemented, gin.H{"message": "Not implemented yet"})
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 30*time.Second)
+	defer cancel()
+
+	collectorID := c.Param("id")
+	if collectorID == "" {
+		errResp := apperrors.BadRequest("Invalid collector ID", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	s.logger.Debug("deleting collector", zap.String("collector_id", collectorID))
+
+	// Delete collector from database
+	err := s.postgres.DeleteCollector(ctx, collectorID)
+	if err != nil {
+		s.logger.Error("failed to delete collector", zap.Error(err))
+		if _, ok := err.(*apperrors.AppError); ok {
+			appErr := err.(*apperrors.AppError)
+			c.JSON(appErr.StatusCode, appErr)
+		} else {
+			c.JSON(http.StatusInternalServerError, apperrors.InternalServerError("Failed to delete collector", ""))
+		}
+		return
+	}
+
+	s.logger.Debug("collector deleted successfully", zap.String("collector_id", collectorID))
+
+	// Return 204 No Content
+	c.Status(http.StatusNoContent)
 }
 
 // ============================================================================

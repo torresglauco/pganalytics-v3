@@ -476,6 +476,30 @@ func (p *PostgresDB) UpdateCollectorMetricsCount(ctx context.Context, collectorI
 	return nil
 }
 
+// DeleteCollector deletes a collector from the database
+func (p *PostgresDB) DeleteCollector(ctx context.Context, collectorID string) error {
+	result, err := p.db.ExecContext(
+		ctx,
+		`DELETE FROM pganalytics.collectors WHERE id::text = $1`,
+		collectorID,
+	)
+
+	if err != nil {
+		return apperrors.DatabaseError("delete collector", err.Error())
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return apperrors.DatabaseError("delete collector", err.Error())
+	}
+
+	if rowsAffected == 0 {
+		return apperrors.NotFound("Collector not found", "")
+	}
+
+	return nil
+}
+
 // GetCollectorConfig retrieves the latest configuration for a collector
 func (p *PostgresDB) GetCollectorConfig(ctx context.Context, collectorID string) (*models.CollectorConfig, error) {
 	config := &models.CollectorConfig{}

@@ -82,12 +82,10 @@ func (s *Server) handleCreateRDSInstance(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 10*time.Second)
 	defer cancel()
 
-	// Test connection to RDS instance (if credentials provided)
-	if req.MasterUsername != "" && req.MasterPassword != nil && *req.MasterPassword != "" {
-		if err := testRDSConnection(ctx, req.RDSEndpoint, req.Port, req.MasterUsername, *req.MasterPassword); err != nil {
-			s.logger.Warn("RDS connection test failed", zap.String("endpoint", req.RDSEndpoint), zap.Error(err))
-			// Don't fail here, allow registration even if connection fails (may be temporary)
-		}
+	// Test connection to RDS instance
+	if err := testRDSConnection(ctx, req.RDSEndpoint, req.Port, req.MasterUsername, req.MasterPassword); err != nil {
+		s.logger.Warn("RDS connection test failed", zap.String("endpoint", req.RDSEndpoint), zap.Error(err))
+		// Don't fail here, allow registration even if connection fails (may be temporary)
 	}
 
 	// TODO: Store master password in secrets table and get secret_id

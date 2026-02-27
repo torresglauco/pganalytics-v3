@@ -17,10 +17,10 @@ func (p *PostgresDB) CreateRDSInstance(ctx context.Context, instance *models.Cre
 
 	tagsJSON, _ := json.Marshal(instance.Tags)
 
-	// Convert secretID to sql.NullInt64 for proper NULL handling
-	var sqlSecretID sql.NullInt64
-	if secretID != nil {
-		sqlSecretID = sql.NullInt64{Int64: int64(*secretID), Valid: true}
+	// Convert nil pointer to interface{} for proper NULL handling
+	var secretIDValue interface{} = secretID
+	if secretID == nil {
+		secretIDValue = nil
 	}
 
 	err := p.db.QueryRowContext(
@@ -47,7 +47,7 @@ func (p *PostgresDB) CreateRDSInstance(ctx context.Context, instance *models.Cre
 		instance.Name, instance.Description, instance.AWSRegion,
 		instance.RDSEndpoint, instance.Port,
 		instance.EngineVersion, instance.DBInstanceClass, instance.AllocatedStorageGB,
-		instance.Environment, instance.MasterUsername, sqlSecretID,
+		instance.Environment, instance.MasterUsername, secretIDValue,
 		instance.EnableEnhancedMonitoring, instance.MonitoringInterval,
 		instance.SSLEnabled, instance.SSLMode, instance.ConnectionTimeout,
 		instance.MultiAZ, instance.BackupRetentionDays,
@@ -62,13 +62,13 @@ func (p *PostgresDB) CreateRDSInstance(ctx context.Context, instance *models.Cre
 	result := &models.RDSInstance{
 		ID:                      id,
 		Name:                    instance.Name,
-		Description:             instance.Description,
+		Description:             ptrString(instance.Description),
 		AWSRegion:               instance.AWSRegion,
 		RDSEndpoint:             instance.RDSEndpoint,
 		Port:                    instance.Port,
-		EngineVersion:           instance.EngineVersion,
-		DBInstanceClass:         instance.DBInstanceClass,
-		AllocatedStorageGB:      instance.AllocatedStorageGB,
+		EngineVersion:           ptrString(instance.EngineVersion),
+		DBInstanceClass:         ptrString(instance.DBInstanceClass),
+		AllocatedStorageGB:      ptrInt(instance.AllocatedStorageGB),
 		Environment:             instance.Environment,
 		MasterUsername:          instance.MasterUsername,
 		SecretID:                secretID,
@@ -79,9 +79,9 @@ func (p *PostgresDB) CreateRDSInstance(ctx context.Context, instance *models.Cre
 		ConnectionTimeout:       instance.ConnectionTimeout,
 		IsActive:                true,
 		MultiAZ:                 instance.MultiAZ,
-		BackupRetentionDays:     instance.BackupRetentionDays,
-		PreferredBackupWindow:   instance.PreferredBackupWindow,
-		PreferredMaintenanceWindow: instance.PreferredMaintenanceWindow,
+		BackupRetentionDays:     ptrInt(instance.BackupRetentionDays),
+		PreferredBackupWindow:   ptrString(instance.PreferredBackupWindow),
+		PreferredMaintenanceWindow: ptrString(instance.PreferredMaintenanceWindow),
 		Tags:                    instance.Tags,
 		CreatedAt:               createdAt.Time,
 		UpdatedAt:               updatedAt.Time,
@@ -247,4 +247,19 @@ func (p *PostgresDB) DeleteRDSInstance(ctx context.Context, id int) error {
 	}
 
 	return nil
+}
+
+// Helper functions for pointer conversion
+func ptrString(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
+}
+
+func ptrInt(i int) *int {
+	if i == 0 {
+		return nil
+	}
+	return &i
 }

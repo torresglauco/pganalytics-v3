@@ -173,28 +173,29 @@ type RDSMetric struct {
 }
 
 // CreateRDSInstanceRequest represents a request to add a new RDS instance
+// Requires minimum: name, rds_endpoint, port, environment, master_username, master_password
 type CreateRDSInstanceRequest struct {
-	Name                    string                 `json:"name" binding:"required,min=3"`
-	Description             *string                `json:"description"`
-	AWSRegion               string                 `json:"aws_region" binding:"required"`
-	RDSEndpoint             string                 `json:"rds_endpoint" binding:"required"`
-	Port                    int                    `json:"port" binding:"required,min=1,max=65535"`
-	EngineVersion           *string                `json:"engine_version"`
-	DBInstanceClass         *string                `json:"db_instance_class"`
-	AllocatedStorageGB      *int                   `json:"allocated_storage_gb"`
-	Environment             string                 `json:"environment" binding:"required"`
-	MasterUsername          string                 `json:"master_username" binding:"required"`
-	MasterPassword          *string                `json:"master_password"`
-	EnableEnhancedMonitoring bool                  `json:"enable_enhanced_monitoring"`
-	MonitoringInterval      int                    `json:"monitoring_interval" binding:"min=60"`
-	SSLEnabled              bool                   `json:"ssl_enabled"`
-	SSLMode                 string                 `json:"ssl_mode"`
-	ConnectionTimeout       int                    `json:"connection_timeout" binding:"min=1"`
-	MultiAZ                 bool                   `json:"multi_az"`
-	BackupRetentionDays     *int                   `json:"backup_retention_days"`
-	PreferredBackupWindow   *string                `json:"preferred_backup_window"`
-	PreferredMaintenanceWindow *string             `json:"preferred_maintenance_window"`
-	Tags                    map[string]interface{} `json:"tags"`
+	Name                      string `json:"name" binding:"required,min=3"`
+	AWSRegion                 string `json:"aws_region" binding:"required"`
+	RDSEndpoint               string `json:"rds_endpoint" binding:"required"`
+	Port                      int    `json:"port" binding:"required,min=1,max=65535"`
+	Environment               string `json:"environment" binding:"required,oneof=production staging development test"`
+	MasterUsername            string `json:"master_username" binding:"required"`
+	MasterPassword            string `json:"master_password" binding:"required"`
+	Description               string `json:"description"`
+	EngineVersion             string `json:"engine_version"`
+	DBInstanceClass           string `json:"db_instance_class"`
+	AllocatedStorageGB        int    `json:"allocated_storage_gb"`
+	EnableEnhancedMonitoring  bool   `json:"enable_enhanced_monitoring"`
+	MonitoringInterval        int    `json:"monitoring_interval"`
+	SSLEnabled                bool   `json:"ssl_enabled"`
+	SSLMode                   string `json:"ssl_mode"`
+	ConnectionTimeout         int    `json:"connection_timeout"`
+	MultiAZ                   bool   `json:"multi_az"`
+	BackupRetentionDays       int    `json:"backup_retention_days"`
+	PreferredBackupWindow     string `json:"preferred_backup_window"`
+	PreferredMaintenanceWindow string `json:"preferred_maintenance_window"`
+	Tags                      map[string]interface{} `json:"tags"`
 }
 
 // ============================================================================

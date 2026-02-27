@@ -1,13 +1,13 @@
--- RDS PostgreSQL Monitoring Support
--- Extends pgAnalytics to support centralized RDS instance monitoring
+-- Managed Instance PostgreSQL Monitoring Support
+-- Extends pgAnalytics to support centralized Managed Instance monitoring
 
 SET search_path TO pganalytics, public;
 
 -- ============================================================================
--- RDS INSTANCES TABLE
+-- MANAGED INSTANCES TABLE
 -- ============================================================================
 
-CREATE TABLE IF NOT EXISTS rds_instances (
+CREATE TABLE IF NOT EXISTS managed_instances (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     description TEXT,
@@ -47,18 +47,18 @@ CREATE TABLE IF NOT EXISTS rds_instances (
     updated_by INTEGER REFERENCES users(id) ON DELETE SET NULL
 );
 
-CREATE INDEX idx_rds_instances_region ON rds_instances(aws_region);
-CREATE INDEX idx_rds_instances_active ON rds_instances(is_active);
-CREATE INDEX idx_rds_instances_environment ON rds_instances(environment);
-CREATE INDEX idx_rds_instances_status ON rds_instances(last_connection_status);
+CREATE INDEX idx_managed_instances_region ON managed_instances(aws_region);
+CREATE INDEX idx_managed_instances_active ON managed_instances(is_active);
+CREATE INDEX idx_managed_instances_environment ON managed_instances(environment);
+CREATE INDEX idx_managed_instances_status ON managed_instances(last_connection_status);
 
 -- ============================================================================
--- RDS DATABASES TABLE
+-- Managed Instance DATABASES TABLE
 -- ============================================================================
 
-CREATE TABLE IF NOT EXISTS rds_databases (
+CREATE TABLE IF NOT EXISTS managed_instance_databases (
     id SERIAL PRIMARY KEY,
-    rds_instance_id INTEGER NOT NULL REFERENCES rds_instances(id) ON DELETE CASCADE,
+    managed_instance_id INTEGER NOT NULL REFERENCES managed_instances(id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
     owner VARCHAR(255),
     size_bytes BIGINT,
@@ -69,17 +69,17 @@ CREATE TABLE IF NOT EXISTS rds_databases (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_rds_databases_instance ON rds_databases(rds_instance_id);
-CREATE INDEX idx_rds_databases_name ON rds_databases(name);
-CREATE UNIQUE INDEX idx_rds_databases_instance_name ON rds_databases(rds_instance_id, name);
+CREATE INDEX idx_managed_instance_databases_instance ON managed_instance_databases(managed_instance_id);
+CREATE INDEX idx_managed_instance_databases_name ON managed_instance_databases(name);
+CREATE UNIQUE INDEX idx_managed_instance_databases_instance_name ON managed_instance_databases(managed_instance_id, name);
 
 -- ============================================================================
--- RDS MONITORING METRICS TABLE
+-- Managed Instance MONITORING METRICS TABLE
 -- ============================================================================
 
-CREATE TABLE IF NOT EXISTS rds_metrics (
+CREATE TABLE IF NOT EXISTS managed_instance_metrics (
     id BIGSERIAL PRIMARY KEY,
-    rds_instance_id INTEGER NOT NULL REFERENCES rds_instances(id) ON DELETE CASCADE,
+    managed_instance_id INTEGER NOT NULL REFERENCES managed_instances(id) ON DELETE CASCADE,
     metric_timestamp TIMESTAMP WITH TIME ZONE NOT NULL,
     metric_type VARCHAR(100) NOT NULL,  -- e.g., 'cpu', 'disk_space', 'connections', 'iops', 'network'
     metric_value NUMERIC(19, 4) NOT NULL,
@@ -88,16 +88,16 @@ CREATE TABLE IF NOT EXISTS rds_metrics (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_rds_metrics_instance_time ON rds_metrics(rds_instance_id, metric_timestamp DESC);
-CREATE INDEX idx_rds_metrics_type_time ON rds_metrics(metric_type, metric_timestamp DESC);
+CREATE INDEX idx_managed_instance_metrics_instance_time ON managed_instance_metrics(managed_instance_id, metric_timestamp DESC);
+CREATE INDEX idx_managed_instance_metrics_type_time ON managed_instance_metrics(metric_type, metric_timestamp DESC);
 
 -- ============================================================================
--- RDS PERFORMANCE INSIGHTS TABLE
+-- Managed Instance PERFORMANCE INSIGHTS TABLE
 -- ============================================================================
 
-CREATE TABLE IF NOT EXISTS rds_performance_insights (
+CREATE TABLE IF NOT EXISTS managed_instance_performance_insights (
     id SERIAL PRIMARY KEY,
-    rds_instance_id INTEGER NOT NULL REFERENCES rds_instances(id) ON DELETE CASCADE,
+    managed_instance_id INTEGER NOT NULL REFERENCES managed_instances(id) ON DELETE CASCADE,
     observation_period_start TIMESTAMP WITH TIME ZONE NOT NULL,
     observation_period_end TIMESTAMP WITH TIME ZONE NOT NULL,
     -- Top dimensions (top SQL, top waits, etc)
@@ -109,16 +109,16 @@ CREATE TABLE IF NOT EXISTS rds_performance_insights (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_rds_perf_insights_instance ON rds_performance_insights(rds_instance_id);
-CREATE INDEX idx_rds_perf_insights_period ON rds_performance_insights(observation_period_start, observation_period_end);
+CREATE INDEX idx_managed_instance_perf_insights_instance ON managed_instance_performance_insights(managed_instance_id);
+CREATE INDEX idx_managed_instance_perf_insights_period ON managed_instance_performance_insights(observation_period_start, observation_period_end);
 
 -- ============================================================================
--- RDS BACKUP & MAINTENANCE HISTORY
+-- Managed Instance BACKUP & MAINTENANCE HISTORY
 -- ============================================================================
 
-CREATE TABLE IF NOT EXISTS rds_backup_events (
+CREATE TABLE IF NOT EXISTS managed_instance_backup_events (
     id SERIAL PRIMARY KEY,
-    rds_instance_id INTEGER NOT NULL REFERENCES rds_instances(id) ON DELETE CASCADE,
+    managed_instance_id INTEGER NOT NULL REFERENCES managed_instances(id) ON DELETE CASCADE,
     backup_type VARCHAR(50) NOT NULL CHECK (backup_type IN ('automated', 'manual')),
     backup_id VARCHAR(255),
     backup_window_start TIMESTAMP WITH TIME ZONE,
@@ -129,16 +129,16 @@ CREATE TABLE IF NOT EXISTS rds_backup_events (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_rds_backups_instance ON rds_backup_events(rds_instance_id);
-CREATE INDEX idx_rds_backups_type ON rds_backup_events(backup_type);
+CREATE INDEX idx_managed_instance_backups_instance ON managed_instance_backup_events(managed_instance_id);
+CREATE INDEX idx_managed_instance_backups_type ON managed_instance_backup_events(backup_type);
 
 -- ============================================================================
--- RDS MAINTENANCE WINDOW HISTORY
+-- Managed Instance MAINTENANCE WINDOW HISTORY
 -- ============================================================================
 
-CREATE TABLE IF NOT EXISTS rds_maintenance_history (
+CREATE TABLE IF NOT EXISTS managed_instance_maintenance_history (
     id SERIAL PRIMARY KEY,
-    rds_instance_id INTEGER NOT NULL REFERENCES rds_instances(id) ON DELETE CASCADE,
+    managed_instance_id INTEGER NOT NULL REFERENCES managed_instances(id) ON DELETE CASCADE,
     maintenance_type VARCHAR(100) NOT NULL,  -- e.g., 'engine_upgrade', 'os_update', 'storage_optimization'
     maintenance_window_start TIMESTAMP WITH TIME ZONE NOT NULL,
     maintenance_window_end TIMESTAMP WITH TIME ZONE,
@@ -149,16 +149,16 @@ CREATE TABLE IF NOT EXISTS rds_maintenance_history (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_rds_maint_instance ON rds_maintenance_history(rds_instance_id);
-CREATE INDEX idx_rds_maint_status ON rds_maintenance_history(status);
+CREATE INDEX idx_managed_instance_maint_instance ON managed_instance_maintenance_history(managed_instance_id);
+CREATE INDEX idx_managed_instance_maint_status ON managed_instance_maintenance_history(status);
 
 -- ============================================================================
 -- MONITORING JOBS FOR RDS
 -- ============================================================================
 
-CREATE TABLE IF NOT EXISTS rds_monitoring_jobs (
+CREATE TABLE IF NOT EXISTS managed_instance_monitoring_jobs (
     id SERIAL PRIMARY KEY,
-    rds_instance_id INTEGER NOT NULL REFERENCES rds_instances(id) ON DELETE CASCADE,
+    managed_instance_id INTEGER NOT NULL REFERENCES managed_instances(id) ON DELETE CASCADE,
     job_type VARCHAR(50) NOT NULL,  -- e.g., 'health_check', 'metrics_collection', 'backup_status'
     last_run TIMESTAMP WITH TIME ZONE,
     next_run TIMESTAMP WITH TIME ZONE,
@@ -170,13 +170,13 @@ CREATE TABLE IF NOT EXISTS rds_monitoring_jobs (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_rds_jobs_instance ON rds_monitoring_jobs(rds_instance_id);
-CREATE INDEX idx_rds_jobs_next_run ON rds_monitoring_jobs(next_run) WHERE status = 'pending' AND is_enabled = true;
+CREATE INDEX idx_managed_instance_jobs_instance ON managed_instance_monitoring_jobs(managed_instance_id);
+CREATE INDEX idx_managed_instance_jobs_next_run ON managed_instance_monitoring_jobs(next_run) WHERE status = 'pending' AND is_enabled = true;
 
 -- ============================================================================
 -- SCHEMA MIGRATION TRACKING
 -- ============================================================================
 
 INSERT INTO schema_versions (version, description) VALUES
-    ('006_rds_monitoring', 'Add RDS PostgreSQL monitoring support')
+    ('006_managed_instance_monitoring', 'Add Managed Instance PostgreSQL monitoring support')
 ON CONFLICT DO NOTHING;

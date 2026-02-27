@@ -114,16 +114,16 @@ func (s *Server) RegisterRoutes(router *gin.Engine) {
 		}
 
 		// RDS Instance Management routes (admin only)
-		rds := api.Group("/rds-instances")
+		rds := api.Group("/managed-instances")
 		rds.Use(s.AuthMiddleware())
 		{
-			rds.POST("", s.handleCreateRDSInstance)
-			rds.GET("", s.handleListRDSInstances)
-			rds.GET("/:id", s.handleGetRDSInstance)
-			rds.PUT("/:id", s.handleUpdateRDSInstance)
-			rds.DELETE("/:id", s.handleDeleteRDSInstance)
-			rds.POST("/test-connection-direct", s.handleTestRDSConnectionDirect)
-			rds.POST("/:id/test-connection", s.handleTestRDSConnection)
+			rds.POST("", s.handleCreateManagedInstance)
+			rds.GET("", s.handleListManagedInstances)
+			rds.GET("/:id", s.handleGetManagedInstance)
+			rds.PUT("/:id", s.handleUpdateManagedInstance)
+			rds.DELETE("/:id", s.handleDeleteManagedInstance)
+			rds.POST("/test-connection-direct", s.handleTestManagedInstanceConnectionDirect)
+			rds.POST("/:id/test-connection", s.handleTestManagedInstanceConnection)
 		}
 
 		// Collector routes will be defined below

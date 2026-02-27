@@ -18,19 +18,19 @@ import (
 // RDS INSTANCE MANAGEMENT ENDPOINTS
 // ============================================================================
 
-// @Summary Create RDS Instance
+// @Summary Create Managed Instance
 // @Description Register a new RDS PostgreSQL instance for monitoring (admin only)
 // @Tags RDS Management
 // @Accept json
 // @Produce json
 // @Security Bearer
-// @Param request body models.CreateRDSInstanceRequest true "RDS instance details"
-// @Success 201 {object} models.RDSInstance
+// @Param request body models.CreateManagedInstanceRequest true "Managed Instance details"
+// @Success 201 {object} models.ManagedInstance
 // @Failure 400 {object} apperrors.AppError
 // @Failure 401 {object} apperrors.AppError
 // @Failure 403 {object} apperrors.AppError
 // @Router /api/v1/rds-instances [post]
-func (s *Server) handleCreateRDSInstance(c *gin.Context) {
+func (s *Server) handleCreateManagedInstance(c *gin.Context) {
 	// Get current user from context
 	currentUser, exists := c.Get("user")
 	if !exists {
@@ -43,15 +43,15 @@ func (s *Server) handleCreateRDSInstance(c *gin.Context) {
 
 	// Check if user is admin
 	if user.Role != "admin" {
-		errResp := apperrors.Forbidden("Only admins can register RDS instances", "")
+		errResp := apperrors.Forbidden("Only admins can register Managed Instances", "")
 		c.JSON(errResp.StatusCode, errResp)
 		return
 	}
 
 	// Parse request
-	var req models.CreateRDSInstanceRequest
+	var req models.CreateManagedInstanceRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		s.logger.Error("Failed to bind RDS instance request", zap.Error(err))
+		s.logger.Error("Failed to bind Managed Instance request", zap.Error(err))
 		errResp := apperrors.BadRequest("Invalid request", err.Error())
 		c.JSON(errResp.StatusCode, errResp)
 		return
@@ -100,7 +100,7 @@ func (s *Server) handleCreateRDSInstance(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 10*time.Second)
 	defer cancel()
 
-	// Test connection to RDS instance
+	// Test connection to Managed Instance
 	if err := testRDSConnection(ctx, req.RDSEndpoint, req.Port, req.MasterUsername, req.MasterPassword); err != nil {
 		s.logger.Warn("RDS connection test failed", zap.String("endpoint", req.RDSEndpoint), zap.Error(err))
 		// Don't fail here, allow registration even if connection fails (may be temporary)
@@ -118,7 +118,7 @@ func (s *Server) handleCreateRDSInstance(c *gin.Context) {
 		}
 
 		// Create secret in database
-		id, err := s.postgres.CreateSecret(ctx, fmt.Sprintf("rds_password_%s", req.Name), encryptedPassword)
+		id, err := s.postgres.CreateSecret(ctx, fmt.Sprintf("managed_instance_password_%s", req.Name), encryptedPassword)
 		if err != nil {
 			s.logger.Error("Failed to store encrypted password", zap.Error(err))
 			errResp := apperrors.ToAppError(err)
@@ -128,16 +128,16 @@ func (s *Server) handleCreateRDSInstance(c *gin.Context) {
 		secretID = &id
 	}
 
-	// Create RDS instance
-	instance, err := s.postgres.CreateRDSInstance(ctx, &req, secretID, user.ID)
+	// Create Managed Instance
+	instance, err := s.postgres.CreateManagedInstance(ctx, &req, secretID, user.ID)
 	if err != nil {
-		s.logger.Error("Failed to create RDS instance", zap.Error(err))
+		s.logger.Error("Failed to create Managed Instance", zap.Error(err))
 		errResp := apperrors.ToAppError(err)
 		c.JSON(errResp.StatusCode, errResp)
 		return
 	}
 
-	s.logger.Info("RDS instance created",
+	s.logger.Info("Managed Instance created",
 		zap.String("instance_name", instance.Name),
 		zap.String("endpoint", instance.RDSEndpoint),
 		zap.String("created_by", user.Username),
@@ -146,15 +146,15 @@ func (s *Server) handleCreateRDSInstance(c *gin.Context) {
 	c.JSON(201, instance)
 }
 
-// @Summary List RDS Instances
-// @Description Get all active RDS instances
+// @Summary List Managed Instances
+// @Description Get all active Managed Instances
 // @Tags RDS Management
 // @Produce json
 // @Security Bearer
-// @Success 200 {array} models.RDSInstance
+// @Success 200 {array} models.ManagedInstance
 // @Failure 401 {object} apperrors.AppError
 // @Router /api/v1/rds-instances [get]
-func (s *Server) handleListRDSInstances(c *gin.Context) {
+func (s *Server) handleListManagedInstances(c *gin.Context) {
 	// Get current user from context
 	_, exists := c.Get("user")
 	if !exists {
@@ -166,32 +166,32 @@ func (s *Server) handleListRDSInstances(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
 
-	instances, err := s.postgres.ListRDSInstances(ctx)
+	instances, err := s.postgres.ListManagedInstances(ctx)
 	if err != nil {
-		s.logger.Error("Failed to list RDS instances", zap.Error(err))
+		s.logger.Error("Failed to list Managed Instances", zap.Error(err))
 		errResp := apperrors.ToAppError(err)
 		c.JSON(errResp.StatusCode, errResp)
 		return
 	}
 
 	if instances == nil {
-		instances = make([]*models.RDSInstance, 0)
+		instances = make([]*models.ManagedInstance, 0)
 	}
 
 	c.JSON(200, instances)
 }
 
-// @Summary Get RDS Instance
-// @Description Get a specific RDS instance by ID
+// @Summary Get Managed Instance
+// @Description Get a specific Managed Instance by ID
 // @Tags RDS Management
 // @Produce json
 // @Security Bearer
-// @Param id path int true "RDS Instance ID"
-// @Success 200 {object} models.RDSInstance
+// @Param id path int true "Managed Instance ID"
+// @Success 200 {object} models.ManagedInstance
 // @Failure 401 {object} apperrors.AppError
 // @Failure 404 {object} apperrors.AppError
 // @Router /api/v1/rds-instances/{id} [get]
-func (s *Server) handleGetRDSInstance(c *gin.Context) {
+func (s *Server) handleGetManagedInstance(c *gin.Context) {
 	// Get current user from context
 	_, exists := c.Get("user")
 	if !exists {
@@ -203,7 +203,7 @@ func (s *Server) handleGetRDSInstance(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		errResp := apperrors.BadRequest("Invalid RDS instance ID", "")
+		errResp := apperrors.BadRequest("Invalid Managed Instance ID", "")
 		c.JSON(errResp.StatusCode, errResp)
 		return
 	}
@@ -211,9 +211,9 @@ func (s *Server) handleGetRDSInstance(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
 
-	instance, err := s.postgres.GetRDSInstance(ctx, id)
+	instance, err := s.postgres.GetManagedInstance(ctx, id)
 	if err != nil {
-		s.logger.Error("Failed to get RDS instance", zap.Int("id", id), zap.Error(err))
+		s.logger.Error("Failed to get Managed Instance", zap.Int("id", id), zap.Error(err))
 		errResp := apperrors.ToAppError(err)
 		c.JSON(errResp.StatusCode, errResp)
 		return
@@ -222,21 +222,21 @@ func (s *Server) handleGetRDSInstance(c *gin.Context) {
 	c.JSON(200, instance)
 }
 
-// @Summary Update RDS Instance
-// @Description Update an existing RDS instance (admin only)
+// @Summary Update Managed Instance
+// @Description Update an existing Managed Instance (admin only)
 // @Tags RDS Management
 // @Accept json
 // @Produce json
 // @Security Bearer
-// @Param id path int true "RDS Instance ID"
-// @Param request body models.UpdateRDSInstanceRequest true "RDS instance details to update"
-// @Success 200 {object} models.RDSInstance
+// @Param id path int true "Managed Instance ID"
+// @Param request body models.UpdateManagedInstanceRequest true "Managed Instance details to update"
+// @Success 200 {object} models.ManagedInstance
 // @Failure 400 {object} apperrors.AppError
 // @Failure 401 {object} apperrors.AppError
 // @Failure 403 {object} apperrors.AppError
 // @Failure 404 {object} apperrors.AppError
 // @Router /api/v1/rds-instances/{id} [put]
-func (s *Server) handleUpdateRDSInstance(c *gin.Context) {
+func (s *Server) handleUpdateManagedInstance(c *gin.Context) {
 	// Get current user from context
 	currentUser, exists := c.Get("user")
 	if !exists {
@@ -249,7 +249,7 @@ func (s *Server) handleUpdateRDSInstance(c *gin.Context) {
 
 	// Check if user is admin
 	if user.Role != "admin" {
-		errResp := apperrors.Forbidden("Only admins can update RDS instances", "")
+		errResp := apperrors.Forbidden("Only admins can update Managed Instances", "")
 		c.JSON(errResp.StatusCode, errResp)
 		return
 	}
@@ -257,15 +257,15 @@ func (s *Server) handleUpdateRDSInstance(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		errResp := apperrors.BadRequest("Invalid RDS instance ID", "")
+		errResp := apperrors.BadRequest("Invalid Managed Instance ID", "")
 		c.JSON(errResp.StatusCode, errResp)
 		return
 	}
 
 	// Parse request
-	var req models.UpdateRDSInstanceRequest
+	var req models.UpdateManagedInstanceRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		s.logger.Error("Failed to bind RDS instance request", zap.Error(err))
+		s.logger.Error("Failed to bind Managed Instance request", zap.Error(err))
 		errResp := apperrors.BadRequest("Invalid request", err.Error())
 		c.JSON(errResp.StatusCode, errResp)
 		return
@@ -317,16 +317,16 @@ func (s *Server) handleUpdateRDSInstance(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 10*time.Second)
 	defer cancel()
 
-	// Update RDS instance
-	instance, err := s.postgres.UpdateRDSInstance(ctx, id, &req, user.ID)
+	// Update Managed Instance
+	instance, err := s.postgres.UpdateManagedInstance(ctx, id, &req, user.ID)
 	if err != nil {
-		s.logger.Error("Failed to update RDS instance", zap.Error(err))
+		s.logger.Error("Failed to update Managed Instance", zap.Error(err))
 		errResp := apperrors.ToAppError(err)
 		c.JSON(errResp.StatusCode, errResp)
 		return
 	}
 
-	s.logger.Info("RDS instance updated",
+	s.logger.Info("Managed Instance updated",
 		zap.String("instance_name", instance.Name),
 		zap.String("endpoint", instance.RDSEndpoint),
 		zap.String("updated_by", user.Username),
@@ -335,17 +335,17 @@ func (s *Server) handleUpdateRDSInstance(c *gin.Context) {
 	c.JSON(200, instance)
 }
 
-// @Summary Delete RDS Instance
-// @Description Delete (soft delete) an RDS instance (admin only)
+// @Summary Delete Managed Instance
+// @Description Delete (soft delete) an Managed Instance (admin only)
 // @Tags RDS Management
 // @Security Bearer
-// @Param id path int true "RDS Instance ID"
+// @Param id path int true "Managed Instance ID"
 // @Success 204 {object} nil
 // @Failure 401 {object} apperrors.AppError
 // @Failure 403 {object} apperrors.AppError
 // @Failure 404 {object} apperrors.AppError
 // @Router /api/v1/rds-instances/{id} [delete]
-func (s *Server) handleDeleteRDSInstance(c *gin.Context) {
+func (s *Server) handleDeleteManagedInstance(c *gin.Context) {
 	// Get current user from context
 	currentUser, exists := c.Get("user")
 	if !exists {
@@ -358,7 +358,7 @@ func (s *Server) handleDeleteRDSInstance(c *gin.Context) {
 
 	// Check if user is admin
 	if user.Role != "admin" {
-		errResp := apperrors.Forbidden("Only admins can delete RDS instances", "")
+		errResp := apperrors.Forbidden("Only admins can delete Managed Instances", "")
 		c.JSON(errResp.StatusCode, errResp)
 		return
 	}
@@ -366,7 +366,7 @@ func (s *Server) handleDeleteRDSInstance(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		errResp := apperrors.BadRequest("Invalid RDS instance ID", "")
+		errResp := apperrors.BadRequest("Invalid Managed Instance ID", "")
 		c.JSON(errResp.StatusCode, errResp)
 		return
 	}
@@ -374,14 +374,14 @@ func (s *Server) handleDeleteRDSInstance(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
 
-	if err := s.postgres.DeleteRDSInstance(ctx, id); err != nil {
-		s.logger.Error("Failed to delete RDS instance", zap.Int("id", id), zap.Error(err))
+	if err := s.postgres.DeleteManagedInstance(ctx, id); err != nil {
+		s.logger.Error("Failed to delete Managed Instance", zap.Int("id", id), zap.Error(err))
 		errResp := apperrors.ToAppError(err)
 		c.JSON(errResp.StatusCode, errResp)
 		return
 	}
 
-	s.logger.Info("RDS instance deleted",
+	s.logger.Info("Managed Instance deleted",
 		zap.Int("id", id),
 		zap.String("deleted_by", user.Username),
 	)
@@ -390,17 +390,17 @@ func (s *Server) handleDeleteRDSInstance(c *gin.Context) {
 }
 
 // @Summary Test RDS Connection (Direct)
-// @Description Test connection to an RDS instance without creating it (for forms)
+// @Description Test connection to an Managed Instance without creating it (for forms)
 // @Tags RDS Management
 // @Accept json
 // @Produce json
 // @Security Bearer
-// @Param request body models.TestRDSConnectionRequest true "Connection test parameters"
+// @Param request body models.TestManagedInstanceConnectionRequest true "Connection test parameters"
 // @Success 200 {object} models.TestConnectionResponse
 // @Failure 400 {object} apperrors.AppError
 // @Failure 401 {object} apperrors.AppError
 // @Router /api/v1/rds-instances/test-connection-direct [post]
-func (s *Server) handleTestRDSConnectionDirect(c *gin.Context) {
+func (s *Server) handleTestManagedInstanceConnectionDirect(c *gin.Context) {
 	// Get current user from context
 	_, exists := c.Get("user")
 	if !exists {
@@ -409,7 +409,7 @@ func (s *Server) handleTestRDSConnectionDirect(c *gin.Context) {
 		return
 	}
 
-	var req models.TestRDSConnectionRequest
+	var req models.TestManagedInstanceConnectionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		s.logger.Error("Failed to bind test connection request", zap.Error(err))
 		errResp := apperrors.BadRequest("Invalid request", err.Error())
@@ -457,19 +457,19 @@ func (s *Server) handleTestRDSConnectionDirect(c *gin.Context) {
 }
 
 // @Summary Test RDS Connection (Existing Instance)
-// @Description Test connection to an existing registered RDS instance
+// @Description Test connection to an existing registered Managed Instance
 // @Tags RDS Management
 // @Accept json
 // @Produce json
 // @Security Bearer
-// @Param id path int true "RDS Instance ID"
+// @Param id path int true "Managed Instance ID"
 // @Param request body models.TestConnectionRequest true "Connection test parameters"
 // @Success 200 {object} models.TestConnectionResponse
 // @Failure 400 {object} apperrors.AppError
 // @Failure 401 {object} apperrors.AppError
 // @Failure 404 {object} apperrors.AppError
 // @Router /api/v1/rds-instances/{id}/test-connection [post]
-func (s *Server) handleTestRDSConnection(c *gin.Context) {
+func (s *Server) handleTestManagedInstanceConnection(c *gin.Context) {
 	// Get current user from context
 	_, exists := c.Get("user")
 	if !exists {
@@ -481,7 +481,7 @@ func (s *Server) handleTestRDSConnection(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		errResp := apperrors.BadRequest("Invalid RDS instance ID", "")
+		errResp := apperrors.BadRequest("Invalid Managed Instance ID", "")
 		c.JSON(errResp.StatusCode, errResp)
 		return
 	}
@@ -497,10 +497,10 @@ func (s *Server) handleTestRDSConnection(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 10*time.Second)
 	defer cancel()
 
-	// Get RDS instance
-	instance, err := s.postgres.GetRDSInstance(ctx, id)
+	// Get Managed Instance
+	instance, err := s.postgres.GetManagedInstance(ctx, id)
 	if err != nil {
-		s.logger.Error("Failed to get RDS instance", zap.Int("id", id), zap.Error(err))
+		s.logger.Error("Failed to get Managed Instance", zap.Int("id", id), zap.Error(err))
 		errResp := apperrors.ToAppError(err)
 		c.JSON(errResp.StatusCode, errResp)
 		return

@@ -4,7 +4,7 @@ import { AlertCircle } from 'lucide-react'
 import { CollectorForm } from '../components/CollectorForm'
 import { CollectorList } from '../components/CollectorList'
 import { UserMenuDropdown } from '../components/UserMenuDropdown'
-import { RDSInstancesTable } from '../components/RDSInstancesTable'
+import { ManagedInstancesTable } from '../components/ManagedInstancesTable'
 import { apiClient } from '../services/api'
 
 interface DashboardProps {
@@ -15,8 +15,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
   const [registrationSecret, setRegistrationSecret] = useState('')
   const [secretVisible, setSecretVisible] = useState(false)
   const [successMessage, setSuccessMessage] = useState('')
-  const [rdsMessage, setRdsMessage] = useState('')
-  const [rdsMessageType, setRdsMessageType] = useState<'success' | 'error' | ''>('')
+  const [managedInstanceMessage, setRdsMessage] = useState('')
+  const [managedInstanceMessageType, setRdsMessageType] = useState<'success' | 'error' | ''>('')
   const currentUser = apiClient.getCurrentUser()
   const isAdmin = currentUser?.role === 'admin'
 
@@ -73,7 +73,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
                   }`
                 }
               >
-                RDS Instances
+                Managed Instances
               </Tab>
             )}
           </Tab.List>
@@ -155,27 +155,27 @@ export const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
             {isAdmin && (
               <Tab.Panel>
                 <div className="bg-white rounded-lg shadow p-6">
-                  {rdsMessage && (
+                  {managedInstanceMessage && (
                     <div className={`mb-4 border rounded-lg p-4 ${
-                      rdsMessageType === 'success'
+                      managedInstanceMessageType === 'success'
                         ? 'bg-green-50 border-green-200'
                         : 'bg-red-50 border-red-200'
                     }`}>
-                      <p className={rdsMessageType === 'success' ? 'text-green-700' : 'text-red-700'}>
-                        {rdsMessage}
+                      <p className={managedInstanceMessageType === 'success' ? 'text-green-700' : 'text-red-700'}>
+                        {managedInstanceMessage}
                       </p>
                     </div>
                   )}
-                  <RDSInstancesTable
+                  <ManagedInstancesTable
                     onSuccess={(message) => {
-                      setRdsMessage(message)
-                      setRdsMessageType('success')
-                      setTimeout(() => setRdsMessage(''), 10000)
+                      setManagedInstanceMessage(message)
+                      setManagedInstanceMessageType('success')
+                      setTimeout(() => setManagedInstanceMessage(''), 10000)
                     }}
                     onError={(message) => {
-                      setRdsMessage(message)
-                      setRdsMessageType('error')
-                      setTimeout(() => setRdsMessage(''), 10000)
+                      setManagedInstanceMessage(message)
+                      setManagedInstanceMessageType('error')
+                      setTimeout(() => setManagedInstanceMessage(''), 10000)
                     }}
                   />
                 </div>

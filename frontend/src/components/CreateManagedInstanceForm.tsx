@@ -90,7 +90,7 @@ export const CreateRDSForm: React.FC<CreateRDSFormProps> = ({ onSuccess, onError
         return
       }
 
-      const response = await fetch('/api/v1/rds-instances/test-connection-direct', {
+      const response = await fetch('/api/v1/managed-instances/test-connection-direct', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -143,7 +143,7 @@ export const CreateRDSForm: React.FC<CreateRDSFormProps> = ({ onSuccess, onError
         return
       }
 
-      const response = await fetch('/api/v1/rds-instances', {
+      const response = await fetch('/api/v1/managed-instances', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

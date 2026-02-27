@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Trash2, Plus, X, AlertCircle, CheckCircle, Edit, Zap } from 'lucide-react'
-import { CreateRDSForm } from './CreateRDSForm'
+import { CreateManagedInstanceForm } from './CreateManagedInstanceForm'
 
 interface RDSInstance {
   id: number
@@ -53,7 +53,7 @@ export const RDSInstancesTable: React.FC<RDSInstancesTableProps> = ({ onSuccess,
   const loadInstances = async () => {
     setLoading(true)
     try {
-      const response = await fetch('/api/v1/rds-instances', {
+      const response = await fetch('/api/v1/managed-instances', {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
         },
@@ -79,7 +79,7 @@ export const RDSInstancesTable: React.FC<RDSInstancesTableProps> = ({ onSuccess,
 
     setDeleting(id)
     try {
-      const response = await fetch(`/api/v1/rds-instances/${id}`, {
+      const response = await fetch(`/api/v1/managed-instances/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
@@ -144,7 +144,7 @@ export const RDSInstancesTable: React.FC<RDSInstancesTableProps> = ({ onSuccess,
     if (!editFormData || !editingId) return
 
     try {
-      const response = await fetch(`/api/v1/rds-instances/${editingId}`, {
+      const response = await fetch(`/api/v1/managed-instances/${editingId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -195,7 +195,7 @@ export const RDSInstancesTable: React.FC<RDSInstancesTableProps> = ({ onSuccess,
     if (!instance) return
 
     try {
-      const response = await fetch(`/api/v1/rds-instances/${id}/test-connection`, {
+      const response = await fetch(`/api/v1/managed-instances/${id}/test-connection`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -389,7 +389,7 @@ export const RDSInstancesTable: React.FC<RDSInstancesTableProps> = ({ onSuccess,
               ✕
             </button>
           </div>
-          <CreateRDSForm
+          <CreateManagedInstanceForm
             onSuccess={(message) => {
               onSuccess(message)
               setTimeout(() => {

@@ -55,7 +55,7 @@ export const CreateManagedInstanceForm: React.FC<CreateManagedInstanceFormProps>
     }
 
     if (!formData.endpoint.trim()) {
-      newErrors.endpoint = 'RDS endpoint is required'
+      newErrors.endpoint = 'Endpoint is required'
     }
 
     if (formData.port < 1 || formData.port > 65535) {
@@ -76,7 +76,7 @@ export const CreateManagedInstanceForm: React.FC<CreateManagedInstanceFormProps>
 
   const testConnection = async () => {
     if (!formData.endpoint || !formData.master_username || !formData.master_password) {
-      onError('Please enter RDS endpoint, username, and password to test connection')
+      onError('Please enter endpoint, username, and password to test connection')
       return
     }
 
@@ -151,16 +151,16 @@ export const CreateManagedInstanceForm: React.FC<CreateManagedInstanceFormProps>
         },
         body: JSON.stringify({
           ...formData,
-          aws_region: 'us-east-1', // Default region extracted from RDS endpoint
+          aws_region: 'us-east-1', // Default region extracted from endpoint
         }),
       })
 
       if (!response.ok) {
         const errorData = await response.json()
-        throw new Error(errorData.message || 'Failed to register RDS instance')
+        throw new Error(errorData.message || 'Failed to register managed instance')
       }
 
-      onSuccess('RDS instance registered successfully')
+      onSuccess('Managed instance registered successfully')
 
       // Reset form
       setFormData({
@@ -173,7 +173,7 @@ export const CreateManagedInstanceForm: React.FC<CreateManagedInstanceFormProps>
       })
       setConnectionTested(false)
     } catch (error) {
-      onError(error instanceof Error ? error.message : 'Failed to register RDS instance')
+      onError(error instanceof Error ? error.message : 'Failed to register managed instance')
     } finally {
       setLoading(false)
     }
@@ -182,7 +182,7 @@ export const CreateManagedInstanceForm: React.FC<CreateManagedInstanceFormProps>
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <p className="text-sm text-gray-600 mb-4">
-        Enter your RDS PostgreSQL connection details to begin monitoring.
+        Enter your PostgreSQL connection details to begin monitoring.
       </p>
 
       {/* Cluster Name */}
@@ -203,10 +203,10 @@ export const CreateManagedInstanceForm: React.FC<CreateManagedInstanceFormProps>
         {errors.name && <p className="text-red-600 text-sm mt-1">{errors.name}</p>}
       </div>
 
-      {/* RDS Endpoint */}
+      {/* Endpoint */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          RDS Endpoint *
+          Endpoint *
         </label>
         <input
           type="text"

@@ -26,7 +26,7 @@ func (p *PostgresDB) CreateManagedInstance(ctx context.Context, instance *models
 	err := p.db.QueryRowContext(
 		ctx,
 		`INSERT INTO pganalytics.managed_instances (
-			name, description, aws_region, rds_endpoint, port,
+			name, description, aws_region, endpoint, port,
 			engine_version, db_instance_class, allocated_storage_gb,
 			environment, master_username, secret_id,
 			enable_enhanced_monitoring, monitoring_interval,
@@ -100,7 +100,7 @@ func (p *PostgresDB) GetManagedInstance(ctx context.Context, id int) (*models.Ma
 
 	err := p.db.QueryRowContext(
 		ctx,
-		`SELECT id, name, description, aws_region, rds_endpoint, port,
+		`SELECT id, name, description, aws_region, endpoint, port,
 			engine_version, db_instance_class, allocated_storage_gb,
 			environment, master_username, secret_id,
 			enable_enhanced_monitoring, monitoring_interval,
@@ -146,7 +146,7 @@ func (p *PostgresDB) GetManagedInstance(ctx context.Context, id int) (*models.Ma
 func (p *PostgresDB) ListManagedInstances(ctx context.Context) ([]*models.ManagedInstance, error) {
 	rows, err := p.db.QueryContext(
 		ctx,
-		`SELECT id, name, description, aws_region, rds_endpoint, port,
+		`SELECT id, name, description, aws_region, endpoint, port,
 			engine_version, db_instance_class, allocated_storage_gb,
 			environment, master_username, secret_id,
 			enable_enhanced_monitoring, monitoring_interval,
@@ -239,7 +239,7 @@ func (p *PostgresDB) UpdateManagedInstance(ctx context.Context, id int, instance
 	err := p.db.QueryRowContext(
 		ctx,
 		`UPDATE pganalytics.managed_instances SET
-			name = $1, description = $2, aws_region = $3, rds_endpoint = $4, port = $5,
+			name = $1, description = $2, aws_region = $3, endpoint = $4, port = $5,
 			engine_version = $6, db_instance_class = $7, allocated_storage_gb = $8,
 			environment = $9, master_username = $10, secret_id = $11,
 			enable_enhanced_monitoring = $12, monitoring_interval = $13,
@@ -248,7 +248,7 @@ func (p *PostgresDB) UpdateManagedInstance(ctx context.Context, id int, instance
 			preferred_maintenance_window = $20, tags = $21, status = $22,
 			updated_by = $23, updated_at = CURRENT_TIMESTAMP
 		WHERE id = $24
-		RETURNING id, name, description, aws_region, rds_endpoint, port,
+		RETURNING id, name, description, aws_region, endpoint, port,
 			engine_version, db_instance_class, allocated_storage_gb,
 			environment, master_username, secret_id,
 			enable_enhanced_monitoring, monitoring_interval,

@@ -60,20 +60,20 @@ export const ManagedInstancesTable: React.FC<ManagedInstancesTableProps> = ({ on
       })
 
       if (!response.ok) {
-        throw new Error('Failed to load RDS instances')
+        throw new Error('Failed to load managed instances')
       }
 
       const data = await response.json()
       setInstances(Array.isArray(data) ? data : data.instances || [])
     } catch (error) {
-      onError(error instanceof Error ? error.message : 'Failed to load RDS instances')
+      onError(error instanceof Error ? error.message : 'Failed to load managed instances')
     } finally {
       setLoading(false)
     }
   }
 
   const deleteInstance = async (id: number, name: string) => {
-    if (!confirm(`Are you sure you want to delete RDS instance "${name}"?`)) {
+    if (!confirm(`Are you sure you want to delete managed instance "${name}"?`)) {
       return
     }
 
@@ -88,13 +88,13 @@ export const ManagedInstancesTable: React.FC<ManagedInstancesTableProps> = ({ on
 
       if (!response.ok) {
         const errorData = await response.json()
-        throw new Error(errorData.message || 'Failed to delete RDS instance')
+        throw new Error(errorData.message || 'Failed to delete managed instance')
       }
 
       setInstances(instances.filter(i => i.id !== id))
-      onSuccess(`RDS instance "${name}" deleted successfully`)
+      onSuccess(`Managed instance "${name}" deleted successfully`)
     } catch (error) {
-      onError(error instanceof Error ? error.message : 'Failed to delete RDS instance')
+      onError(error instanceof Error ? error.message : 'Failed to delete managed instance')
     } finally {
       setDeleting(null)
     }
@@ -177,14 +177,14 @@ export const ManagedInstancesTable: React.FC<ManagedInstancesTableProps> = ({ on
 
       if (!response.ok) {
         const errorData = await response.json()
-        throw new Error(errorData.message || 'Failed to update RDS instance')
+        throw new Error(errorData.message || 'Failed to update managed instance')
       }
 
-      onSuccess('RDS instance updated successfully')
+      onSuccess('Managed instance updated successfully')
       cancelEdit()
       loadInstances()
     } catch (error) {
-      onError(error instanceof Error ? error.message : 'Failed to update RDS instance')
+      onError(error instanceof Error ? error.message : 'Failed to update managed instance')
     }
   }
 
@@ -243,7 +243,7 @@ export const ManagedInstancesTable: React.FC<ManagedInstancesTableProps> = ({ on
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <p className="text-gray-600">Loading RDS instances...</p>
+        <p className="text-gray-600">Loading managed instances...</p>
       </div>
     )
   }
@@ -252,7 +252,7 @@ export const ManagedInstancesTable: React.FC<ManagedInstancesTableProps> = ({ on
     <div>
       {/* Header with Create Button */}
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-gray-900">RDS Instances</h2>
+        <h2 className="text-2xl font-bold text-gray-900">Managed Instances</h2>
         <button
           onClick={() => setShowCreateForm(!showCreateForm)}
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition"
@@ -276,7 +276,7 @@ export const ManagedInstancesTable: React.FC<ManagedInstancesTableProps> = ({ on
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Edit RDS Instance</h3>
+              <h3 className="text-lg font-semibold text-gray-900">Edit Managed Instance</h3>
               <button
                 onClick={cancelEdit}
                 className="text-gray-500 hover:text-gray-700"
@@ -326,7 +326,7 @@ export const ManagedInstancesTable: React.FC<ManagedInstancesTableProps> = ({ on
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">RDS Endpoint</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Endpoint</label>
                   <input
                     type="text"
                     value={editFormData.endpoint || ''}
@@ -380,7 +380,7 @@ export const ManagedInstancesTable: React.FC<ManagedInstancesTableProps> = ({ on
       {showCreateForm && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">Register New RDS Instance</h3>
+            <h3 className="text-lg font-semibold text-gray-900">Register New Managed Instance</h3>
             <button
               onClick={() => setShowCreateForm(false)}
               className="text-gray-500 hover:text-gray-700"
@@ -404,8 +404,8 @@ export const ManagedInstancesTable: React.FC<ManagedInstancesTableProps> = ({ on
       {instances.length === 0 ? (
         <div className="text-center py-12 bg-gray-50 rounded-lg border border-gray-200">
           <AlertCircle size={48} className="mx-auto text-gray-400 mb-4" />
-          <p className="text-gray-600 text-lg">No RDS instances registered yet</p>
-          <p className="text-gray-500 text-sm mt-2">Click "Register Instance" to add a new RDS PostgreSQL database for monitoring</p>
+          <p className="text-gray-600 text-lg">No managed instances registered yet</p>
+          <p className="text-gray-500 text-sm mt-2">Click "Register Instance" to add a new PostgreSQL database for monitoring</p>
         </div>
       ) : (
         <div className="overflow-x-auto">

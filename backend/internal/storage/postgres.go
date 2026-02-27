@@ -476,6 +476,11 @@ func (p *PostgresDB) UpdateCollectorMetricsCount(ctx context.Context, collectorI
 	return nil
 }
 
+// UpdateCollectorMetrics alias for UpdateCollectorMetricsCount
+func (p *PostgresDB) UpdateCollectorMetrics(ctx context.Context, collectorID string, count int) error {
+	return p.UpdateCollectorMetricsCount(ctx, collectorID, count)
+}
+
 // DeleteCollector deletes a collector from the database
 func (p *PostgresDB) DeleteCollector(ctx context.Context, collectorID string) error {
 	result, err := p.db.ExecContext(

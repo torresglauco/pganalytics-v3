@@ -4,7 +4,10 @@ import type {
   CollectorRegisterRequest,
   CollectorRegisterResponse,
   PaginatedResponse,
-  ApiError
+  ApiError,
+  SignupRequest,
+  AuthResponse,
+  User
 } from '../types'
 
 class ApiClient {
@@ -105,6 +108,54 @@ class ApiClient {
     } catch (error) {
       return false
     }
+  }
+
+  async signup(data: SignupRequest): Promise<AuthResponse> {
+    try {
+      const response = await this.client.post<AuthResponse>('/auth/signup', data)
+      // Store auth token
+      if (response.data.token) {
+        localStorage.setItem('auth_token', response.data.token)
+        localStorage.setItem('refresh_token', response.data.refresh_token)
+        localStorage.setItem('user', JSON.stringify(response.data.user))
+      }
+      return response.data
+    } catch (error) {
+      throw this.handleError(error)
+    }
+  }
+
+  async login(username: string, password: string): Promise<AuthResponse> {
+    try {
+      const response = await this.client.post<AuthResponse>('/auth/login', {
+        username,
+        password,
+      })
+      // Store auth token
+      if (response.data.token) {
+        localStorage.setItem('auth_token', response.data.token)
+        localStorage.setItem('refresh_token', response.data.refresh_token)
+        localStorage.setItem('user', JSON.stringify(response.data.user))
+      }
+      return response.data
+    } catch (error) {
+      throw this.handleError(error)
+    }
+  }
+
+  async logout(): Promise<void> {
+    localStorage.removeItem('auth_token')
+    localStorage.removeItem('refresh_token')
+    localStorage.removeItem('user')
+  }
+
+  getCurrentUser(): User | null {
+    const user = localStorage.getItem('user')
+    return user ? JSON.parse(user) : null
+  }
+
+  isAuthenticated(): boolean {
+    return !!localStorage.getItem('auth_token')
   }
 
   private handleError(error: unknown): ApiError {

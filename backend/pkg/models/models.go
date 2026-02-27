@@ -321,7 +321,7 @@ type LoginResponse struct {
 
 // ChangePasswordRequest represents a user request to change their own password
 type ChangePasswordRequest struct {
-	OldPassword string `json:"old_password" binding:"required,min=8"`
+	OldPassword string `json:"old_password" binding:"required"`
 	NewPassword string `json:"new_password" binding:"required,min=8"`
 }
 

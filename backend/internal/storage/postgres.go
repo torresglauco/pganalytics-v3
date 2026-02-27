@@ -303,10 +303,10 @@ func (p *PostgresDB) CreateCollector(ctx context.Context, collector *models.Coll
 	err := p.db.QueryRowContext(
 		ctx,
 		`INSERT INTO pganalytics.collectors
-		 (name, description, hostname, address, version, status, certificate_thumbprint, certificate_expires_at, config_version, health_check_interval)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+		 (id, name, description, hostname, address, version, status, certificate_thumbprint, certificate_expires_at, config_version, health_check_interval)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 		 RETURNING id, created_at, updated_at`,
-		collector.Name, collector.Description, collector.Hostname, collector.Address,
+		collector.ID, collector.Name, collector.Description, collector.Hostname, collector.Address,
 		collector.Version, collector.Status, collector.CertificateThumbprint,
 		collector.CertificateExpiresAt, collector.ConfigVersion, collector.HealthCheckInterval,
 	).Scan(&collector.ID, &collector.CreatedAt, &collector.UpdatedAt)

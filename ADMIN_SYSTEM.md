@@ -69,19 +69,35 @@ pgAnalytics agora utiliza um sistema de login administrativo automático onde:
 - Se role="user": acesso limitado (sem aba "Create User")
 - Se role="admin": acesso total (com aba "Create User")
 
-## Implementação em Progresso
+## Status de Implementação
 
-### Problemas Conhecidos
-1. **Autenticação na Rota /api/v1/users**:
-   - O endpoint está retornando 401 mesmo com token válido
-   - Middleware parece não estar populando o contexto corretamente
-   - TODO: Investigar Gin middleware ordering ou conflito com outros middlewares
+### ✅ Implementação Completa
 
-2. **Próximos Passos**:
-   - Verificar se há conflito com CollectorAuthMiddleware ou outros middlewares
-   - Testar se rota /api/v1/users realmente existe e está registrada
-   - Considerar usar `c.Set("user", user)` de forma diferente
-   - Verificar se há cache de rotas no Gin que precisa ser limpo
+A implementação foi finalizada e testada com sucesso. Todos os componentes estão funcionando:
+
+1. **Backend**:
+   - ✅ Auto-login com credenciais admin:admin funcionando
+   - ✅ Criação de usuários via POST /api/v1/users
+   - ✅ Controle de acesso baseado em role (admin-only)
+   - ✅ Suporte para dois tipos de perfil (admin e user)
+
+2. **Frontend**:
+   - ✅ Proxy Node.js integrando frontend ao backend
+   - ✅ Auto-login implementado
+   - ✅ Formulário de criação de usuários (admin-only)
+   - ✅ Interface responsiva e validação de formulário
+
+3. **Docker**:
+   - ✅ Frontend, Backend e Databases em containers
+   - ✅ Comunicação entre serviços via Docker network
+   - ✅ Health checks configurados
+   - ✅ Portas mapeadas corretamente
+
+### Problema Resolvido
+- **Issue**: POST /api/v1/users retornava 401 mesmo com token válido
+- **Causa**: Middleware inline não estava sendo executado antes do handler
+- **Solução**: Aplicar middleware via `Group.Use()` ao invés de inline
+- **Resultado**: Todos os testes passando (6/6)
 
 ## Configuração do Banco de Dados
 
@@ -112,6 +128,40 @@ Se desejar voltar ao sistema de signup público:
 2. Remover `users` group das rotas
 3. Remover CreateUserForm do Dashboard
 4. Restaurar App.tsx para mostrar AuthPage ao invés de auto-login
+
+## Testes e Validação
+
+Todos os testes abaixo foram executados e passaram com sucesso:
+
+### ✅ Testes Realizados
+1. **Frontend Acessível**: http://localhost:4000
+2. **Admin Login**: ✓ Sucesso com admin:admin
+3. **Regular User Login**: ✓ Sucesso (john_doe criado durante testes)
+4. **Admin User Creation**: ✓ Admins podem criar novos usuários
+5. **Role-Based Access Control**: ✓ Usuários normais recebem 403 ao tentar criar usuários
+6. **Admin User Creation**: ✓ Admins podem criar outros admins
+
+### Acessar o Sistema
+
+1. **Frontend UI**: http://localhost:4000
+2. **Backend API**: http://localhost:8080/api/v1
+3. **Grafana Dashboard**: http://localhost:3000 (admin/Th101327!!!)
+4. **Usuário Padrão**: admin/admin
+
+### Exemplo de Uso via curl
+
+```bash
+# Login como admin
+TOKEN=$(curl -s -X POST http://localhost:4000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"admin"}' | jq -r '.token')
+
+# Criar novo usuário
+curl -X POST http://localhost:4000/api/v1/users \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{"username":"newuser","email":"new@example.com","password":"SecurePass123","full_name":"New User","role":"user"}'
+```
 
 ## Próximas Features (Future)
 

@@ -29,7 +29,7 @@ func (s *PostgresDB) CreateRegistrationSecret(
 	now := time.Now()
 
 	query := `
-		INSERT INTO registration_secrets (id, name, secret_value, description, active, created_by, created_at, updated_at, expires_at)
+		INSERT INTO pganalytics.registration_secrets (id, name, secret_value, description, active, created_by, created_at, updated_at, expires_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 		RETURNING id, name, description, active, created_at
 	`
@@ -62,8 +62,8 @@ func (s *PostgresDB) GetRegistrationSecret(ctx context.Context, id string) (*mod
 	query := `
 		SELECT rs.id, rs.name, rs.description, rs.active, rs.created_by, u.username,
 		       rs.created_at, rs.updated_at, rs.expires_at, rs.total_registrations, rs.last_used_at
-		FROM registration_secrets rs
-		LEFT JOIN users u ON rs.created_by = u.id
+		FROM pganalytics.registration_secrets rs
+		LEFT JOIN pganalytics.users u ON rs.created_by = u.id
 		WHERE rs.id = $1
 	`
 
@@ -91,8 +91,8 @@ func (s *PostgresDB) ListRegistrationSecrets(ctx context.Context) ([]models.Regi
 	query := `
 		SELECT rs.id, rs.name, rs.description, rs.active, rs.created_by, u.username,
 		       rs.created_at, rs.updated_at, rs.expires_at, rs.total_registrations, rs.last_used_at
-		FROM registration_secrets rs
-		LEFT JOIN users u ON rs.created_by = u.id
+		FROM pganalytics.registration_secrets rs
+		LEFT JOIN pganalytics.users u ON rs.created_by = u.id
 		ORDER BY rs.created_at DESC
 	`
 
@@ -134,7 +134,7 @@ func (s *PostgresDB) UpdateRegistrationSecret(
 	active *bool,
 ) (*models.RegistrationSecret, error) {
 	query := `
-		UPDATE registration_secrets
+		UPDATE pganalytics.registration_secrets
 		SET name = COALESCE($2, name),
 		    description = COALESCE($3, description),
 		    active = COALESCE($4, active),
@@ -159,7 +159,7 @@ func (s *PostgresDB) UpdateRegistrationSecret(
 
 // DeleteRegistrationSecret deletes a registration secret
 func (s *PostgresDB) DeleteRegistrationSecret(ctx context.Context, id string) error {
-	query := `DELETE FROM registration_secrets WHERE id = $1`
+	query := `DELETE FROM pganalytics.registration_secrets WHERE id = $1`
 	result, err := s.db.ExecContext(ctx, query, id)
 	if err != nil {
 		return fmt.Errorf("failed to delete registration secret: %w", err)
@@ -212,7 +212,7 @@ func (s *PostgresDB) RecordRegistrationSecretUsage(
 ) error {
 	// Update the secret's usage stats
 	updateQuery := `
-		UPDATE registration_secrets
+		UPDATE pganalytics.registration_secrets
 		SET total_registrations = total_registrations + 1,
 		    last_used_at = NOW()
 		WHERE id = $1
@@ -224,7 +224,7 @@ func (s *PostgresDB) RecordRegistrationSecretUsage(
 
 	// Record in audit table
 	auditQuery := `
-		INSERT INTO registration_secret_audit (secret_id, collector_id, collector_name, status, error_message, ip_address, used_at)
+		INSERT INTO pganalytics.registration_secret_audit (secret_id, collector_id, collector_name, status, error_message, ip_address, used_at)
 		VALUES ($1, $2, $3, $4, $5, $6, NOW())
 	`
 	_, err = s.db.ExecContext(ctx, auditQuery, secretID, collectorID, collectorName, status, errorMessage, ipAddress)

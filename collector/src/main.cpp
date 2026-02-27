@@ -4,6 +4,9 @@
 #include <chrono>
 #include <thread>
 #include <signal.h>
+#include <fstream>
+#include <sys/stat.h>
+#include <ctime>
 #include "../include/collector.h"
 #include "../include/config_manager.h"
 #include "../include/auth.h"
@@ -140,10 +143,49 @@ int runCronMode() {
         tlsConfig.verify
     );
 
-    // Set initial auth token (would be fetched during registration)
-    // For now, generate one with 1 hour expiration
-    authMgr.generateToken(3600);  // 1 hour
-    sender.setAuthToken(authMgr.getToken(), authMgr.getTokenExpiration());
+    // Try to load auth token from file (saved during registration)
+    std::string authToken;
+    std::string registeredCollectorId;
+    std::string tokenFilePath = "/etc/pganalytics/collector.token";
+    std::string collectorIdFilePath = "/etc/pganalytics/collector.id";
+    std::ifstream tokenFile(tokenFilePath);
+    std::ifstream collectorIdFile(collectorIdFilePath);
+
+    bool tokenLoaded = false;
+    if (tokenFile.is_open()) {
+        std::getline(tokenFile, authToken);
+        tokenFile.close();
+
+        if (!authToken.empty()) {
+            std::cout << "Loaded auth token from file" << std::endl;
+            tokenLoaded = true;
+            // Set token with 24-hour expiration
+            time_t now = std::time(nullptr);
+            sender.setAuthToken(authToken, now + 86400);
+        } else {
+            std::cerr << "Warning: Token file exists but is empty" << std::endl;
+        }
+    } else {
+        std::cerr << "Warning: Auth token file not found at " << tokenFilePath << std::endl;
+    }
+
+    if (collectorIdFile.is_open()) {
+        std::getline(collectorIdFile, registeredCollectorId);
+        collectorIdFile.close();
+
+        if (!registeredCollectorId.empty()) {
+            std::cout << "Loaded collector ID from file: " << registeredCollectorId << std::endl;
+        }
+    } else {
+        std::cerr << "Warning: Collector ID file not found at " << collectorIdFilePath << std::endl;
+    }
+
+    if (!tokenLoaded) {
+        std::cerr << "Falling back to local token generation (collector may not be registered)" << std::endl;
+        // Fall back to local token generation
+        authMgr.generateToken(3600);  // 1 hour
+        sender.setAuthToken(authMgr.getToken(), authMgr.getTokenExpiration());
+    }
 
     // Main collection loop
     int collectionInterval = gConfig->getCollectionInterval("collector", 60);
@@ -219,6 +261,9 @@ int runCronMode() {
         auto now = std::chrono::steady_clock::now();
         auto secsSincePush = std::chrono::duration_cast<std::chrono::seconds>(now - lastPushTime).count();
 
+        std::cout << "DEBUG: Push check - secsSincePush=" << secsSincePush << ", pushInterval=" << pushInterval
+                  << ", bufferEmpty=" << buffer.isEmpty() << ", bufferCount=" << buffer.getMetricCount() << std::endl;
+
         if (secsSincePush >= pushInterval && !buffer.isEmpty()) {
             std::cout << "Pushing " << buffer.getMetricCount() << " metrics to backend..." << std::endl;
 
@@ -234,8 +279,12 @@ int runCronMode() {
                 }
             }
 
+            // Use registered collector ID if available, otherwise use config ID
+            std::string collectorIdForPayload = registeredCollectorId.empty() ?
+                gConfig->getCollectorId() : registeredCollectorId;
+
             json payload = MetricsSerializer::createPayload(
-                gConfig->getCollectorId(),
+                collectorIdForPayload,
                 gConfig->getHostname(),
                 "3.0.0",
                 metricsVector
@@ -329,10 +378,11 @@ int runRegister() {
 
     // Attempt registration
     std::string authToken;
+    std::string registeredCollectorId;
     std::string collectorName = gConfig->getHostname();
     std::cout << "Registering with backend as '" << collectorName << "'..." << std::endl;
 
-    if (!sender.registerCollector(registrationSecret, collectorName, authToken)) {
+    if (!sender.registerCollector(registrationSecret, collectorName, authToken, registeredCollectorId)) {
         std::cerr << "Registration failed" << std::endl;
         return 1;
     }
@@ -340,6 +390,37 @@ int runRegister() {
     std::cout << "Registration successful!" << std::endl;
     std::cout << "Auth Token: " << authToken.substr(0, 20) << "..." << std::endl;
     std::cout << "Collector ID: " << gConfig->getCollectorId() << std::endl;
+
+    // Save auth token to file for later use
+    std::string tokenFilePath = "/etc/pganalytics/collector.token";
+    std::ofstream tokenFile(tokenFilePath);
+    if (tokenFile.is_open()) {
+        tokenFile << authToken;
+        tokenFile.close();
+        std::cout << "Auth token saved to " << tokenFilePath << std::endl;
+        // Make it readable only by pganalytics user
+        chmod(tokenFilePath.c_str(), 0600);
+    } else {
+        std::cerr << "Warning: Could not save auth token to file" << std::endl;
+    }
+
+    // Save registered collector ID to file for later use in metrics push
+    if (!registeredCollectorId.empty()) {
+        std::string collectorIdFilePath = "/etc/pganalytics/collector.id";
+        std::ofstream collectorIdFile(collectorIdFilePath);
+        if (collectorIdFile.is_open()) {
+            collectorIdFile << registeredCollectorId;
+            collectorIdFile.close();
+            std::cout << "Collector ID saved to " << collectorIdFilePath << std::endl;
+            // Make it readable only by pganalytics user
+            chmod(collectorIdFilePath.c_str(), 0600);
+        } else {
+            std::cerr << "Warning: Could not save collector ID to file" << std::endl;
+        }
+    } else {
+        std::cerr << "Warning: No collector ID received from backend" << std::endl;
+    }
+
     std::cout << "You can now run the collector in normal mode" << std::endl;
 
     return 0;

@@ -1,8 +1,9 @@
 import React, { useState } from 'react'
 import { Tab } from '@headlessui/react'
-import { AlertCircle, LogOut } from 'lucide-react'
+import { AlertCircle, LogOut, Users } from 'lucide-react'
 import { CollectorForm } from '../components/CollectorForm'
 import { CollectorList } from '../components/CollectorList'
+import { CreateUserForm } from '../components/CreateUserForm'
 import { apiClient } from '../services/api'
 
 interface DashboardProps {
@@ -13,7 +14,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
   const [registrationSecret, setRegistrationSecret] = useState('')
   const [secretVisible, setSecretVisible] = useState(false)
   const [successMessage, setSuccessMessage] = useState('')
+  const [userMessage, setUserMessage] = useState('')
+  const [userMessageType, setUserMessageType] = useState<'success' | 'error' | ''>('')
   const currentUser = apiClient.getCurrentUser()
+  const isAdmin = currentUser?.role === 'admin'
 
   const handleSecretChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setRegistrationSecret(e.target.value)
@@ -104,9 +108,34 @@ export const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
           </div>
         )}
 
+        {userMessage && (
+          <div className={`border rounded-lg p-4 mb-8 ${
+            userMessageType === 'success'
+              ? 'bg-green-50 border-green-200'
+              : 'bg-red-50 border-red-200'
+          }`}>
+            <p className={userMessageType === 'success' ? 'text-green-700' : 'text-red-700'}>
+              {userMessage}
+            </p>
+          </div>
+        )}
+
         {/* Tabs */}
         <Tab.Group>
           <Tab.List className="flex gap-4 border-b border-gray-200 mb-6">
+            {isAdmin && (
+              <Tab
+                className={({ selected }) =>
+                  `px-4 py-2 font-medium text-sm border-b-2 transition ${
+                    selected
+                      ? 'border-blue-600 text-blue-600'
+                      : 'border-transparent text-gray-600 hover:text-gray-900'
+                  }`
+                }
+              >
+                Create User
+              </Tab>
+            )}
             <Tab
               className={({ selected }) =>
                 `px-4 py-2 font-medium text-sm border-b-2 transition ${
@@ -132,6 +161,24 @@ export const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
           </Tab.List>
 
           <Tab.Panels>
+            {isAdmin && (
+              <Tab.Panel>
+                <div className="bg-white rounded-lg shadow p-6">
+                  <CreateUserForm
+                    onSuccess={(message) => {
+                      setUserMessage(message)
+                      setUserMessageType('success')
+                      setTimeout(() => setUserMessage(''), 5000)
+                    }}
+                    onError={(message) => {
+                      setUserMessage(message)
+                      setUserMessageType('error')
+                      setTimeout(() => setUserMessage(''), 5000)
+                    }}
+                  />
+                </div>
+              </Tab.Panel>
+            )}
             <Tab.Panel>
               <div className="bg-white rounded-lg shadow p-6">
                 {!isSecretValid ? (

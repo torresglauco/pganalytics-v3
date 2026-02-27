@@ -75,31 +75,50 @@ func (s *Server) handleVersion(c *gin.Context) {
 // @Success 200 {object} models.LoginResponse
 // @Failure 401 {object} models.ErrorResponse
 // @Router /api/v1/auth/login [post]
-// @Summary User Signup
-// @Description Create a new user account
-// @Tags Authentication
+// @Summary Create User (Admin Only)
+// @Description Create a new user account (admin-only endpoint)
+// @Tags Administration
 // @Accept json
 // @Produce json
-// @Param req body models.SignupRequest true "Signup request"
-// @Success 201 {object} models.LoginResponse
+// @Security Bearer
+// @Param req body models.CreateUserRequest true "Create user request"
+// @Success 201 {object} models.User
 // @Failure 400 {object} apperrors.AppError
-// @Router /auth/signup [post]
-func (s *Server) handleSignup(c *gin.Context) {
-	var req models.SignupRequest
+// @Failure 403 {object} apperrors.AppError
+// @Router /api/v1/users [post]
+func (s *Server) handleCreateUser(c *gin.Context) {
+	// Get current user from context (added by middleware)
+	currentUser, exists := c.Get("user")
+	if !exists {
+		errResp := apperrors.Unauthorized("Authentication required", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	user := currentUser.(*models.User)
+
+	// Check if user is admin
+	if user.Role != "admin" {
+		errResp := apperrors.Forbidden("Only admins can create users", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	var req models.CreateUserRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		s.logger.Error("Failed to bind signup request", zap.Error(err))
+		s.logger.Error("Failed to bind create user request", zap.Error(err))
 		errResp := apperrors.BadRequest("Invalid request", err.Error())
 		c.JSON(errResp.StatusCode, errResp)
 		return
 	}
 
-	s.logger.Debug("Signup attempt", zap.String("username", req.Username), zap.String("email", req.Email))
+	s.logger.Debug("Create user attempt", zap.String("username", req.Username), zap.String("role", req.Role))
 
-	// Hash password using PasswordManager
+	// Hash password
 	passwordHash, err := s.authService.PasswordManager.HashPassword(req.Password)
 	if err != nil {
 		s.logger.Error("Failed to hash password", zap.Error(err))
-		errResp := apperrors.InternalServerError("Failed to process signup", err.Error())
+		errResp := apperrors.InternalServerError("Failed to process request", err.Error())
 		c.JSON(errResp.StatusCode, errResp)
 		return
 	}
@@ -108,7 +127,7 @@ func (s *Server) handleSignup(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
 
-	user, err := s.postgres.CreateUser(ctx, req.Username, req.Email, passwordHash, req.FullName)
+	newUser, err := s.postgres.CreateUserWithRole(ctx, req.Username, req.Email, passwordHash, req.FullName, req.Role)
 	if err != nil {
 		s.logger.Error("Failed to create user",
 			zap.String("username", req.Username),
@@ -119,36 +138,13 @@ func (s *Server) handleSignup(c *gin.Context) {
 		return
 	}
 
-	// Generate tokens for new user
-	accessToken, expiresAt, err := s.authService.JWTManager.GenerateUserToken(user)
-	if err != nil {
-		s.logger.Error("Failed to generate token", zap.Error(err))
-		errResp := apperrors.InternalServerError("Failed to generate token", err.Error())
-		c.JSON(errResp.StatusCode, errResp)
-		return
-	}
-
-	refreshToken, _, err := s.authService.JWTManager.GenerateUserRefreshToken(user)
-	if err != nil {
-		s.logger.Error("Failed to generate refresh token", zap.Error(err))
-		errResp := apperrors.InternalServerError("Failed to generate token", err.Error())
-		c.JSON(errResp.StatusCode, errResp)
-		return
-	}
-
-	s.logger.Info("User signup successful",
+	s.logger.Info("User created by admin",
 		zap.String("username", req.Username),
-		zap.Int("user_id", user.ID),
+		zap.String("created_by", user.Username),
+		zap.Int("user_id", newUser.ID),
 	)
 
-	loginResp := &models.LoginResponse{
-		Token:        accessToken,
-		RefreshToken: refreshToken,
-		ExpiresAt:    *expiresAt,
-		User:         user,
-	}
-
-	c.JSON(http.StatusCreated, loginResp)
+	c.JSON(http.StatusCreated, newUser)
 }
 
 func (s *Server) handleLogin(c *gin.Context) {

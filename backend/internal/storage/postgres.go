@@ -122,16 +122,21 @@ func (p *PostgresDB) UpdateUserLastLogin(ctx context.Context, userID int) error 
 	return nil
 }
 
-// CreateUser creates a new user with hashed password
+// CreateUser creates a new user with hashed password (role defaults to 'user')
 func (p *PostgresDB) CreateUser(ctx context.Context, username, email, passwordHash, fullName string) (*models.User, error) {
+	return p.CreateUserWithRole(ctx, username, email, passwordHash, fullName, "user")
+}
+
+// CreateUserWithRole creates a new user with specified role
+func (p *PostgresDB) CreateUserWithRole(ctx context.Context, username, email, passwordHash, fullName, role string) (*models.User, error) {
 	user := &models.User{}
 
 	err := p.db.QueryRowContext(
 		ctx,
 		`INSERT INTO pganalytics.users (username, email, password_hash, full_name, role, is_active)
-		 VALUES ($1, $2, $3, $4, 'user', true)
+		 VALUES ($1, $2, $3, $4, $5, true)
 		 RETURNING id, username, email, password_hash, full_name, role, is_active, last_login, created_at, updated_at`,
-		username, email, passwordHash, fullName,
+		username, email, passwordHash, fullName, role,
 	).Scan(
 		&user.ID, &user.Username, &user.Email, &user.PasswordHash, &user.FullName,
 		&user.Role, &user.IsActive, &user.LastLogin, &user.CreatedAt, &user.UpdatedAt,

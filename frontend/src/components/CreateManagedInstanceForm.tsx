@@ -1,19 +1,19 @@
 import React, { useState } from 'react'
 import { AlertCircle, CheckCircle } from 'lucide-react'
 
-interface CreateRDSFormProps {
+interface CreateManagedInstanceFormProps {
   onSuccess: (message: string) => void
   onError: (message: string) => void
 }
 
-export const CreateRDSForm: React.FC<CreateRDSFormProps> = ({ onSuccess, onError }) => {
+export const CreateManagedInstanceForm: React.FC<CreateManagedInstanceFormProps> = ({ onSuccess, onError }) => {
   const [loading, setLoading] = useState(false)
   const [testingConnection, setTestingConnection] = useState(false)
   const [connectionTested, setConnectionTested] = useState(false)
   const [connectionError, setConnectionError] = useState('')
   const [formData, setFormData] = useState({
     name: '',
-    rds_endpoint: '',
+    endpoint: '',
     port: 5432,
     environment: 'production',
     master_username: '',
@@ -54,8 +54,8 @@ export const CreateRDSForm: React.FC<CreateRDSFormProps> = ({ onSuccess, onError
       newErrors.name = 'Cluster name is required'
     }
 
-    if (!formData.rds_endpoint.trim()) {
-      newErrors.rds_endpoint = 'RDS endpoint is required'
+    if (!formData.endpoint.trim()) {
+      newErrors.endpoint = 'RDS endpoint is required'
     }
 
     if (formData.port < 1 || formData.port > 65535) {
@@ -75,7 +75,7 @@ export const CreateRDSForm: React.FC<CreateRDSFormProps> = ({ onSuccess, onError
   }
 
   const testConnection = async () => {
-    if (!formData.rds_endpoint || !formData.master_username || !formData.master_password) {
+    if (!formData.endpoint || !formData.master_username || !formData.master_password) {
       onError('Please enter RDS endpoint, username, and password to test connection')
       return
     }
@@ -97,7 +97,7 @@ export const CreateRDSForm: React.FC<CreateRDSFormProps> = ({ onSuccess, onError
           'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
-          rds_endpoint: formData.rds_endpoint,
+          endpoint: formData.endpoint,
           port: formData.port,
           username: formData.master_username,
           password: formData.master_password,
@@ -165,7 +165,7 @@ export const CreateRDSForm: React.FC<CreateRDSFormProps> = ({ onSuccess, onError
       // Reset form
       setFormData({
         name: '',
-        rds_endpoint: '',
+        endpoint: '',
         port: 5432,
         environment: 'production',
         master_username: '',
@@ -210,15 +210,15 @@ export const CreateRDSForm: React.FC<CreateRDSFormProps> = ({ onSuccess, onError
         </label>
         <input
           type="text"
-          name="rds_endpoint"
-          value={formData.rds_endpoint}
+          name="endpoint"
+          value={formData.endpoint}
           onChange={handleChange}
           placeholder="mydb.xxxx.us-east-1.rds.amazonaws.com"
           className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-            errors.rds_endpoint ? 'border-red-500' : 'border-gray-300'
+            errors.endpoint ? 'border-red-500' : 'border-gray-300'
           }`}
         />
-        {errors.rds_endpoint && <p className="text-red-600 text-sm mt-1">{errors.rds_endpoint}</p>}
+        {errors.endpoint && <p className="text-red-600 text-sm mt-1">{errors.endpoint}</p>}
       </div>
 
       {/* Port */}

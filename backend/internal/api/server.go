@@ -58,7 +58,7 @@ func NewServer(
 	}
 
 	// Initialize rate limiter (100 req/min per user, 1000 req/min per collector)
-	rateLimiter := NewRateLimiter(100) // Will be increased for collectors in middleware
+	rateLimiter := NewRateLimiter(1000) // Increased to handle high-volume metric pushes from collectors
 
 	return &Server{
 		config:           cfg,

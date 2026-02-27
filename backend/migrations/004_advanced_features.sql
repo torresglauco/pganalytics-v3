@@ -1,6 +1,9 @@
 -- Phase 4.4: Advanced Query Performance Features
 -- Tables and functions for fingerprinting, EXPLAIN plans, index recommendations, anomaly detection, and snapshots
 
+-- Set search path to pganalytics schema
+SET search_path TO pganalytics, public;
+
 -- ============================================================================
 -- 1. Query Fingerprinting & Normalization
 -- ============================================================================
@@ -71,7 +74,7 @@ CREATE INDEX IF NOT EXISTS idx_query_fingerprint_last_seen ON query_fingerprints
 -- Table: explain_plans
 CREATE TABLE IF NOT EXISTS explain_plans (
     id BIGSERIAL PRIMARY KEY,
-    query_hash INT64 NOT NULL,
+    query_hash BIGINT NOT NULL,
     query_fingerprint_hash BIGINT,
     collected_at TIMESTAMP DEFAULT NOW(),
     plan_json JSONB NOT NULL,
@@ -180,7 +183,7 @@ $$ LANGUAGE plpgsql;
 -- Table: query_anomalies
 CREATE TABLE IF NOT EXISTS query_anomalies (
     id BIGSERIAL PRIMARY KEY,
-    query_hash INT64 NOT NULL,
+    query_hash BIGINT NOT NULL,
     query_fingerprint_hash BIGINT,
     anomaly_type VARCHAR(50) NOT NULL, -- 'execution_time_spike', 'cache_degradation', 'io_increase', 'row_count_anomaly'
     severity VARCHAR(20) NOT NULL DEFAULT 'low', -- 'low', 'medium', 'high'
@@ -204,7 +207,7 @@ CREATE INDEX IF NOT EXISTS idx_anomaly_type ON query_anomalies(anomaly_type, det
 -- Table: query_baselines (for anomaly detection)
 CREATE TABLE IF NOT EXISTS query_baselines (
     id BIGSERIAL PRIMARY KEY,
-    query_hash INT64 NOT NULL,
+    query_hash BIGINT NOT NULL,
     metric_name VARCHAR(100) NOT NULL, -- 'mean_time', 'max_time', 'shared_blks_hit', 'blk_read_time', etc.
     baseline_value FLOAT NOT NULL,
     stddev_value FLOAT NOT NULL,
@@ -365,7 +368,7 @@ CREATE INDEX IF NOT EXISTS idx_snapshot_type ON performance_snapshots(snapshot_t
 CREATE TABLE IF NOT EXISTS query_performance_snapshots (
     id BIGSERIAL PRIMARY KEY,
     snapshot_id BIGINT NOT NULL,
-    query_hash INT64 NOT NULL,
+    query_hash BIGINT NOT NULL,
     query_fingerprint_hash BIGINT,
     database_name VARCHAR(63),
     calls BIGINT,
@@ -442,7 +445,7 @@ CREATE OR REPLACE FUNCTION compare_snapshots(
     p_before_snapshot_id BIGINT,
     p_after_snapshot_id BIGINT
 ) RETURNS TABLE(
-    query_hash INT64,
+    query_hash BIGINT,
     database_name VARCHAR,
     before_calls BIGINT,
     after_calls BIGINT,

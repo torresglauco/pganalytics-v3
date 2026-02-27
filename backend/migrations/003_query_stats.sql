@@ -2,6 +2,9 @@
 -- This migration creates the necessary tables and structures for storing pg_stat_statements data
 -- Note: TimescaleDB extension is optional; this version uses regular PostgreSQL tables
 
+-- Set search path to pganalytics schema
+SET search_path TO pganalytics, public;
+
 -- Ensure schema_versions table exists for migration tracking
 CREATE TABLE IF NOT EXISTS schema_versions (
     version VARCHAR(50) PRIMARY KEY,

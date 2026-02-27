@@ -3,6 +3,7 @@ package auth
 import (
 	"crypto/md5"
 	"fmt"
+	"strings"
 	"time"
 
 	apperrors "github.com/torresglauco/pganalytics-v3/backend/pkg/errors"
@@ -150,43 +151,34 @@ func (as *AuthService) RegisterCollector(req *models.CollectorRegisterRequest) (
 	hostHash := md5.Sum([]byte(req.Hostname))
 	collectorID := uuid.NewSHA1(uuid.Nil, hostHash[:])
 
-	// Check if collector already exists
-	existing, err := as.collectorStore.GetCollectorByID(collectorID)
-	if err == nil && existing != nil {
-		// Collector already exists, just regenerate credentials
-		// Don't create a duplicate
-	} else {
-		// Create new collector record only if it doesn't exist
-		collector := &models.Collector{
-			ID:                  collectorID,
-			Name:                req.Name,
-			Hostname:            req.Hostname,
-			Description:         "",
-			Address:             req.Address,
-			Version:             req.Version,
-			Status:              "registered",
-			ConfigVersion:       1,
-			MetricsCountTotal:   0,
-			MetricsCount24h:     0,
-			HealthCheckInterval: 60, // Default: check health every 60 seconds
-			CreatedAt:           time.Now(),
-			UpdatedAt:           time.Now(),
-		}
-
-		// Create in database
-		_, err := as.collectorStore.CreateCollector(collector)
-		if err != nil {
-			return nil, apperrors.DatabaseError("Failed to create collector", err.Error())
-		}
+	// Create or get collector with deterministic ID
+	collector := &models.Collector{
+		ID:                  collectorID,
+		Name:                req.Name,
+		Hostname:            req.Hostname,
+		Description:         "",
+		Address:             req.Address,
+		Version:             req.Version,
+		Status:              "registered",
+		ConfigVersion:       1,
+		MetricsCountTotal:   0,
+		MetricsCount24h:     0,
+		HealthCheckInterval: 60, // Default: check health every 60 seconds
+		CreatedAt:           time.Now(),
+		UpdatedAt:           time.Now(),
 	}
 
-	// Get the collector (either newly created or existing)
-	collector, err := as.collectorStore.GetCollectorByID(collectorID)
-	if err != nil {
-		return nil, apperrors.DatabaseError("Failed to retrieve collector", err.Error())
+	// Create in database (will skip if already exists due to UNIQUE constraint on ID)
+	_, err := as.collectorStore.CreateCollector(collector)
+	// Ignore duplicate key error - collector already exists with this hostname
+	if err != nil && !strings.Contains(err.Error(), "duplicate key") && !strings.Contains(err.Error(), "UNIQUE") {
+		return nil, apperrors.DatabaseError("Failed to create collector", err.Error())
 	}
-	if collector == nil {
-		return nil, apperrors.InternalServerError("Collector not found after creation", "")
+
+	// Retrieve the collector (newly created or pre-existing)
+	collector, err = as.collectorStore.GetCollectorByID(collectorID)
+	if err != nil || collector == nil {
+		return nil, apperrors.DatabaseError("Collector retrieval after registration", "Collector not found after registration attempt")
 	}
 
 	// Generate certificate

@@ -2,6 +2,9 @@
 -- Tables and functions for workload pattern detection, query rewrite suggestions,
 -- parameter optimization, performance prediction, and optimization workflow
 
+-- Set search path to pganalytics schema
+SET search_path TO pganalytics, public;
+
 -- ============================================================================
 -- 1. Workload Pattern Detection
 -- ============================================================================

@@ -10,7 +10,7 @@ import type {
   User
 } from '../types'
 
-class ApiClient {
+export class ApiClient {
   private client: AxiosInstance
 
   constructor(baseURL: string = '/api/v1') {

@@ -39,6 +39,11 @@ func NewPostgresDB(connString string) (*PostgresDB, error) {
 	db.SetConnMaxLifetime(5 * time.Minute)
 	db.SetConnMaxIdleTime(10 * time.Minute)
 
+	// Set search_path to include pganalytics schema
+	if _, err := db.ExecContext(ctx, "SET search_path TO pganalytics, public"); err != nil {
+		return nil, apperrors.DatabaseError("set search_path", err.Error())
+	}
+
 	return &PostgresDB{db: db}, nil
 }
 

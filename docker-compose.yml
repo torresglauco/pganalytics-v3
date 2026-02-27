@@ -109,6 +109,29 @@ services:
       pganalytics:
         ipv4_address: 172.20.0.30
 
+  # React Frontend UI
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    container_name: pganalytics-frontend
+    environment:
+      VITE_API_BASE_URL: "http://backend:8080"
+    ports:
+      - "4000:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.0.60
+    healthcheck:
+      test: ["CMD", "curl", "-s", "http://localhost:3000"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+
   # Grafana for Dashboards & Alerts
   grafana:
     image: grafana/grafana:11.0.0
@@ -121,8 +144,10 @@ services:
     ports:
       - "3000:3000"
     depends_on:
-      - postgres
-      - timescale
+      postgres:
+        condition: service_healthy
+      timescale:
+        condition: service_healthy
     volumes:
       - grafana_data:/var/lib/grafana
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
@@ -152,6 +177,7 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+    profiles: ["optional"]
 
 networks:
   pganalytics:

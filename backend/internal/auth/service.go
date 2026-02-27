@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"crypto/md5"
 	"fmt"
 	"time"
 
@@ -144,27 +145,48 @@ func (as *AuthService) RegisterCollector(req *models.CollectorRegisterRequest) (
 		return nil, apperrors.BadRequest("Invalid collector data", "Name and hostname are required")
 	}
 
-	// Create collector record
-	collector := &models.Collector{
-		ID:                  uuid.New(),
-		Name:                req.Name,
-		Hostname:            req.Hostname,
-		Description:         "",
-		Address:             req.Address,
-		Version:             req.Version,
-		Status:              "registered",
-		ConfigVersion:       1,
-		MetricsCountTotal:   0,
-		MetricsCount24h:     0,
-		HealthCheckInterval: 60, // Default: check health every 60 seconds
-		CreatedAt:           time.Now(),
-		UpdatedAt:           time.Now(),
+	// Generate deterministic UUID based on hostname to prevent duplicates
+	// This ensures the same collector always gets the same ID
+	hostHash := md5.Sum([]byte(req.Hostname))
+	collectorID := uuid.NewSHA1(uuid.Nil, hostHash[:])
+
+	// Check if collector already exists
+	existing, err := as.collectorStore.GetCollectorByID(collectorID)
+	if err == nil && existing != nil {
+		// Collector already exists, just regenerate credentials
+		// Don't create a duplicate
+	} else {
+		// Create new collector record only if it doesn't exist
+		collector := &models.Collector{
+			ID:                  collectorID,
+			Name:                req.Name,
+			Hostname:            req.Hostname,
+			Description:         "",
+			Address:             req.Address,
+			Version:             req.Version,
+			Status:              "registered",
+			ConfigVersion:       1,
+			MetricsCountTotal:   0,
+			MetricsCount24h:     0,
+			HealthCheckInterval: 60, // Default: check health every 60 seconds
+			CreatedAt:           time.Now(),
+			UpdatedAt:           time.Now(),
+		}
+
+		// Create in database
+		_, err := as.collectorStore.CreateCollector(collector)
+		if err != nil {
+			return nil, apperrors.DatabaseError("Failed to create collector", err.Error())
+		}
 	}
 
-	// Create in database
-	_, err := as.collectorStore.CreateCollector(collector)
+	// Get the collector (either newly created or existing)
+	collector, err := as.collectorStore.GetCollectorByID(collectorID)
 	if err != nil {
-		return nil, apperrors.DatabaseError("Failed to create collector", err.Error())
+		return nil, apperrors.DatabaseError("Failed to retrieve collector", err.Error())
+	}
+	if collector == nil {
+		return nil, apperrors.InternalServerError("Collector not found after creation", "")
 	}
 
 	// Generate certificate

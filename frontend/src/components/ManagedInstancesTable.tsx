@@ -213,6 +213,8 @@ export const ManagedInstancesTable: React.FC<ManagedInstancesTableProps> = ({ on
       const data = await response.json()
       if (data.success) {
         onSuccess(`✓ Connection successful for ${instance.name}`)
+        // Reload instances to update the connection status in the UI
+        loadInstances()
       } else {
         onError(`${data.error || 'Connection test failed'}`)
       }

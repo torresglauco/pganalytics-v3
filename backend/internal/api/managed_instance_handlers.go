@@ -545,8 +545,30 @@ func (s *Server) handleTestManagedInstanceConnection(c *gin.Context) {
 
 	if testErr != nil {
 		response.Error = fmt.Sprintf("Connection test failed - Endpoint: %s:%d - Error: %s", instance.Endpoint, instance.Port, testErr.Error())
+		// Update database with error status
+		s.logger.Info("Updating managed instance status to error", zap.Int("id", id))
+		errorMsg := response.Error
+		updateCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		updateErr := s.postgres.UpdateManagedInstanceStatus(updateCtx, id, "error", &errorMsg)
+		cancel()
+		if updateErr != nil {
+			s.logger.Warn("Failed to update managed instance error status", zap.Int("id", id), zap.Error(updateErr))
+		} else {
+			s.logger.Info("Successfully updated managed instance status to error", zap.Int("id", id))
+		}
 	} else {
 		response.Error = ""
+		// Update database with connected status
+		s.logger.Info("Updating managed instance status to connected", zap.Int("id", id))
+		updateCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		emptyError := ""
+		updateErr := s.postgres.UpdateManagedInstanceStatus(updateCtx, id, "connected", &emptyError)
+		cancel()
+		if updateErr != nil {
+			s.logger.Warn("Failed to update managed instance connected status", zap.Int("id", id), zap.Error(updateErr))
+		} else {
+			s.logger.Info("Successfully updated managed instance status to connected", zap.Int("id", id))
+		}
 	}
 
 	c.JSON(200, response)

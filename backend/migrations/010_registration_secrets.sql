@@ -15,15 +15,9 @@ CREATE TABLE IF NOT EXISTS registration_secrets (
     last_used_at TIMESTAMP
 );
 
--- Add foreign key constraint if users table exists
-DO $$
-BEGIN
-    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'users') THEN
-        ALTER TABLE registration_secrets
-        ADD CONSTRAINT fk_registration_secrets_users
-        FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL;
-    END IF;
-END $$;
+-- Note: Foreign key constraint on users table not added due to initialization issues
+-- The users table may not be properly populated during migration
+-- created_by can be NULL and will be set during registration if user data is available
 
 -- Index for lookups
 CREATE INDEX idx_registration_secrets_secret_value ON registration_secrets(secret_value) WHERE active = true;

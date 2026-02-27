@@ -1,9 +1,8 @@
 import React, { useState } from 'react'
 import { Tab } from '@headlessui/react'
-import { AlertCircle, LogOut, Users, Key } from 'lucide-react'
+import { AlertCircle, LogOut, Key } from 'lucide-react'
 import { CollectorForm } from '../components/CollectorForm'
 import { CollectorList } from '../components/CollectorList'
-import { CreateUserForm } from '../components/CreateUserForm'
 import { UserManagementTable } from '../components/UserManagementTable'
 import { ChangePasswordForm } from '../components/ChangePasswordForm'
 import { apiClient } from '../services/api'
@@ -126,30 +125,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
         <Tab.Group>
           <Tab.List className="flex gap-4 border-b border-gray-200 mb-6 flex-wrap">
             {isAdmin && (
-              <>
-                <Tab
-                  className={({ selected }) =>
-                    `px-4 py-2 font-medium text-sm border-b-2 transition ${
-                      selected
-                        ? 'border-blue-600 text-blue-600'
-                        : 'border-transparent text-gray-600 hover:text-gray-900'
-                    }`
-                  }
-                >
-                  Create User
-                </Tab>
-                <Tab
-                  className={({ selected }) =>
-                    `px-4 py-2 font-medium text-sm border-b-2 transition ${
-                      selected
-                        ? 'border-blue-600 text-blue-600'
-                        : 'border-transparent text-gray-600 hover:text-gray-900'
-                    }`
-                  }
-                >
-                  Manage Users
-                </Tab>
-              </>
+              <Tab
+                className={({ selected }) =>
+                  `px-4 py-2 font-medium text-sm border-b-2 transition ${
+                    selected
+                      ? 'border-blue-600 text-blue-600'
+                      : 'border-transparent text-gray-600 hover:text-gray-900'
+                  }`
+                }
+              >
+                Manage Users
+              </Tab>
             )}
             <Tab
               className={({ selected }) =>
@@ -188,40 +174,22 @@ export const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
 
           <Tab.Panels>
             {isAdmin && (
-              <>
-                <Tab.Panel>
-                  <div className="bg-white rounded-lg shadow p-6">
-                    <CreateUserForm
-                      onSuccess={(message) => {
-                        setUserMessage(message)
-                        setUserMessageType('success')
-                        setTimeout(() => setUserMessage(''), 5000)
-                      }}
-                      onError={(message) => {
-                        setUserMessage(message)
-                        setUserMessageType('error')
-                        setTimeout(() => setUserMessage(''), 5000)
-                      }}
-                    />
-                  </div>
-                </Tab.Panel>
-                <Tab.Panel>
-                  <div className="bg-white rounded-lg shadow p-6">
-                    <UserManagementTable
-                      onSuccess={(message) => {
-                        setUserMessage(message)
-                        setUserMessageType('success')
-                        setTimeout(() => setUserMessage(''), 5000)
-                      }}
-                      onError={(message) => {
-                        setUserMessage(message)
-                        setUserMessageType('error')
-                        setTimeout(() => setUserMessage(''), 5000)
-                      }}
-                    />
-                  </div>
-                </Tab.Panel>
-              </>
+              <Tab.Panel>
+                <div className="bg-white rounded-lg shadow p-6">
+                  <UserManagementTable
+                    onSuccess={(message) => {
+                      setUserMessage(message)
+                      setUserMessageType('success')
+                      setTimeout(() => setUserMessage(''), 5000)
+                    }}
+                    onError={(message) => {
+                      setUserMessage(message)
+                      setUserMessageType('error')
+                      setTimeout(() => setUserMessage(''), 5000)
+                    }}
+                  />
+                </div>
+              </Tab.Panel>
             )}
             <Tab.Panel>
               <div className="bg-white rounded-lg shadow p-6">

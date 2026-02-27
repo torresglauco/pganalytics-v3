@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
-import { Trash2, Lock, Unlock, Shield, User, AlertCircle, RotateCcw, Copy, CheckCircle } from 'lucide-react'
+import { Trash2, Lock, Unlock, Shield, User, AlertCircle, RotateCcw, Copy, CheckCircle, Plus, X } from 'lucide-react'
+import { CreateUserForm } from './CreateUserForm'
 import { apiClient } from '../services/api'
 
 interface User {
@@ -26,6 +27,7 @@ export const UserManagementTable: React.FC<UserManagementTableProps> = ({ onSucc
   const [resettingPassword, setResettingPassword] = useState<number | null>(null)
   const [tempPasswordData, setTempPasswordData] = useState<{ username: string; password: string } | null>(null)
   const [copiedPassword, setCopiedPassword] = useState(false)
+  const [showCreateForm, setShowCreateForm] = useState(false)
 
   useEffect(() => {
     loadUsers()
@@ -196,16 +198,50 @@ export const UserManagementTable: React.FC<UserManagementTableProps> = ({ onSucc
     )
   }
 
-  if (users.length === 0) {
-    return (
-      <div className="text-center py-12">
-        <p className="text-gray-600">No users found</p>
-      </div>
-    )
-  }
-
   return (
-    <div className="overflow-x-auto">
+    <div>
+      {/* Header with Create User Button */}
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-2xl font-bold text-gray-900">Manage Users</h2>
+        <button
+          onClick={() => setShowCreateForm(!showCreateForm)}
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition"
+        >
+          {showCreateForm ? (
+            <>
+              <X size={18} />
+              Cancel
+            </>
+          ) : (
+            <>
+              <Plus size={18} />
+              Create User
+            </>
+          )}
+        </button>
+      </div>
+
+      {/* Create User Form */}
+      {showCreateForm && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">
+          <CreateUserForm
+            onSuccess={(message) => {
+              setShowCreateForm(false)
+              loadUsers()
+              onSuccess(message)
+            }}
+            onError={onError}
+          />
+        </div>
+      )}
+
+      {users.length === 0 ? (
+        <div className="text-center py-12">
+          <p className="text-gray-600">No users found</p>
+        </div>
+      ) : null}
+
+      <div className="overflow-x-auto">
       <table className="min-w-full divide-y divide-gray-200 border border-gray-200 rounded-lg">
         <thead className="bg-gray-50">
           <tr>
@@ -337,6 +373,7 @@ export const UserManagementTable: React.FC<UserManagementTableProps> = ({ onSucc
           </p>
         </div>
       )}
+      </div>
 
       {/* Temporary Password Modal */}
       {tempPasswordData && (

@@ -11,11 +11,17 @@ import (
 )
 
 // CreateRDSInstance creates a new RDS instance record
-func (p *PostgresDB) CreateRDSInstance(ctx context.Context, instance *models.CreateRDSInstanceRequest, secretID int, userID int) (*models.RDSInstance, error) {
+func (p *PostgresDB) CreateRDSInstance(ctx context.Context, instance *models.CreateRDSInstanceRequest, secretID *int, userID int) (*models.RDSInstance, error) {
 	var id int
 	var createdAt, updatedAt sql.NullTime
 
 	tagsJSON, _ := json.Marshal(instance.Tags)
+
+	// Convert secretID to sql.NullInt64 for proper NULL handling
+	var sqlSecretID sql.NullInt64
+	if secretID != nil {
+		sqlSecretID = sql.NullInt64{Int64: int64(*secretID), Valid: true}
+	}
 
 	err := p.db.QueryRowContext(
 		ctx,
@@ -41,7 +47,7 @@ func (p *PostgresDB) CreateRDSInstance(ctx context.Context, instance *models.Cre
 		instance.Name, instance.Description, instance.AWSRegion,
 		instance.RDSEndpoint, instance.Port,
 		instance.EngineVersion, instance.DBInstanceClass, instance.AllocatedStorageGB,
-		instance.Environment, instance.MasterUsername, secretID,
+		instance.Environment, instance.MasterUsername, sqlSecretID,
 		instance.EnableEnhancedMonitoring, instance.MonitoringInterval,
 		instance.SSLEnabled, instance.SSLMode, instance.ConnectionTimeout,
 		instance.MultiAZ, instance.BackupRetentionDays,
@@ -65,7 +71,7 @@ func (p *PostgresDB) CreateRDSInstance(ctx context.Context, instance *models.Cre
 		AllocatedStorageGB:      instance.AllocatedStorageGB,
 		Environment:             instance.Environment,
 		MasterUsername:          instance.MasterUsername,
-		SecretID:                &secretID,
+		SecretID:                secretID,
 		EnableEnhancedMonitoring: instance.EnableEnhancedMonitoring,
 		MonitoringInterval:      instance.MonitoringInterval,
 		SSLEnabled:              instance.SSLEnabled,

@@ -83,22 +83,18 @@ func (s *Server) handleCreateRDSInstance(c *gin.Context) {
 	defer cancel()
 
 	// Test connection to RDS instance (if credentials provided)
-	if req.MasterUsername != "" && req.MasterPassword != "" {
-		if err := testRDSConnection(ctx, req.RDSEndpoint, req.Port, req.MasterUsername, req.MasterPassword); err != nil {
+	if req.MasterUsername != "" && req.MasterPassword != nil && *req.MasterPassword != "" {
+		if err := testRDSConnection(ctx, req.RDSEndpoint, req.Port, req.MasterUsername, *req.MasterPassword); err != nil {
 			s.logger.Warn("RDS connection test failed", zap.String("endpoint", req.RDSEndpoint), zap.Error(err))
 			// Don't fail here, allow registration even if connection fails (may be temporary)
 		}
 	}
 
 	// TODO: Store master password in secrets table and get secret_id
-	var secretID int
-	if req.MasterPassword != "" {
-		// For now, placeholder - in production, encrypt and store credentials
-		secretID = 0
-	}
+	// For now, credentials are not stored (secretID is NULL)
 
 	// Create RDS instance
-	instance, err := s.postgres.CreateRDSInstance(ctx, &req, secretID, user.ID)
+	instance, err := s.postgres.CreateRDSInstance(ctx, &req, nil, user.ID)
 	if err != nil {
 		s.logger.Error("Failed to create RDS instance", zap.Error(err))
 		errResp := apperrors.ToAppError(err)

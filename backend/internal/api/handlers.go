@@ -724,6 +724,9 @@ func (s *Server) handleCollectorRegister(c *gin.Context) {
 // @Failure 401 {object} models.ErrorResponse
 // @Router /api/v1/collectors [get]
 func (s *Server) handleListCollectors(c *gin.Context) {
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 30*time.Second)
+	defer cancel()
+
 	// Parse pagination parameters
 	var params models.PaginationParams
 	params.Page = 1
@@ -736,14 +739,37 @@ func (s *Server) handleListCollectors(c *gin.Context) {
 		_, _ = parseIntParam(pageSize, &params.PageSize)
 	}
 
-	// TODO: Query collectors from database with pagination
-	// For now, return empty list
+	s.logger.Debug("listing collectors", zap.Int("page", params.Page), zap.Int("page_size", params.PageSize))
+
+	// Query collectors from database
+	collectors, total, err := s.postgres.ListCollectorsWithTotal(ctx, params.Page, params.PageSize)
+	if err != nil {
+		s.logger.Error("failed to list collectors", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, apperrors.InternalServerError("Failed to list collectors", ""))
+		return
+	}
+
+	s.logger.Debug("collectors fetched", zap.Int("total", total), zap.Int("count", len(collectors)))
+
+	// Convert pointers to values
+	collectorsData := make([]models.Collector, len(collectors))
+	for i, c := range collectors {
+		if c != nil {
+			collectorsData[i] = *c
+		}
+	}
+
+	totalPages := (total + params.PageSize - 1) / params.PageSize
+	if totalPages == 0 && total == 0 {
+		totalPages = 1
+	}
+
 	resp := &models.PaginatedResponse{
-		Data:       []models.Collector{},
-		Total:      0,
+		Data:       collectorsData,
+		Total:      total,
 		Page:       params.Page,
 		PageSize:   params.PageSize,
-		TotalPages: 0,
+		TotalPages: totalPages,
 	}
 
 	c.JSON(http.StatusOK, resp)

@@ -1,13 +1,19 @@
 import React, { useState } from 'react'
 import { Tab } from '@headlessui/react'
-import { AlertCircle } from 'lucide-react'
+import { AlertCircle, LogOut } from 'lucide-react'
 import { CollectorForm } from '../components/CollectorForm'
 import { CollectorList } from '../components/CollectorList'
+import { apiClient } from '../services/api'
 
-export const Dashboard: React.FC = () => {
+interface DashboardProps {
+  onLogout: () => void
+}
+
+export const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
   const [registrationSecret, setRegistrationSecret] = useState('')
   const [secretVisible, setSecretVisible] = useState(false)
   const [successMessage, setSuccessMessage] = useState('')
+  const currentUser = apiClient.getCurrentUser()
 
   const handleSecretChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setRegistrationSecret(e.target.value)
@@ -18,6 +24,12 @@ export const Dashboard: React.FC = () => {
     setTimeout(() => setSuccessMessage(''), 5000)
   }
 
+  const handleLogout = () => {
+    if (confirm('Are you sure you want to log out?')) {
+      onLogout()
+    }
+  }
+
   const isSecretValid = registrationSecret.trim().length > 0
 
   return (
@@ -25,8 +37,27 @@ export const Dashboard: React.FC = () => {
       {/* Header */}
       <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <h1 className="text-3xl font-bold text-gray-900">pgAnalytics Collector Manager</h1>
-          <p className="text-gray-600 mt-1">v3.3.0 - Manage PostgreSQL database collectors</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">pgAnalytics Collector Manager</h1>
+              <p className="text-gray-600 mt-1">v3.3.0 - Manage PostgreSQL database collectors</p>
+            </div>
+            <div className="flex items-center gap-4">
+              {currentUser && (
+                <div className="text-right">
+                  <p className="text-sm font-medium text-gray-900">{currentUser.full_name || currentUser.username}</p>
+                  <p className="text-xs text-gray-500">{currentUser.email}</p>
+                </div>
+              )}
+              <button
+                onClick={handleLogout}
+                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 flex items-center gap-2 text-sm font-medium"
+              >
+                <LogOut size={16} />
+                Logout
+              </button>
+            </div>
+          </div>
         </div>
       </header>
 

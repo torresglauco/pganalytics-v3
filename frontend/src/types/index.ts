@@ -35,3 +35,28 @@ export interface PaginatedResponse<T> {
   page_size: number
   total_pages: number
 }
+
+export interface SignupRequest {
+  username: string
+  email: string
+  password: string
+  full_name: string
+}
+
+export interface User {
+  id: number
+  username: string
+  email: string
+  full_name: string
+  role: string
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface AuthResponse {
+  token: string
+  refresh_token: string
+  expires_at: string
+  user: User
+}

@@ -5,13 +5,15 @@ import { apiClient } from '../services/api'
 interface LoginFormProps {
   onSuccess: (message: string) => void
   onError: (error: Error) => void
-  onSwitchToSignup: () => void
+  onSwitchToSignup?: () => void
+  onLogin?: (username: string, password: string) => Promise<void>
 }
 
 export const LoginForm: React.FC<LoginFormProps> = ({
   onSuccess,
   onError,
   onSwitchToSignup,
+  onLogin: externalLogin,
 }) => {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -43,8 +45,15 @@ export const LoginForm: React.FC<LoginFormProps> = ({
 
     setLoading(true)
     try {
-      const response = await apiClient.login(username, password)
-      onSuccess(`Welcome back, ${response.user.username}!`)
+      if (externalLogin) {
+        // Use external login handler (from App.tsx)
+        await externalLogin(username, password)
+        onSuccess(`Welcome back, ${username}!`)
+      } else {
+        // Use apiClient directly (legacy behavior)
+        const response = await apiClient.login(username, password)
+        onSuccess(`Welcome back, ${response.user.username}!`)
+      }
       // Reset form
       setUsername('')
       setPassword('')
@@ -133,18 +142,20 @@ export const LoginForm: React.FC<LoginFormProps> = ({
         {loading ? 'Logging in...' : 'Log In'}
       </button>
 
-      <div className="mt-6 pt-6 border-t border-gray-200">
-        <p className="text-sm text-gray-600 text-center">
-          Don't have an account?{' '}
-          <button
-            type="button"
-            onClick={onSwitchToSignup}
-            className="text-blue-600 hover:text-blue-700 font-medium"
-          >
-            Sign up here
-          </button>
-        </p>
-      </div>
+      {onSwitchToSignup && (
+        <div className="mt-6 pt-6 border-t border-gray-200">
+          <p className="text-sm text-gray-600 text-center">
+            Don't have an account?{' '}
+            <button
+              type="button"
+              onClick={onSwitchToSignup}
+              className="text-blue-600 hover:text-blue-700 font-medium"
+            >
+              Sign up here
+            </button>
+          </p>
+        </div>
+      )}
     </form>
   )
 }

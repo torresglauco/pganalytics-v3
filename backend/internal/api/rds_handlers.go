@@ -69,8 +69,21 @@ func (s *Server) handleCreateRDSInstance(c *gin.Context) {
 		return
 	}
 
+	// Set defaults for optional fields
 	if req.Port == 0 {
 		req.Port = 5432 // Default PostgreSQL port
+	}
+	if req.SSLMode == "" {
+		req.SSLMode = "require" // Default SSL mode
+	}
+	if req.MonitoringInterval == 0 {
+		req.MonitoringInterval = 60 // Default to 60 seconds
+	}
+	if req.ConnectionTimeout == 0 {
+		req.ConnectionTimeout = 30 // Default to 30 seconds
+	}
+	if !req.SSLEnabled {
+		req.SSLEnabled = true // Enable SSL by default
 	}
 
 	if req.AWSRegion == "" {

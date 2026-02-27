@@ -136,7 +136,7 @@ type ManagedInstance struct {
 	ClusterID               *int       `db:"cluster_id" json:"cluster_id,omitempty"`
 	InstanceRole            string     `db:"instance_role" json:"instance_role"`
 	AWSRegion               string     `db:"aws_region" json:"aws_region"`
-	Endpoint             string     `db:"rds_endpoint" json:"rds_endpoint"`
+	Endpoint             string     `db:"endpoint" json:"endpoint"`
 	Port                    int        `db:"port" json:"port"`
 	EngineVersion           *string    `db:"engine_version" json:"engine_version,omitempty"`
 	DBInstanceClass         *string    `db:"db_instance_class" json:"db_instance_class,omitempty"`
@@ -193,11 +193,11 @@ type ManagedInstanceMetric struct {
 }
 
 // CreateManagedInstanceRequest represents a request to add a new RDS instance
-// Requires minimum: name, rds_endpoint, port, environment, master_username, master_password
+// Requires minimum: name, endpoint, port, environment, master_username, master_password
 type CreateManagedInstanceRequest struct {
 	Name                      string `json:"name" binding:"required,min=3"`
 	AWSRegion                 string `json:"aws_region"`                 // Optional - defaults to us-east-1
-	Endpoint               string `json:"rds_endpoint" binding:"required"`
+	Endpoint               string `json:"endpoint" binding:"required"`
 	Port                      int    `json:"port" binding:"required,min=1,max=65535"`
 	Environment               string `json:"environment"`               // Optional - defaults to development
 	MasterUsername            string `json:"master_username" binding:"required"`
@@ -222,7 +222,7 @@ type CreateManagedInstanceRequest struct {
 type UpdateManagedInstanceRequest struct {
 	Name                      string `json:"name" binding:"required,min=3"`
 	AWSRegion                 string `json:"aws_region"`                 // Optional
-	Endpoint               string `json:"rds_endpoint" binding:"required"`
+	Endpoint               string `json:"endpoint" binding:"required"`
 	Port                      int    `json:"port" binding:"required,min=1,max=65535"`
 	Environment               string `json:"environment"`               // Optional
 	MasterUsername            string `json:"master_username" binding:"required"`
@@ -507,7 +507,7 @@ type TestConnectionRequest struct {
 
 // TestManagedInstanceConnectionRequest represents a request to test RDS connection with endpoint details
 type TestManagedInstanceConnectionRequest struct {
-	Endpoint string `json:"rds_endpoint" binding:"required"`
+	Endpoint string `json:"endpoint" binding:"required"`
 	Port        int    `json:"port" binding:"required,min=1,max=65535"`
 	Username    string `json:"username" binding:"required"`
 	Password    string `json:"password" binding:"required"`

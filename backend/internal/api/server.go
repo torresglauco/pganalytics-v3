@@ -113,17 +113,19 @@ func (s *Server) RegisterRoutes(router *gin.Engine) {
 			users.POST("/:id/reset-password", s.handleResetUserPassword)
 		}
 
-		// RDS Instance Management routes (admin only)
-		rds := api.Group("/managed-instances")
-		rds.Use(s.AuthMiddleware())
+		// Managed Instance Management routes (admin only)
+		managedInstances := api.Group("/managed-instances")
+		managedInstances.Use(s.AuthMiddleware())
 		{
-			rds.POST("", s.handleCreateManagedInstance)
-			rds.GET("", s.handleListManagedInstances)
-			rds.GET("/:id", s.handleGetManagedInstance)
-			rds.PUT("/:id", s.handleUpdateManagedInstance)
-			rds.DELETE("/:id", s.handleDeleteManagedInstance)
-			rds.POST("/test-connection-direct", s.handleTestManagedInstanceConnectionDirect)
-			rds.POST("/:id/test-connection", s.handleTestManagedInstanceConnection)
+			// Exact path routes first
+			managedInstances.POST("/test-connection-direct", s.handleTestManagedInstanceConnectionDirect)
+			// Then CRUD routes
+			managedInstances.POST("", s.handleCreateManagedInstance)
+			managedInstances.GET("", s.handleListManagedInstances)
+			managedInstances.GET("/:id", s.handleGetManagedInstance)
+			managedInstances.PUT("/:id", s.handleUpdateManagedInstance)
+			managedInstances.DELETE("/:id", s.handleDeleteManagedInstance)
+			managedInstances.POST("/:id/test-connection", s.handleTestManagedInstanceConnection)
 		}
 
 		// Collector routes will be defined below

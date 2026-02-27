@@ -11,7 +11,7 @@ import (
 )
 
 // CreateManagedInstance creates a new RDS instance record
-func (p *PostgresDB) CreateManagedInstance(ctx context.Context, instance *models.CreateManagedInstanceRequest, secretID *int, userID int) (*models.RDSInstance, error) {
+func (p *PostgresDB) CreateManagedInstance(ctx context.Context, instance *models.CreateManagedInstanceRequest, secretID *int, userID int) (*models.ManagedInstance, error) {
 	var id int
 	var createdAt, updatedAt sql.NullTime
 
@@ -45,7 +45,7 @@ func (p *PostgresDB) CreateManagedInstance(ctx context.Context, instance *models
 			$22, $22, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
 		) RETURNING id, created_at, updated_at`,
 		instance.Name, instance.Description, instance.AWSRegion,
-		instance.RDSEndpoint, instance.Port,
+		instance.Endpoint, instance.Port,
 		instance.EngineVersion, instance.DBInstanceClass, instance.AllocatedStorageGB,
 		instance.Environment, instance.MasterUsername, secretIDValue,
 		instance.EnableEnhancedMonitoring, instance.MonitoringInterval,
@@ -56,15 +56,15 @@ func (p *PostgresDB) CreateManagedInstance(ctx context.Context, instance *models
 	).Scan(&id, &createdAt, &updatedAt)
 
 	if err != nil {
-		return nil, apperrors.DatabaseError("create RDS instance", err.Error())
+		return nil, apperrors.DatabaseError("create managed instance", err.Error())
 	}
 
-	result := &models.RDSInstance{
+	result := &models.ManagedInstance{
 		ID:                      id,
 		Name:                    instance.Name,
 		Description:             ptrString(instance.Description),
 		AWSRegion:               instance.AWSRegion,
-		RDSEndpoint:             instance.RDSEndpoint,
+		Endpoint:             instance.Endpoint,
 		Port:                    instance.Port,
 		EngineVersion:           ptrString(instance.EngineVersion),
 		DBInstanceClass:         ptrString(instance.DBInstanceClass),
@@ -94,8 +94,8 @@ func (p *PostgresDB) CreateManagedInstance(ctx context.Context, instance *models
 }
 
 // GetManagedInstance retrieves an RDS instance by ID
-func (p *PostgresDB) GetManagedInstance(ctx context.Context, id int) (*models.RDSInstance, error) {
-	instance := &models.RDSInstance{}
+func (p *PostgresDB) GetManagedInstance(ctx context.Context, id int) (*models.ManagedInstance, error) {
+	instance := &models.ManagedInstance{}
 	var tags json.RawMessage
 
 	err := p.db.QueryRowContext(
@@ -114,7 +114,7 @@ func (p *PostgresDB) GetManagedInstance(ctx context.Context, id int) (*models.RD
 		id,
 	).Scan(
 		&instance.ID, &instance.Name, &instance.Description, &instance.AWSRegion,
-		&instance.RDSEndpoint, &instance.Port, &instance.EngineVersion,
+		&instance.Endpoint, &instance.Port, &instance.EngineVersion,
 		&instance.DBInstanceClass, &instance.AllocatedStorageGB,
 		&instance.Environment, &instance.MasterUsername, &instance.SecretID,
 		&instance.EnableEnhancedMonitoring, &instance.MonitoringInterval,
@@ -131,7 +131,7 @@ func (p *PostgresDB) GetManagedInstance(ctx context.Context, id int) (*models.RD
 		if err == sql.ErrNoRows {
 			return nil, apperrors.NotFound("RDS instance not found", fmt.Sprintf("ID: %d", id))
 		}
-		return nil, apperrors.DatabaseError("get RDS instance", err.Error())
+		return nil, apperrors.DatabaseError("get managed instance", err.Error())
 	}
 
 	// Parse tags
@@ -143,7 +143,7 @@ func (p *PostgresDB) GetManagedInstance(ctx context.Context, id int) (*models.RD
 }
 
 // ListManagedInstances retrieves all active RDS instances
-func (p *PostgresDB) ListManagedInstances(ctx context.Context) ([]*models.RDSInstance, error) {
+func (p *PostgresDB) ListManagedInstances(ctx context.Context) ([]*models.ManagedInstance, error) {
 	rows, err := p.db.QueryContext(
 		ctx,
 		`SELECT id, name, description, aws_region, rds_endpoint, port,
@@ -161,18 +161,18 @@ func (p *PostgresDB) ListManagedInstances(ctx context.Context) ([]*models.RDSIns
 	)
 
 	if err != nil {
-		return nil, apperrors.DatabaseError("list RDS instances", err.Error())
+		return nil, apperrors.DatabaseError("list managed instances", err.Error())
 	}
 	defer rows.Close()
 
-	var instances []*models.RDSInstance
+	var instances []*models.ManagedInstance
 	for rows.Next() {
-		instance := &models.RDSInstance{}
+		instance := &models.ManagedInstance{}
 		var tags json.RawMessage
 
 		err := rows.Scan(
 			&instance.ID, &instance.Name, &instance.Description, &instance.AWSRegion,
-			&instance.RDSEndpoint, &instance.Port, &instance.EngineVersion,
+			&instance.Endpoint, &instance.Port, &instance.EngineVersion,
 			&instance.DBInstanceClass, &instance.AllocatedStorageGB,
 			&instance.Environment, &instance.MasterUsername, &instance.SecretID,
 			&instance.EnableEnhancedMonitoring, &instance.MonitoringInterval,
@@ -227,13 +227,13 @@ func (p *PostgresDB) UpdateManagedInstanceStatus(ctx context.Context, id int, st
 }
 
 // UpdateManagedInstance updates an RDS instance
-func (p *PostgresDB) UpdateManagedInstance(ctx context.Context, id int, instance *models.UpdateManagedInstanceRequest, userID int) (*models.RDSInstance, error) {
+func (p *PostgresDB) UpdateManagedInstance(ctx context.Context, id int, instance *models.UpdateManagedInstanceRequest, userID int) (*models.ManagedInstance, error) {
 	tagsJSON, _ := json.Marshal(instance.Tags)
 
 	// Convert nil pointer to interface{} for proper NULL handling
 	var secretIDValue interface{} = nil
 
-	updatedInstance := &models.RDSInstance{}
+	updatedInstance := &models.ManagedInstance{}
 	var tags json.RawMessage
 
 	err := p.db.QueryRowContext(
@@ -258,7 +258,7 @@ func (p *PostgresDB) UpdateManagedInstance(ctx context.Context, id int, instance
 			multi_az, backup_retention_days, preferred_backup_window,
 			preferred_maintenance_window, tags,
 			created_at, updated_at, created_by, updated_by`,
-		instance.Name, instance.Description, instance.AWSRegion, instance.RDSEndpoint, instance.Port,
+		instance.Name, instance.Description, instance.AWSRegion, instance.Endpoint, instance.Port,
 		instance.EngineVersion, instance.DBInstanceClass, instance.AllocatedStorageGB,
 		instance.Environment, instance.MasterUsername, secretIDValue,
 		instance.EnableEnhancedMonitoring, instance.MonitoringInterval,
@@ -268,7 +268,7 @@ func (p *PostgresDB) UpdateManagedInstance(ctx context.Context, id int, instance
 		userID, id,
 	).Scan(
 		&updatedInstance.ID, &updatedInstance.Name, &updatedInstance.Description, &updatedInstance.AWSRegion,
-		&updatedInstance.RDSEndpoint, &updatedInstance.Port, &updatedInstance.EngineVersion,
+		&updatedInstance.Endpoint, &updatedInstance.Port, &updatedInstance.EngineVersion,
 		&updatedInstance.DBInstanceClass, &updatedInstance.AllocatedStorageGB,
 		&updatedInstance.Environment, &updatedInstance.MasterUsername, &updatedInstance.SecretID,
 		&updatedInstance.EnableEnhancedMonitoring, &updatedInstance.MonitoringInterval,
@@ -285,7 +285,7 @@ func (p *PostgresDB) UpdateManagedInstance(ctx context.Context, id int, instance
 		if err == sql.ErrNoRows {
 			return nil, apperrors.NotFound("RDS instance not found", fmt.Sprintf("ID: %d", id))
 		}
-		return nil, apperrors.DatabaseError("update RDS instance", err.Error())
+		return nil, apperrors.DatabaseError("update managed instance", err.Error())
 	}
 
 	if len(tags) > 0 {
@@ -304,12 +304,12 @@ func (p *PostgresDB) DeleteManagedInstance(ctx context.Context, id int) error {
 	)
 
 	if err != nil {
-		return apperrors.DatabaseError("delete RDS instance", err.Error())
+		return apperrors.DatabaseError("delete managed instance", err.Error())
 	}
 
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
-		return apperrors.DatabaseError("delete RDS instance", err.Error())
+		return apperrors.DatabaseError("delete managed instance", err.Error())
 	}
 
 	if rowsAffected == 0 {

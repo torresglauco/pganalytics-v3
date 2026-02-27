@@ -111,11 +111,30 @@ type Database struct {
 // RDS MONITORING MODELS
 // ============================================================================
 
+// RDSCluster represents a group of RDS instances (master + replicas)
+type RDSCluster struct {
+	ID          int                   `db:"id" json:"id"`
+	Name        string                `db:"name" json:"name"`
+	Description *string               `db:"description" json:"description,omitempty"`
+	ClusterType string                `db:"cluster_type" json:"cluster_type"`
+	Environment string                `db:"environment" json:"environment"`
+	Status      string                `db:"status" json:"status"`
+	IsActive    bool                  `db:"is_active" json:"is_active"`
+	Tags        map[string]interface{} `db:"tags" json:"tags,omitempty"`
+	CreatedAt   time.Time             `db:"created_at" json:"created_at"`
+	UpdatedAt   time.Time             `db:"updated_at" json:"updated_at"`
+	CreatedBy   *int                  `db:"created_by" json:"created_by,omitempty"`
+	UpdatedBy   *int                  `db:"updated_by" json:"updated_by,omitempty"`
+	Instances   []*RDSInstance        `db:"-" json:"instances,omitempty"`
+}
+
 // RDSInstance represents an AWS RDS PostgreSQL instance
 type RDSInstance struct {
 	ID                      int        `db:"id" json:"id"`
 	Name                    string     `db:"name" json:"name"`
 	Description             *string    `db:"description" json:"description,omitempty"`
+	ClusterID               *int       `db:"cluster_id" json:"cluster_id,omitempty"`
+	InstanceRole            string     `db:"instance_role" json:"instance_role"`
 	AWSRegion               string     `db:"aws_region" json:"aws_region"`
 	RDSEndpoint             string     `db:"rds_endpoint" json:"rds_endpoint"`
 	Port                    int        `db:"port" json:"port"`
@@ -223,6 +242,32 @@ type UpdateRDSInstanceRequest struct {
 	PreferredBackupWindow     string `json:"preferred_backup_window"`
 	PreferredMaintenanceWindow string `json:"preferred_maintenance_window"`
 	Tags                      map[string]interface{} `json:"tags"`
+}
+
+// CreateRDSClusterRequest represents a request to create an RDS cluster
+type CreateRDSClusterRequest struct {
+	Name        string                 `json:"name" binding:"required,min=3"`
+	Description string                 `json:"description"`
+	ClusterType string                 `json:"cluster_type" binding:"required,oneof=single-az multi-az aurora custom"`
+	Environment string                 `json:"environment" binding:"required,oneof=production staging development test"`
+	Tags        map[string]interface{} `json:"tags"`
+}
+
+// UpdateRDSClusterRequest represents a request to update an RDS cluster
+type UpdateRDSClusterRequest struct {
+	Name        string                 `json:"name" binding:"required,min=3"`
+	Description string                 `json:"description"`
+	ClusterType string                 `json:"cluster_type" binding:"required,oneof=single-az multi-az aurora custom"`
+	Environment string                 `json:"environment" binding:"required,oneof=production staging development test"`
+	Status      string                 `json:"status" binding:"required,oneof=registering registered monitoring paused"`
+	Tags        map[string]interface{} `json:"tags"`
+}
+
+// CreateRDSInstanceWithClusterRequest extends CreateRDSInstanceRequest with cluster info
+type CreateRDSInstanceWithClusterRequest struct {
+	CreateRDSInstanceRequest
+	ClusterID    *int   `json:"cluster_id"`
+	InstanceRole string `json:"instance_role" binding:"required,oneof=master read-replica standby standalone"`
 }
 
 // ============================================================================

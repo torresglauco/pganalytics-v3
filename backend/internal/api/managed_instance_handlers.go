@@ -561,8 +561,7 @@ func (s *Server) handleTestManagedInstanceConnection(c *gin.Context) {
 		// Update database with connected status
 		s.logger.Info("Updating managed instance status to connected", zap.Int("id", id))
 		updateCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		emptyError := ""
-		updateErr := s.postgres.UpdateManagedInstanceStatus(updateCtx, id, "connected", &emptyError)
+		updateErr := s.postgres.UpdateManagedInstanceStatus(updateCtx, id, "connected", nil)
 		cancel()
 		if updateErr != nil {
 			s.logger.Warn("Failed to update managed instance connected status", zap.Int("id", id), zap.Error(updateErr))

@@ -133,154 +133,120 @@ export const CreateUserForm: React.FC<CreateUserFormProps> = ({ onSuccess, onErr
   }
 
   return (
-    <div className="max-w-md mx-auto">
-      <h2 className="text-2xl font-bold text-gray-900 mb-6">Create New User</h2>
-
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Username */}
-        <div>
-          <label
-            htmlFor="username"
-            className="block text-sm font-medium text-gray-700 mb-1"
-          >
-            Username
-          </label>
-          <input
-            type="text"
-            id="username"
-            name="username"
-            value={formData.username}
-            onChange={handleChange}
-            placeholder="Enter username (3+ characters)"
-            className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-              errors.username ? 'border-red-500' : 'border-gray-300'
-            }`}
-            disabled={isLoading}
-          />
-          {errors.username && (
-            <p className="text-red-600 text-sm mt-1">{errors.username}</p>
-          )}
-        </div>
-
-        {/* Email */}
-        <div>
-          <label
-            htmlFor="email"
-            className="block text-sm font-medium text-gray-700 mb-1"
-          >
-            Email
-          </label>
-          <input
-            type="email"
-            id="email"
-            name="email"
-            value={formData.email}
-            onChange={handleChange}
-            placeholder="Enter email address"
-            className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-              errors.email ? 'border-red-500' : 'border-gray-300'
-            }`}
-            disabled={isLoading}
-          />
-          {errors.email && (
-            <p className="text-red-600 text-sm mt-1">{errors.email}</p>
-          )}
-        </div>
-
-        {/* Password */}
-        <div>
-          <label
-            htmlFor="password"
-            className="block text-sm font-medium text-gray-700 mb-1"
-          >
-            Password
-          </label>
-          <div className="relative">
-            <input
-              type={showPassword ? 'text' : 'password'}
-              id="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              placeholder="Enter password (8+ characters)"
-              className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 pr-10 ${
-                errors.password ? 'border-red-500' : 'border-gray-300'
-              }`}
-              disabled={isLoading}
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-2.5 text-gray-600 hover:text-gray-900"
-              disabled={isLoading}
-            >
-              {showPassword ? (
-                <EyeOff size={20} />
-              ) : (
-                <Eye size={20} />
-              )}
-            </button>
-          </div>
-          {errors.password && (
-            <p className="text-red-600 text-sm mt-1">{errors.password}</p>
-          )}
-        </div>
-
-        {/* Full Name */}
-        <div>
-          <label
-            htmlFor="full_name"
-            className="block text-sm font-medium text-gray-700 mb-1"
-          >
-            Full Name (Optional)
-          </label>
-          <input
-            type="text"
-            id="full_name"
-            name="full_name"
-            value={formData.full_name}
-            onChange={handleChange}
-            placeholder="Enter full name"
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            disabled={isLoading}
-          />
-        </div>
-
-        {/* Role */}
-        <div>
-          <label
-            htmlFor="role"
-            className="block text-sm font-medium text-gray-700 mb-1"
-          >
-            User Role
-          </label>
-          <select
-            id="role"
-            name="role"
-            value={formData.role}
-            onChange={handleChange}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            disabled={isLoading}
-          >
-            <option value="user">User</option>
-            <option value="admin">Administrator</option>
-          </select>
-          <p className="text-xs text-gray-500 mt-1">
-            • <strong>User:</strong> Can only view collectors and data
-            <br />
-            • <strong>Administrator:</strong> Can manage users, collectors, and all resources
-          </p>
-        </div>
-
-        {/* Submit Button */}
-        <button
-          type="submit"
+    <form onSubmit={handleSubmit} className="space-y-3">
+      {/* Username */}
+      <div>
+        <label htmlFor="username" className="block text-xs font-medium text-gray-700 mb-1">
+          Username
+        </label>
+        <input
+          type="text"
+          id="username"
+          name="username"
+          value={formData.username}
+          onChange={handleChange}
+          placeholder="Username (3+ chars)"
+          className={`w-full px-3 py-2 text-sm border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+            errors.username ? 'border-red-500' : 'border-gray-300'
+          }`}
           disabled={isLoading}
-          className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition"
+        />
+        {errors.username && <p className="text-red-600 text-xs mt-0.5">{errors.username}</p>}
+      </div>
+
+      {/* Email */}
+      <div>
+        <label htmlFor="email" className="block text-xs font-medium text-gray-700 mb-1">
+          Email
+        </label>
+        <input
+          type="email"
+          id="email"
+          name="email"
+          value={formData.email}
+          onChange={handleChange}
+          placeholder="user@example.com"
+          className={`w-full px-3 py-2 text-sm border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+            errors.email ? 'border-red-500' : 'border-gray-300'
+          }`}
+          disabled={isLoading}
+        />
+        {errors.email && <p className="text-red-600 text-xs mt-0.5">{errors.email}</p>}
+      </div>
+
+      {/* Password */}
+      <div>
+        <label htmlFor="password" className="block text-xs font-medium text-gray-700 mb-1">
+          Password
+        </label>
+        <div className="relative">
+          <input
+            type={showPassword ? 'text' : 'password'}
+            id="password"
+            name="password"
+            value={formData.password}
+            onChange={handleChange}
+            placeholder="Password (8+ chars)"
+            className={`w-full px-3 py-2 text-sm border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 pr-9 ${
+              errors.password ? 'border-red-500' : 'border-gray-300'
+            }`}
+            disabled={isLoading}
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            className="absolute right-2.5 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 text-xs"
+            disabled={isLoading}
+          >
+            {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+          </button>
+        </div>
+        {errors.password && <p className="text-red-600 text-xs mt-0.5">{errors.password}</p>}
+      </div>
+
+      {/* Full Name */}
+      <div>
+        <label htmlFor="full_name" className="block text-xs font-medium text-gray-700 mb-1">
+          Full Name (Optional)
+        </label>
+        <input
+          type="text"
+          id="full_name"
+          name="full_name"
+          value={formData.full_name}
+          onChange={handleChange}
+          placeholder="John Doe"
+          className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+          disabled={isLoading}
+        />
+      </div>
+
+      {/* Role */}
+      <div>
+        <label htmlFor="role" className="block text-xs font-medium text-gray-700 mb-1">
+          User Role
+        </label>
+        <select
+          id="role"
+          name="role"
+          value={formData.role}
+          onChange={handleChange}
+          className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+          disabled={isLoading}
         >
-          {isLoading ? 'Creating User...' : 'Create User'}
-        </button>
-      </form>
-    </div>
+          <option value="user">User</option>
+          <option value="admin">Administrator</option>
+        </select>
+      </div>
+
+      {/* Submit Button */}
+      <button
+        type="submit"
+        disabled={isLoading}
+        className="w-full px-3 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition"
+      >
+        {isLoading ? 'Creating...' : 'Create User'}
+      </button>
+    </form>
   )
 }

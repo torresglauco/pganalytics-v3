@@ -227,12 +227,23 @@ export const UserManagementTable: React.FC<UserManagementTableProps> = ({ onSucc
 
       {/* Create User Form */}
       {showCreateForm && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-900">Create New User</h3>
+            <button
+              onClick={() => setShowCreateForm(false)}
+              className="text-gray-500 hover:text-gray-700"
+            >
+              ✕
+            </button>
+          </div>
           <CreateUserForm
             onSuccess={(message) => {
-              setShowCreateForm(false)
-              loadUsers()
               onSuccess(message)
+              setTimeout(() => {
+                setShowCreateForm(false)
+                loadUsers()
+              }, 1000)
             }}
             onError={onError}
           />

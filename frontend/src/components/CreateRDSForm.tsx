@@ -13,7 +13,6 @@ export const CreateRDSForm: React.FC<CreateRDSFormProps> = ({ onSuccess, onError
   const [connectionError, setConnectionError] = useState('')
   const [formData, setFormData] = useState({
     name: '',
-    aws_region: 'us-east-1',
     rds_endpoint: '',
     port: 5432,
     environment: 'production',
@@ -124,7 +123,10 @@ export const CreateRDSForm: React.FC<CreateRDSFormProps> = ({ onSuccess, onError
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          aws_region: 'us-east-1', // Default region extracted from RDS endpoint
+        }),
       })
 
       if (!response.ok) {
@@ -137,7 +139,6 @@ export const CreateRDSForm: React.FC<CreateRDSFormProps> = ({ onSuccess, onError
       // Reset form
       setFormData({
         name: '',
-        aws_region: 'us-east-1',
         rds_endpoint: '',
         port: 5432,
         environment: 'production',
@@ -194,44 +195,23 @@ export const CreateRDSForm: React.FC<CreateRDSFormProps> = ({ onSuccess, onError
         {errors.rds_endpoint && <p className="text-red-600 text-sm mt-1">{errors.rds_endpoint}</p>}
       </div>
 
-      {/* Port and Region */}
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Port *
-          </label>
-          <input
-            type="number"
-            name="port"
-            value={formData.port}
-            onChange={handleChange}
-            min="1"
-            max="65535"
-            className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-              errors.port ? 'border-red-500' : 'border-gray-300'
-            }`}
-          />
-          {errors.port && <p className="text-red-600 text-sm mt-1">{errors.port}</p>}
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            AWS Region
-          </label>
-          <select
-            name="aws_region"
-            value={formData.aws_region}
-            onChange={handleChange}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="us-east-1">us-east-1</option>
-            <option value="us-west-2">us-west-2</option>
-            <option value="eu-west-1">eu-west-1</option>
-            <option value="eu-central-1">eu-central-1</option>
-            <option value="ap-northeast-1">ap-northeast-1</option>
-            <option value="ap-southeast-1">ap-southeast-1</option>
-          </select>
-        </div>
+      {/* Port */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Port *
+        </label>
+        <input
+          type="number"
+          name="port"
+          value={formData.port}
+          onChange={handleChange}
+          min="1"
+          max="65535"
+          className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+            errors.port ? 'border-red-500' : 'border-gray-300'
+          }`}
+        />
+        {errors.port && <p className="text-red-600 text-sm mt-1">{errors.port}</p>}
       </div>
 
       {/* Environment */}

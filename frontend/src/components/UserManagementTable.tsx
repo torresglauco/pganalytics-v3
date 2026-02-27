@@ -382,24 +382,6 @@ export const UserManagementTable: React.FC<UserManagementTableProps> = ({ onSucc
           ))}
         </tbody>
       </table>
-
-      {users.some(u => isDefaultAdmin(u)) && (
-        <div className="mt-4 flex gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-          <AlertCircle size={18} className="flex-shrink-0 mt-0.5" />
-          <div>
-            <p className="font-medium">Default Admin Account Protection</p>
-            <p>
-              The default admin user (username: <strong>admin</strong>) is protected for security reasons:
-            </p>
-            <ul className="list-disc list-inside mt-1">
-              <li>Cannot be deleted</li>
-              <li>Cannot be disabled</li>
-              <li>Cannot have role changed</li>
-              <li>Can have password reset (only)</li>
-            </ul>
-          </div>
-        </div>
-      )}
       </div>
 
       {/* Temporary Password Modal */}

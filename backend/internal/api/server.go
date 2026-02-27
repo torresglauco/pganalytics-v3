@@ -109,6 +109,17 @@ func (s *Server) RegisterRoutes(router *gin.Engine) {
 			users.POST("/:id/reset-password", s.handleResetUserPassword)
 		}
 
+		// RDS Instance Management routes (admin only)
+		rds := api.Group("/rds-instances")
+		rds.Use(s.AuthMiddleware())
+		{
+			rds.POST("", s.handleCreateRDSInstance)
+			rds.GET("", s.handleListRDSInstances)
+			rds.GET("/:id", s.handleGetRDSInstance)
+			rds.DELETE("/:id", s.handleDeleteRDSInstance)
+			rds.POST("/:id/test-connection", s.handleTestRDSConnection)
+		}
+
 		// Collector routes will be defined below
 
 		collectors := api.Group("/collectors")

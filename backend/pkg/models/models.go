@@ -108,6 +108,96 @@ type Database struct {
 }
 
 // ============================================================================
+// RDS MONITORING MODELS
+// ============================================================================
+
+// RDSInstance represents an AWS RDS PostgreSQL instance
+type RDSInstance struct {
+	ID                      int        `db:"id" json:"id"`
+	Name                    string     `db:"name" json:"name"`
+	Description             *string    `db:"description" json:"description,omitempty"`
+	AWSRegion               string     `db:"aws_region" json:"aws_region"`
+	RDSEndpoint             string     `db:"rds_endpoint" json:"rds_endpoint"`
+	Port                    int        `db:"port" json:"port"`
+	EngineVersion           *string    `db:"engine_version" json:"engine_version,omitempty"`
+	DBInstanceClass         *string    `db:"db_instance_class" json:"db_instance_class,omitempty"`
+	AllocatedStorageGB      *int       `db:"allocated_storage_gb" json:"allocated_storage_gb,omitempty"`
+	Environment             string     `db:"environment" json:"environment"`
+	MasterUsername          string     `db:"master_username" json:"master_username"`
+	SecretID                *int       `db:"secret_id" json:"secret_id,omitempty"`
+	EnableEnhancedMonitoring bool      `db:"enable_enhanced_monitoring" json:"enable_enhanced_monitoring"`
+	MonitoringInterval      int        `db:"monitoring_interval" json:"monitoring_interval"`
+	SSLEnabled              bool       `db:"ssl_enabled" json:"ssl_enabled"`
+	SSLMode                 string     `db:"ssl_mode" json:"ssl_mode"`
+	ConnectionTimeout       int        `db:"connection_timeout" json:"connection_timeout"`
+	IsActive                bool       `db:"is_active" json:"is_active"`
+	LastHeartbeat           *time.Time `db:"last_heartbeat" json:"last_heartbeat,omitempty"`
+	LastConnectionStatus    string     `db:"last_connection_status" json:"last_connection_status"`
+	LastErrorMessage        *string    `db:"last_error_message" json:"last_error_message,omitempty"`
+	LastErrorTime           *time.Time `db:"last_error_time" json:"last_error_time,omitempty"`
+	MultiAZ                 bool       `db:"multi_az" json:"multi_az"`
+	BackupRetentionDays     *int       `db:"backup_retention_days" json:"backup_retention_days,omitempty"`
+	PreferredBackupWindow   *string    `db:"preferred_backup_window" json:"preferred_backup_window,omitempty"`
+	PreferredMaintenanceWindow *string `db:"preferred_maintenance_window" json:"preferred_maintenance_window,omitempty"`
+	Tags                    map[string]interface{} `db:"tags" json:"tags,omitempty"`
+	CreatedAt               time.Time  `db:"created_at" json:"created_at"`
+	UpdatedAt               time.Time  `db:"updated_at" json:"updated_at"`
+	CreatedBy               *int       `db:"created_by" json:"created_by,omitempty"`
+	UpdatedBy               *int       `db:"updated_by" json:"updated_by,omitempty"`
+}
+
+// RDSDatabase represents a database within an RDS instance
+type RDSDatabase struct {
+	ID           int        `db:"id" json:"id"`
+	RDSInstanceID int       `db:"rds_instance_id" json:"rds_instance_id"`
+	Name         string     `db:"name" json:"name"`
+	Owner        *string    `db:"owner" json:"owner,omitempty"`
+	SizeBytes    *int64     `db:"size_bytes" json:"size_bytes,omitempty"`
+	IsTemplate   bool       `db:"is_template" json:"is_template"`
+	IsActive     bool       `db:"is_active" json:"is_active"`
+	LastAnalyzed *time.Time `db:"last_analyzed" json:"last_analyzed,omitempty"`
+	CreatedAt    time.Time  `db:"created_at" json:"created_at"`
+	UpdatedAt    time.Time  `db:"updated_at" json:"updated_at"`
+}
+
+// RDSMetric represents a CloudWatch metric for an RDS instance
+type RDSMetric struct {
+	ID                int        `db:"id" json:"id"`
+	RDSInstanceID     int        `db:"rds_instance_id" json:"rds_instance_id"`
+	MetricTimestamp   time.Time  `db:"metric_timestamp" json:"metric_timestamp"`
+	MetricType        string     `db:"metric_type" json:"metric_type"`
+	MetricValue       float64    `db:"metric_value" json:"metric_value"`
+	MetricUnit        *string    `db:"metric_unit" json:"metric_unit,omitempty"`
+	Dimensions        map[string]interface{} `db:"dimensions" json:"dimensions,omitempty"`
+	CreatedAt         time.Time  `db:"created_at" json:"created_at"`
+}
+
+// CreateRDSInstanceRequest represents a request to add a new RDS instance
+type CreateRDSInstanceRequest struct {
+	Name                    string                 `json:"name" binding:"required,min=3"`
+	Description             *string                `json:"description"`
+	AWSRegion               string                 `json:"aws_region" binding:"required"`
+	RDSEndpoint             string                 `json:"rds_endpoint" binding:"required"`
+	Port                    int                    `json:"port" binding:"required,min=1,max=65535"`
+	EngineVersion           *string                `json:"engine_version"`
+	DBInstanceClass         *string                `json:"db_instance_class"`
+	AllocatedStorageGB      *int                   `json:"allocated_storage_gb"`
+	Environment             string                 `json:"environment" binding:"required"`
+	MasterUsername          string                 `json:"master_username" binding:"required"`
+	MasterPassword          string                 `json:"master_password" binding:"required,min=8"`
+	EnableEnhancedMonitoring bool                  `json:"enable_enhanced_monitoring"`
+	MonitoringInterval      int                    `json:"monitoring_interval" binding:"min=60"`
+	SSLEnabled              bool                   `json:"ssl_enabled"`
+	SSLMode                 string                 `json:"ssl_mode"`
+	ConnectionTimeout       int                    `json:"connection_timeout" binding:"min=1"`
+	MultiAZ                 bool                   `json:"multi_az"`
+	BackupRetentionDays     *int                   `json:"backup_retention_days"`
+	PreferredBackupWindow   *string                `json:"preferred_backup_window"`
+	PreferredMaintenanceWindow *string             `json:"preferred_maintenance_window"`
+	Tags                    map[string]interface{} `json:"tags"`
+}
+
+// ============================================================================
 // AUTHENTICATION MODELS
 // ============================================================================
 
@@ -330,6 +420,22 @@ type ResetPasswordResponse struct {
 	Username    string `json:"username"`
 	TempPassword string `json:"temp_password"`
 	Message     string `json:"message"`
+}
+
+// ============================================================================
+// RDS MODELS
+// ============================================================================
+
+// TestConnectionRequest represents a request to test RDS connection
+type TestConnectionRequest struct {
+	Username string `json:"username" binding:"required"`
+	Password string `json:"password" binding:"required"`
+}
+
+// TestConnectionResponse represents the response from a connection test
+type TestConnectionResponse struct {
+	Success bool   `json:"success"`
+	Error   string `json:"error,omitempty"`
 }
 
 // CollectorRegisterRequest represents a collector registration request

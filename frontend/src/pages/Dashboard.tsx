@@ -5,6 +5,7 @@ import { CollectorForm } from '../components/CollectorForm'
 import { CollectorList } from '../components/CollectorList'
 import { UserManagementTable } from '../components/UserManagementTable'
 import { UserMenuDropdown } from '../components/UserMenuDropdown'
+import { RDSInstancesTable } from '../components/RDSInstancesTable'
 import { apiClient } from '../services/api'
 
 interface DashboardProps {
@@ -139,6 +140,19 @@ export const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
             >
               Manage Collectors
             </Tab>
+            {isAdmin && (
+              <Tab
+                className={({ selected }) =>
+                  `px-4 py-2 font-medium text-sm border-b-2 transition ${
+                    selected
+                      ? 'border-blue-600 text-blue-600'
+                      : 'border-transparent text-gray-600 hover:text-gray-900'
+                  }`
+                }
+              >
+                RDS Instances
+              </Tab>
+            )}
           </Tab.List>
 
           <Tab.Panels>
@@ -187,6 +201,25 @@ export const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
                 <CollectorList />
               </div>
             </Tab.Panel>
+
+            {isAdmin && (
+              <Tab.Panel>
+                <div className="bg-white rounded-lg shadow p-6">
+                  <RDSInstancesTable
+                    onSuccess={(message) => {
+                      setUserMessage(message)
+                      setUserMessageType('success')
+                      setTimeout(() => setUserMessage(''), 5000)
+                    }}
+                    onError={(message) => {
+                      setUserMessage(message)
+                      setUserMessageType('error')
+                      setTimeout(() => setUserMessage(''), 5000)
+                    }}
+                  />
+                </div>
+              </Tab.Panel>
+            )}
           </Tab.Panels>
         </Tab.Group>
       </main>

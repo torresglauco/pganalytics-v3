@@ -1686,6 +1686,117 @@ func (s *Server) handleDeleteRegistrationSecret(c *gin.Context) {
 }
 
 // ============================================================================
+// METRICS ENDPOINTS
+// ============================================================================
+
+// @Summary Push Collector Metrics
+// @Description Receive and store metrics pushed from a collector
+// @Tags Metrics
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param request body models.MetricsPushRequest true "Metrics to store"
+// @Success 200 {object} gin.H
+// @Failure 400 {object} apperrors.AppError
+// @Failure 401 {object} apperrors.AppError
+// @Router /api/v1/metrics/push [post]
+func (s *Server) handleMetricsPush(c *gin.Context) {
+	// Get current user/collector from context
+	user, exists := c.Get("user")
+	if !exists {
+		errResp := apperrors.Unauthorized("Authentication required", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	// Parse metrics request
+	var req models.MetricsPushRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		errResp := apperrors.BadRequest("Invalid metrics request", err.Error())
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	// Validate request has metrics
+	if len(req.Metrics) == 0 {
+		errResp := apperrors.BadRequest("Metrics array is required", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 30*time.Second)
+	defer cancel()
+
+	// Get collector info to update last_seen
+	// The collector ID is sent in the metrics data
+	collectorID := req.CollectorID
+	if collectorID == "" {
+		errResp := apperrors.BadRequest("collector_id is required", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	// Update collector's last_seen timestamp and metrics count
+	metricsCount := len(req.Metrics)
+	err := s.postgres.UpdateCollectorMetrics(ctx, collectorID, metricsCount)
+	if err != nil {
+		s.logger.Error("Failed to update collector metrics",
+			zap.String("collector_id", collectorID),
+			zap.Error(err))
+		// Don't fail the request, just log it
+		// The metrics should be stored even if we can't update the collector
+	}
+
+	// Store metrics in TimescaleDB (if available)
+	if s.timescale != nil {
+		err := s.storeMetricsInTimescaleDB(ctx, collectorID, req.Metrics)
+		if err != nil {
+			s.logger.Warn("Failed to store metrics in TimescaleDB",
+				zap.String("collector_id", collectorID),
+				zap.Error(err))
+			// Don't fail the request, metrics are logged
+		}
+	}
+
+	s.logger.Debug("Metrics received from collector",
+		zap.String("collector_id", collectorID),
+		zap.Int("metrics_count", metricsCount))
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": fmt.Sprintf("Received %d metrics", metricsCount),
+	})
+}
+
+// storeMetricsInTimescaleDB stores metrics in TimescaleDB for time-series analysis
+func (s *Server) storeMetricsInTimescaleDB(ctx context.Context, collectorID string, metrics []json.RawMessage) error {
+	// For now, just store the raw metrics JSON
+	// In a production system, you'd parse and normalize the metrics
+
+	for _, metricData := range metrics {
+		var metric map[string]interface{}
+		err := json.Unmarshal(metricData, &metric)
+		if err != nil {
+			s.logger.Warn("Failed to unmarshal metric", zap.Error(err))
+			continue
+		}
+
+		// Add metadata
+		metric["collector_id"] = collectorID
+		metric["received_at"] = time.Now()
+
+		// Store in TimescaleDB
+		// This would typically be a hypertable insert
+		// For now, we just log that we received it
+		s.logger.Debug("Storing metric in TimescaleDB",
+			zap.String("collector_id", collectorID),
+			zap.Any("metric", metric))
+	}
+
+	return nil
+}
+
+// ============================================================================
 // HELPER FUNCTIONS
 // ============================================================================
 

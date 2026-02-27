@@ -184,7 +184,7 @@ type CreateRDSInstanceRequest struct {
 	AllocatedStorageGB      *int                   `json:"allocated_storage_gb"`
 	Environment             string                 `json:"environment" binding:"required"`
 	MasterUsername          string                 `json:"master_username" binding:"required"`
-	MasterPassword          string                 `json:"master_password" binding:"required,min=8"`
+	MasterPassword          *string                `json:"master_password"`
 	EnableEnhancedMonitoring bool                  `json:"enable_enhanced_monitoring"`
 	MonitoringInterval      int                    `json:"monitoring_interval" binding:"min=60"`
 	SSLEnabled              bool                   `json:"ssl_enabled"`

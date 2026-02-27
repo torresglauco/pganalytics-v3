@@ -145,6 +145,17 @@ func (s *Server) RegisterRoutes(router *gin.Engine) {
 			collectors.GET("/:id/queries/frequent", s.AuthMiddleware(), s.handleGetFrequentQueries)
 		}
 
+		// Registration Secrets routes (admin only)
+		secrets := api.Group("/registration-secrets")
+		secrets.Use(s.AuthMiddleware())
+		{
+			secrets.POST("", s.handleCreateRegistrationSecret)
+			secrets.GET("", s.handleListRegistrationSecrets)
+			secrets.GET("/:id", s.handleGetRegistrationSecret)
+			secrets.PUT("/:id", s.handleUpdateRegistrationSecret)
+			secrets.DELETE("/:id", s.handleDeleteRegistrationSecret)
+		}
+
 		// Metrics routes
 		metrics := api.Group("/metrics")
 		{

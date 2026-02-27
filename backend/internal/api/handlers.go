@@ -645,12 +645,37 @@ func (s *Server) handleCollectorRegister(c *gin.Context) {
 		return
 	}
 
-	// Verify registration secret
+	// Verify registration secret from request header or fallback to config
 	registrationSecret := c.GetHeader("X-Registration-Secret")
-	if registrationSecret == "" || registrationSecret != s.config.RegistrationSecret {
+	if registrationSecret == "" {
 		errResp := apperrors.Unauthorized("Invalid or missing registration secret", "")
 		c.JSON(errResp.StatusCode, errResp)
 		return
+	}
+
+	// Validate secret from database (new way)
+	validSecret, err := s.postgres.ValidateRegistrationSecret(c.Request.Context(), registrationSecret)
+	if err != nil {
+		// Fallback to hardcoded config for backward compatibility
+		if registrationSecret != s.config.RegistrationSecret {
+			errResp := apperrors.Unauthorized("Invalid or missing registration secret", "")
+			c.JSON(errResp.StatusCode, errResp)
+			return
+		}
+	} else {
+		// Record the usage in audit log
+		go func() {
+			ipAddress := c.ClientIP()
+			_ = s.postgres.RecordRegistrationSecretUsage(
+				context.Background(),
+				validSecret.ID,
+				"", // will be filled after registration
+				req.Hostname,
+				"pending", // status will be updated after registration completes
+				nil,
+				ipAddress,
+			)
+		}()
 	}
 
 	// Register collector
@@ -1388,6 +1413,190 @@ func (s *Server) handleGetQueryTimeline(c *gin.Context) {
 	c.JSON(http.StatusOK, models.QueryTimelineResponse{
 		QueryHash: queryHash,
 		Data:      stats,
+	})
+}
+
+// ============================================================================
+// REGISTRATION SECRETS HANDLERS
+// ============================================================================
+
+// handleCreateRegistrationSecret creates a new registration secret (admin only)
+func (s *Server) handleCreateRegistrationSecret(c *gin.Context) {
+	// Check admin role
+	userRole, exists := c.Get("role")
+	if !exists || userRole != "admin" {
+		errResp := apperrors.Forbidden("Only admins can create registration secrets", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	userId, _ := c.Get("user_id")
+	userIdInt, ok := userId.(int)
+	if !ok {
+		errResp := apperrors.Unauthorized("Invalid user context", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	var req models.CreateRegistrationSecretRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		errResp := apperrors.BadRequest("Invalid request body", err.Error())
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	// Create the secret
+	response, err := s.postgres.CreateRegistrationSecret(
+		c.Request.Context(),
+		req.Name,
+		req.Description,
+		req.ExpiresAt,
+		userIdInt,
+	)
+
+	if err != nil {
+		s.logger.Error("Failed to create registration secret", zap.Error(err))
+		errResp := apperrors.InternalServerError("Failed to create registration secret", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	c.JSON(http.StatusCreated, response)
+}
+
+// handleListRegistrationSecrets lists all registration secrets (admin only)
+func (s *Server) handleListRegistrationSecrets(c *gin.Context) {
+	// Check admin role
+	userRole, exists := c.Get("role")
+	if !exists || userRole != "admin" {
+		errResp := apperrors.Forbidden("Only admins can view registration secrets", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	secrets, err := s.postgres.ListRegistrationSecrets(c.Request.Context())
+	if err != nil {
+		s.logger.Error("Failed to list registration secrets", zap.Error(err))
+		errResp := apperrors.InternalServerError("Failed to list registration secrets", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	// Don't return the actual secret values in list
+	for i := range secrets {
+		secrets[i].SecretValue = "" // Clear secret values
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"secrets": secrets,
+		"count":   len(secrets),
+	})
+}
+
+// handleGetRegistrationSecret gets a single registration secret (admin only)
+func (s *Server) handleGetRegistrationSecret(c *gin.Context) {
+	// Check admin role
+	userRole, exists := c.Get("role")
+	if !exists || userRole != "admin" {
+		errResp := apperrors.Forbidden("Only admins can view registration secrets", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	secretId := c.Param("id")
+	if secretId == "" {
+		errResp := apperrors.BadRequest("Secret ID is required", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	secret, err := s.postgres.GetRegistrationSecret(c.Request.Context(), secretId)
+	if err != nil {
+		s.logger.Debug("Registration secret not found", zap.String("id", secretId))
+		errResp := apperrors.NotFound("Registration secret not found", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	// Don't return the actual secret value
+	secret.SecretValue = ""
+
+	c.JSON(http.StatusOK, secret)
+}
+
+// handleUpdateRegistrationSecret updates a registration secret (admin only)
+func (s *Server) handleUpdateRegistrationSecret(c *gin.Context) {
+	// Check admin role
+	userRole, exists := c.Get("role")
+	if !exists || userRole != "admin" {
+		errResp := apperrors.Forbidden("Only admins can update registration secrets", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	secretId := c.Param("id")
+	if secretId == "" {
+		errResp := apperrors.BadRequest("Secret ID is required", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	var req models.UpdateRegistrationSecretRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		errResp := apperrors.BadRequest("Invalid request body", err.Error())
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	// Update the secret
+	secret, err := s.postgres.UpdateRegistrationSecret(
+		c.Request.Context(),
+		secretId,
+		&req.Name,
+		&req.Description,
+		req.Active,
+	)
+
+	if err != nil {
+		s.logger.Error("Failed to update registration secret", zap.Error(err))
+		errResp := apperrors.InternalServerError("Failed to update registration secret", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	// Don't return the actual secret value
+	secret.SecretValue = ""
+
+	c.JSON(http.StatusOK, secret)
+}
+
+// handleDeleteRegistrationSecret deletes a registration secret (admin only)
+func (s *Server) handleDeleteRegistrationSecret(c *gin.Context) {
+	// Check admin role
+	userRole, exists := c.Get("role")
+	if !exists || userRole != "admin" {
+		errResp := apperrors.Forbidden("Only admins can delete registration secrets", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	secretId := c.Param("id")
+	if secretId == "" {
+		errResp := apperrors.BadRequest("Secret ID is required", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	err := s.postgres.DeleteRegistrationSecret(c.Request.Context(), secretId)
+	if err != nil {
+		s.logger.Error("Failed to delete registration secret", zap.Error(err))
+		errResp := apperrors.InternalServerError("Failed to delete registration secret", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Registration secret deleted successfully",
 	})
 }
 

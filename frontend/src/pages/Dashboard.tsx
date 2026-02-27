@@ -15,8 +15,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
   const [registrationSecret, setRegistrationSecret] = useState('')
   const [secretVisible, setSecretVisible] = useState(false)
   const [successMessage, setSuccessMessage] = useState('')
-  const [managedInstanceMessage, setRdsMessage] = useState('')
-  const [managedInstanceMessageType, setRdsMessageType] = useState<'success' | 'error' | ''>('')
+  const [managedInstanceMessage, setManagedInstanceMessage] = useState('')
+  const [managedInstanceMessageType, setManagedInstanceMessageType] = useState<'success' | 'error' | ''>('')
   const currentUser = apiClient.getCurrentUser()
   const isAdmin = currentUser?.role === 'admin'
 

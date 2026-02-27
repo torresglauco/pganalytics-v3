@@ -2,12 +2,12 @@ import React, { useState, useEffect } from 'react'
 import { Trash2, Plus, X, AlertCircle, CheckCircle, Edit, Zap } from 'lucide-react'
 import { CreateManagedInstanceForm } from './CreateManagedInstanceForm'
 
-interface RDSInstance {
+interface ManagedInstance {
   id: number
   name: string
   description: string
   aws_region: string
-  rds_endpoint: string
+  endpoint: string
   port: number
   engine_version: string
   db_instance_class: string
@@ -32,19 +32,19 @@ interface RDSInstance {
   updated_at: string
 }
 
-interface RDSInstancesTableProps {
+interface ManagedInstancesTableProps {
   onSuccess: (message: string) => void
   onError: (message: string) => void
 }
 
-export const RDSInstancesTable: React.FC<RDSInstancesTableProps> = ({ onSuccess, onError }) => {
-  const [instances, setInstances] = useState<RDSInstance[]>([])
+export const ManagedInstancesTable: React.FC<ManagedInstancesTableProps> = ({ onSuccess, onError }) => {
+  const [instances, setInstances] = useState<ManagedInstance[]>([])
   const [loading, setLoading] = useState(true)
   const [deleting, setDeleting] = useState<number | null>(null)
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
   const [testingConnectionId, setTestingConnectionId] = useState<number | null>(null)
-  const [editFormData, setEditFormData] = useState<Partial<RDSInstance> | null>(null)
+  const [editFormData, setEditFormData] = useState<Partial<ManagedInstance> | null>(null)
 
   useEffect(() => {
     loadInstances()
@@ -130,7 +130,7 @@ export const RDSInstancesTable: React.FC<RDSInstancesTableProps> = ({ onSuccess,
     }
   }
 
-  const startEdit = (instance: RDSInstance) => {
+  const startEdit = (instance: ManagedInstance) => {
     setEditingId(instance.id)
     setEditFormData(instance)
   }
@@ -153,7 +153,7 @@ export const RDSInstancesTable: React.FC<RDSInstancesTableProps> = ({ onSuccess,
         body: JSON.stringify({
           name: editFormData.name,
           aws_region: editFormData.aws_region || 'us-east-1',
-          rds_endpoint: editFormData.rds_endpoint,
+          endpoint: editFormData.endpoint,
           port: editFormData.port,
           environment: editFormData.environment,
           master_username: editFormData.master_username,
@@ -172,7 +172,6 @@ export const RDSInstancesTable: React.FC<RDSInstancesTableProps> = ({ onSuccess,
           backup_retention_days: editFormData.backup_retention_days || 0,
           preferred_backup_window: editFormData.preferred_backup_window || '',
           preferred_maintenance_window: editFormData.preferred_maintenance_window || '',
-          tags: editFormData.tags || {},
         }),
       })
 
@@ -330,8 +329,8 @@ export const RDSInstancesTable: React.FC<RDSInstancesTableProps> = ({ onSuccess,
                   <label className="block text-sm font-medium text-gray-700 mb-1">RDS Endpoint</label>
                   <input
                     type="text"
-                    value={editFormData.rds_endpoint || ''}
-                    onChange={(e) => setEditFormData({...editFormData, rds_endpoint: e.target.value})}
+                    value={editFormData.endpoint || ''}
+                    onChange={(e) => setEditFormData({...editFormData, endpoint: e.target.value})}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
                   />
                 </div>
@@ -451,7 +450,7 @@ export const RDSInstancesTable: React.FC<RDSInstancesTableProps> = ({ onSuccess,
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <p className="text-sm text-gray-600 font-mono">{instance.rds_endpoint}</p>
+                    <p className="text-sm text-gray-600 font-mono">{instance.endpoint}</p>
                     <p className="text-xs text-gray-500">Port: {instance.port}</p>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">

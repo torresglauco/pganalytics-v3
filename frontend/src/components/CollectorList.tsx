@@ -105,12 +105,12 @@ export const CollectorList: React.FC = () => {
                   {new Date(collector.created_at).toLocaleDateString()}
                 </td>
                 <td className="px-6 py-3 text-sm text-gray-600">
-                  {collector.last_heartbeat
-                    ? new Date(collector.last_heartbeat).toLocaleString()
+                  {collector.last_seen
+                    ? new Date(collector.last_seen).toLocaleString()
                     : 'Never'}
                 </td>
                 <td className="px-6 py-3 text-sm text-gray-600">
-                  {collector.metrics_count ?? 0}
+                  {collector.metrics_count_24h ?? 0}
                 </td>
                 <td className="px-6 py-3 text-sm">
                   <button

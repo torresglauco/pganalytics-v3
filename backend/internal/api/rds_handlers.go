@@ -419,7 +419,9 @@ func (s *Server) handleTestRDSConnection(c *gin.Context) {
 	}
 
 	if testErr != nil {
-		response.Error = testErr.Error()
+		response.Error = fmt.Sprintf("Connection test failed - Endpoint: %s:%d - Error: %s", instance.RDSEndpoint, instance.Port, testErr.Error())
+	} else {
+		response.Error = ""
 	}
 
 	c.JSON(200, response)

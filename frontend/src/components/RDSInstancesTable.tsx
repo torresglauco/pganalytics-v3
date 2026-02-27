@@ -215,10 +215,11 @@ export const RDSInstancesTable: React.FC<RDSInstancesTableProps> = ({ onSuccess,
       if (data.success) {
         onSuccess(`✓ Connection successful for ${instance.name}`)
       } else {
-        onError(`✗ Connection failed: ${data.error || 'Unknown error'}`)
+        onError(`${data.error || 'Connection test failed'}`)
       }
     } catch (error) {
-      onError(error instanceof Error ? error.message : 'Failed to test connection')
+      const errorMsg = error instanceof Error ? error.message : 'Failed to test connection'
+      onError(`Connection test error: ${errorMsg}`)
     } finally {
       setTestingConnectionId(null)
     }

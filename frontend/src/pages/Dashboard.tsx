@@ -209,12 +209,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
                     onSuccess={(message) => {
                       setUserMessage(message)
                       setUserMessageType('success')
-                      setTimeout(() => setUserMessage(''), 5000)
+                      setTimeout(() => setUserMessage(''), 10000)
                     }}
                     onError={(message) => {
                       setUserMessage(message)
                       setUserMessageType('error')
-                      setTimeout(() => setUserMessage(''), 5000)
+                      setTimeout(() => setUserMessage(''), 10000)
                     }}
                   />
                 </div>

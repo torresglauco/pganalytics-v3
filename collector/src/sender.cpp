@@ -453,3 +453,109 @@ std::vector<uint8_t> Sender::compressWithZstd(const std::vector<uint8_t>& data) 
         return std::vector<uint8_t>();
     }
 }
+
+bool Sender::registerCollector(
+    const std::string& registrationSecret,
+    const std::string& collectorName,
+    std::string& authToken
+) {
+    // Initialize CURL
+    CURL* curl = curl_easy_init();
+    if (!curl) {
+        std::cerr << "Failed to initialize CURL for registration" << std::endl;
+        return false;
+    }
+
+    // Configure CURL for TLS
+    if (!setupCurl(curl)) {
+        curl_easy_cleanup(curl);
+        return false;
+    }
+
+    // Prepare registration request
+    json registerPayload = {
+        {"name", collectorName},
+        {"hostname", collectorName},
+        {"version", "3.0.0"}
+    };
+
+    std::string jsonData = registerPayload.dump();
+
+    // Prepare URL and headers
+    std::string url = backendUrl_ + "/api/v1/collectors/register";
+    struct curl_slist* headers = nullptr;
+    headers = curl_slist_append(headers, "Content-Type: application/json");
+
+    // Add registration secret header
+    std::string secretHeader = "X-Registration-Secret: " + registrationSecret;
+    headers = curl_slist_append(headers, secretHeader.c_str());
+
+    // Set CURL options
+    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, jsonData.c_str());
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, jsonData.size());
+
+    // Response callback
+    std::string responseData;
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeCallback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &responseData);
+
+    // Perform request
+    CURLcode res = curl_easy_perform(curl);
+
+    bool success = (res == CURLE_OK);
+    if (!success) {
+        std::cerr << "Registration CURL error: " << curl_easy_strerror(res) << std::endl;
+        curl_slist_free_all(headers);
+        curl_easy_cleanup(curl);
+        return false;
+    }
+
+    // Check HTTP status code
+    long httpCode = 0;
+    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpCode);
+
+    if (httpCode == 200 || httpCode == 201) {
+        // Parse response to extract auth token
+        try {
+            json response = json::parse(responseData);
+            if (response.contains("token")) {
+                authToken = response["token"].get<std::string>();
+
+                // Extract expiration if available
+                if (response.contains("expires_at")) {
+                    long expiresAt = response["expires_at"].get<long>();
+                    setAuthToken(authToken, expiresAt);
+                } else {
+                    // Default to 24 hours
+                    time_t now = std::time(nullptr);
+                    setAuthToken(authToken, now + 86400);
+                }
+
+                std::cout << "Collector registered successfully" << std::endl;
+                curl_slist_free_all(headers);
+                curl_easy_cleanup(curl);
+                return true;
+            } else {
+                std::cerr << "Registration response missing token field" << std::endl;
+                curl_slist_free_all(headers);
+                curl_easy_cleanup(curl);
+                return false;
+            }
+        } catch (const std::exception& e) {
+            std::cerr << "Failed to parse registration response: " << e.what() << std::endl;
+            curl_slist_free_all(headers);
+            curl_easy_cleanup(curl);
+            return false;
+        }
+    } else {
+        std::cerr << "Registration failed with HTTP " << httpCode << std::endl;
+        if (!responseData.empty()) {
+            std::cerr << "Response: " << responseData << std::endl;
+        }
+        curl_slist_free_all(headers);
+        curl_easy_cleanup(curl);
+        return false;
+    }
+}

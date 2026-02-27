@@ -55,6 +55,7 @@ services:
       TIMESCALE_URL: "postgres://postgres:pganalytics@timescale:5432/metrics?sslmode=disable"
       JWT_SECRET: "demo-secret-key-change-in-production"
       JWT_EXPIRATION: "900"  # 15 minutes
+      ENCRYPTION_KEY: "WkSMJvo2wKQ1FuceaE2yW2lEyxKIcJ1wfbrcNUOGUkE="  # 32-byte AES-256 key (base64 encoded)
       TLS_CERT: "/etc/pganalytics/tls/server.crt"
       TLS_KEY: "/etc/pganalytics/tls/server.key"
       LOG_LEVEL: "debug"

@@ -87,10 +87,14 @@ func (s *Server) handleCreateRDSInstance(c *gin.Context) {
 		req.SSLEnabled = true // Enable SSL by default
 	}
 
+	// Default AWS region if not provided
 	if req.AWSRegion == "" {
-		errResp := apperrors.BadRequest("AWS region is required", "")
-		c.JSON(errResp.StatusCode, errResp)
-		return
+		req.AWSRegion = "us-east-1"
+	}
+
+	// Default environment if not provided
+	if req.Environment == "" {
+		req.Environment = "development"
 	}
 
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 10*time.Second)
@@ -102,11 +106,30 @@ func (s *Server) handleCreateRDSInstance(c *gin.Context) {
 		// Don't fail here, allow registration even if connection fails (may be temporary)
 	}
 
-	// TODO: Store master password in secrets table and get secret_id
-	// For now, credentials are not stored (secretID is NULL)
+	// Store master password securely in secrets table
+	var secretID *int
+	if req.MasterPassword != "" {
+		encryptedPassword, err := s.secretManager.Encrypt(req.MasterPassword)
+		if err != nil {
+			s.logger.Error("Failed to encrypt password", zap.Error(err))
+			errResp := apperrors.BadRequest("Failed to encrypt password", err.Error())
+			c.JSON(errResp.StatusCode, errResp)
+			return
+		}
+
+		// Create secret in database
+		id, err := s.postgres.CreateSecret(ctx, fmt.Sprintf("rds_password_%s", req.Name), encryptedPassword)
+		if err != nil {
+			s.logger.Error("Failed to store encrypted password", zap.Error(err))
+			errResp := apperrors.ToAppError(err)
+			c.JSON(errResp.StatusCode, errResp)
+			return
+		}
+		secretID = &id
+	}
 
 	// Create RDS instance
-	instance, err := s.postgres.CreateRDSInstance(ctx, &req, nil, user.ID)
+	instance, err := s.postgres.CreateRDSInstance(ctx, &req, secretID, user.ID)
 	if err != nil {
 		s.logger.Error("Failed to create RDS instance", zap.Error(err))
 		errResp := apperrors.ToAppError(err)
@@ -281,10 +304,14 @@ func (s *Server) handleUpdateRDSInstance(c *gin.Context) {
 		req.Status = "registered" // Default status
 	}
 
+	// Default AWS region if not provided
 	if req.AWSRegion == "" {
-		errResp := apperrors.BadRequest("AWS region is required", "")
-		c.JSON(errResp.StatusCode, errResp)
-		return
+		req.AWSRegion = "us-east-1"
+	}
+
+	// Default environment if not provided
+	if req.Environment == "" {
+		req.Environment = "development"
 	}
 
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 10*time.Second)
@@ -479,8 +506,38 @@ func (s *Server) handleTestRDSConnection(c *gin.Context) {
 		return
 	}
 
+	// Get username from request or from stored instance
+	username := req.Username
+	if username == "" {
+		username = instance.MasterUsername
+	}
+
+	// Get password from request or from stored secret
+	password := req.Password
+
+	// If no password provided in request and we have a secret, decrypt it
+	if password == "" && instance.SecretID != nil {
+		secret, err := s.postgres.GetSecret(ctx, *instance.SecretID)
+		if err != nil {
+			s.logger.Error("Failed to retrieve stored password", zap.Int("secret_id", *instance.SecretID), zap.Error(err))
+			errResp := apperrors.BadRequest("Failed to retrieve stored password", "")
+			c.JSON(errResp.StatusCode, errResp)
+			return
+		}
+
+		// Decrypt password
+		decryptedPassword, err := s.secretManager.Decrypt(string(secret.SecretEncrypted))
+		if err != nil {
+			s.logger.Error("Failed to decrypt password", zap.Error(err))
+			errResp := apperrors.BadRequest("Failed to decrypt password", "")
+			c.JSON(errResp.StatusCode, errResp)
+			return
+		}
+		password = decryptedPassword
+	}
+
 	// Test connection
-	testErr := testRDSConnection(ctx, instance.RDSEndpoint, instance.Port, req.Username, req.Password)
+	testErr := testRDSConnection(ctx, instance.RDSEndpoint, instance.Port, username, password)
 
 	response := &models.TestConnectionResponse{
 		Success: testErr == nil,

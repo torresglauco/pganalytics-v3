@@ -13,6 +13,7 @@ import (
 	"github.com/torresglauco/pganalytics-v3/backend/internal/auth"
 	"github.com/torresglauco/pganalytics-v3/backend/internal/cache"
 	"github.com/torresglauco/pganalytics-v3/backend/internal/config"
+	"github.com/torresglauco/pganalytics-v3/backend/internal/crypto"
 	"github.com/torresglauco/pganalytics-v3/backend/internal/storage"
 	"github.com/torresglauco/pganalytics-v3/backend/internal/timescale"
 	"github.com/gin-gonic/gin"
@@ -136,6 +137,13 @@ func main() {
 
 	logger.Info("Authentication service initialized")
 
+	// Initialize Secret Manager for password encryption
+	secretManager, err := crypto.NewSecretManagerFromEnv()
+	if err != nil {
+		logger.Fatal("Failed to initialize secret manager", zap.Error(err))
+	}
+	logger.Info("Secret manager initialized")
+
 	// Set Gin mode
 	if cfg.IsProduction() {
 		gin.SetMode(gin.ReleaseMode)
@@ -149,7 +157,7 @@ func main() {
 	router.Use(gin.Recovery())
 
 	// Create API server
-	apiServer := api.NewServer(cfg, logger, postgresDB, timescaleDB, authService, jwtManager)
+	apiServer := api.NewServer(cfg, logger, postgresDB, timescaleDB, authService, jwtManager, secretManager)
 	apiServer.SetCacheManager(cacheManager)
 
 	// Register routes

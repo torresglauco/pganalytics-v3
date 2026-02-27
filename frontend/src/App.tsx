@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react'
 import { Dashboard } from './pages/Dashboard'
+import { AuthPage } from './pages/AuthPage'
 import { apiClient } from './services/api'
 import './styles/index.css'
 
 function App() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
 
   useEffect(() => {
     // Auto-login with admin credentials
@@ -18,11 +20,12 @@ function App() {
         const response = await apiClient.login('admin', 'admin')
         if (response) {
           // Login successful
+          setIsAuthenticated(true)
           setIsLoading(false)
         }
       } catch (err) {
         console.error('Auto-login failed:', err)
-        setError('Failed to authenticate. Please refresh the page.')
+        setError('Failed to authenticate. Please try logging in manually.')
         setIsLoading(false)
       }
     }
@@ -31,14 +34,31 @@ function App() {
     if (!apiClient.isAuthenticated()) {
       autoLogin()
     } else {
+      setIsAuthenticated(true)
       setIsLoading(false)
     }
   }, [])
 
+  const handleLogin = async (username: string, password: string) => {
+    try {
+      setIsLoading(true)
+      setError(null)
+      const response = await apiClient.login(username, password)
+      if (response) {
+        setIsAuthenticated(true)
+        setIsLoading(false)
+      }
+    } catch (err) {
+      console.error('Login failed:', err)
+      setError(err instanceof Error ? err.message : 'Login failed')
+      setIsLoading(false)
+    }
+  }
+
   const handleLogout = () => {
     apiClient.logout()
-    // Auto-login again after logout
-    window.location.reload()
+    setIsAuthenticated(false)
+    setError(null)
   }
 
   if (isLoading) {
@@ -52,21 +72,8 @@ function App() {
     )
   }
 
-  if (error) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-100">
-        <div className="bg-white rounded-lg shadow-md p-6 max-w-md">
-          <h1 className="text-xl font-bold text-red-600 mb-4">Authentication Error</h1>
-          <p className="text-gray-600 mb-4">{error}</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-          >
-            Retry
-          </button>
-        </div>
-      </div>
-    )
+  if (!isAuthenticated) {
+    return <AuthPage onLogin={handleLogin} error={error} />
   }
 
   return <Dashboard onLogout={handleLogout} />

@@ -1,25 +1,20 @@
 import React, { useState } from 'react'
 import { AlertCircle, CheckCircle } from 'lucide-react'
-import { SignupForm } from '../components/SignupForm'
 import { LoginForm } from '../components/LoginForm'
 import type { ApiError } from '../types'
 
 interface AuthPageProps {
-  onAuthSuccess: () => void
+  onLogin: (username: string, password: string) => Promise<void>
+  error?: string | null
 }
 
-export const AuthPage: React.FC<AuthPageProps> = ({ onAuthSuccess }) => {
-  const [isSignup, setIsSignup] = useState(true)
+export const AuthPage: React.FC<AuthPageProps> = ({ onLogin, error: externalError }) => {
   const [successMessage, setSuccessMessage] = useState('')
-  const [errorMessage, setErrorMessage] = useState('')
+  const [errorMessage, setErrorMessage] = useState(externalError || '')
 
   const handleSuccess = (message: string) => {
     setSuccessMessage(message)
     setErrorMessage('')
-    // Redirect after 2 seconds
-    setTimeout(() => {
-      onAuthSuccess()
-    }, 2000)
   }
 
   const handleError = (error: Error | ApiError) => {
@@ -68,58 +63,12 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onAuthSuccess }) => {
 
         {/* Auth Card */}
         <div className="bg-white rounded-lg shadow-lg p-8">
-          {/* Tab Header */}
-          <div className="flex gap-4 mb-6 border-b border-gray-200">
-            <button
-              onClick={() => {
-                setIsSignup(false)
-                setErrorMessage('')
-                setSuccessMessage('')
-              }}
-              className={`px-4 py-2 font-medium text-sm border-b-2 transition ${
-                !isSignup
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              Log In
-            </button>
-            <button
-              onClick={() => {
-                setIsSignup(true)
-                setErrorMessage('')
-                setSuccessMessage('')
-              }}
-              className={`px-4 py-2 font-medium text-sm border-b-2 transition ${
-                isSignup
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              Sign Up
-            </button>
-          </div>
-
-          {/* Form Content */}
-          {isSignup ? (
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">Create Account</h2>
-              <SignupForm
-                onSuccess={handleSuccess}
-                onError={handleError}
-                onSwitchToLogin={() => setIsSignup(false)}
-              />
-            </div>
-          ) : (
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">Welcome Back</h2>
-              <LoginForm
-                onSuccess={handleSuccess}
-                onError={handleError}
-                onSwitchToSignup={() => setIsSignup(true)}
-              />
-            </div>
-          )}
+          <h2 className="text-2xl font-bold text-gray-900 mb-6">Log In</h2>
+          <LoginForm
+            onSuccess={handleSuccess}
+            onError={handleError}
+            onLogin={onLogin}
+          />
         </div>
 
         {/* Footer */}

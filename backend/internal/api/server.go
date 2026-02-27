@@ -99,8 +99,9 @@ func (s *Server) RegisterRoutes(router *gin.Engine) {
 
 		// User Management routes (admin only)
 		users := api.Group("/users")
+		users.Use(s.AuthMiddleware())
 		{
-			users.POST("", s.AuthMiddleware(), s.handleCreateUser)
+			users.POST("", s.handleCreateUser)
 		}
 
 		// Collector routes will be defined below

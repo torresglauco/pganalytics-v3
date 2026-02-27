@@ -187,10 +187,10 @@ type CreateRDSInstanceRequest struct {
 	DBInstanceClass           string `json:"db_instance_class"`
 	AllocatedStorageGB        int    `json:"allocated_storage_gb"`
 	EnableEnhancedMonitoring  bool   `json:"enable_enhanced_monitoring"`
-	MonitoringInterval        int    `json:"monitoring_interval"`
+	MonitoringInterval        int    `json:"monitoring_interval" binding:"min=0"`
 	SSLEnabled                bool   `json:"ssl_enabled"`
 	SSLMode                   string `json:"ssl_mode"`
-	ConnectionTimeout         int    `json:"connection_timeout"`
+	ConnectionTimeout         int    `json:"connection_timeout" binding:"min=0"`
 	MultiAZ                   bool   `json:"multi_az"`
 	BackupRetentionDays       int    `json:"backup_retention_days"`
 	PreferredBackupWindow     string `json:"preferred_backup_window"`

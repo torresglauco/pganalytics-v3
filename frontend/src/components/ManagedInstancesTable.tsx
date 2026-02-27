@@ -201,8 +201,7 @@ export const ManagedInstancesTable: React.FC<ManagedInstancesTableProps> = ({ on
           'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
         },
         body: JSON.stringify({
-          username: instance.master_username,
-          password: instance.master_username, // Note: In real scenario would need actual password from secure storage
+          // Empty body - backend will use stored credentials from the managed instance record
         }),
       })
 

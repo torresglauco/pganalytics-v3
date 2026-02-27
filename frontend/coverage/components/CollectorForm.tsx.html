@@ -3,15 +3,15 @@
 <html lang="en">
 
 <head>
-    <title>Code coverage report for src/components/UserMenuDropdown.tsx</title>
+    <title>Code coverage report for components/CollectorForm.tsx</title>
     <meta charset="utf-8" />
-    <link rel="stylesheet" href="../../prettify.css" />
-    <link rel="stylesheet" href="../../base.css" />
-    <link rel="shortcut icon" type="image/x-icon" href="../../favicon.png" />
+    <link rel="stylesheet" href="../prettify.css" />
+    <link rel="stylesheet" href="../base.css" />
+    <link rel="shortcut icon" type="image/x-icon" href="../favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style type='text/css'>
         .coverage-summary .sorter {
-            background-image: url(../../sort-arrow-sprite.png);
+            background-image: url(../sort-arrow-sprite.png);
         }
     </style>
 </head>
@@ -19,13 +19,13 @@
 <body>
 <div class='wrapper'>
     <div class='pad1'>
-        <h1><a href="../../index.html">All files</a> / <a href="index.html">src/components</a> UserMenuDropdown.tsx</h1>
+        <h1><a href="../index.html">All files</a> / <a href="index.html">components</a> CollectorForm.tsx</h1>
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">5.41% </span>
+                <span class="strong">11.26% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>11/203</span>
+                <span class='fraction'>24/213</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">5.41% </span>
+                <span class="strong">11.26% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>11/203</span>
+                <span class='fraction'>24/213</span>
             </div>
         
             
@@ -266,7 +266,17 @@
 <a name='L201'></a><a href='#L201'>201</a>
 <a name='L202'></a><a href='#L202'>202</a>
 <a name='L203'></a><a href='#L203'>203</a>
-<a name='L204'></a><a href='#L204'>204</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<a name='L204'></a><a href='#L204'>204</a>
+<a name='L205'></a><a href='#L205'>205</a>
+<a name='L206'></a><a href='#L206'>206</a>
+<a name='L207'></a><a href='#L207'>207</a>
+<a name='L208'></a><a href='#L208'>208</a>
+<a name='L209'></a><a href='#L209'>209</a>
+<a name='L210'></a><a href='#L210'>210</a>
+<a name='L211'></a><a href='#L211'>211</a>
+<a name='L212'></a><a href='#L212'>212</a>
+<a name='L213'></a><a href='#L213'>213</a>
+<a name='L214'></a><a href='#L214'>214</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
@@ -277,6 +287,19 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -466,210 +489,217 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import React, { useState, useRef, useEffect } from 'react'
-import { Settings, LogOut, User, Key, Users } from 'lucide-react'
-import { ChangePasswordForm } from './ChangePasswordForm'
-import { UserManagementTable } from './UserManagementTable'
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import React, { useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
+import { AlertCircle, CheckCircle, Loader } from 'lucide-react'
 import { apiClient } from '../services/api'
+import type { CollectorRegisterRequest, CollectorRegisterResponse } from '../types'
 &nbsp;
-interface UserMenuDropdownProps {
-  onLogout: () =&gt; void
+const collectorSchema = z.object({
+  hostname: z.string().min(1, 'Hostname is required'),
+  environment: z.string().optional(),
+  group: z.string().optional(),
+  description: z.string().optional(),
+})
+&nbsp;
+type CollectorFormData = z.infer&lt;typeof collectorSchema&gt;
+&nbsp;
+interface CollectorFormProps {
+  registrationSecret: string
+  onSuccess?: (response: CollectorRegisterResponse) =&gt; void
+  onError?: (error: Error) =&gt; void
 }
 &nbsp;
-export const UserMenuDropdown: React.FC&lt;UserMenuDropdownProps&gt; = <span class="fstat-no" title="function not covered" >({ onLogout }) =&gt; {</span>
-<span class="cstat-no" title="statement not covered" >  const [isOpen, setIsOpen] = useState(false)</span>
-<span class="cstat-no" title="statement not covered" >  const [showPasswordModal, setShowPasswordModal] = useState(false)</span>
-<span class="cstat-no" title="statement not covered" >  const [showUserManagement, setShowUserManagement] = useState(false)</span>
-<span class="cstat-no" title="statement not covered" >  const [successMessage, setSuccessMessage] = useState('')</span>
-<span class="cstat-no" title="statement not covered" >  const [userMessage, setUserMessage] = useState('')</span>
-<span class="cstat-no" title="statement not covered" >  const [userMessageType, setUserMessageType] = useState&lt;'success' | 'error' | ''&gt;('')</span>
-<span class="cstat-no" title="statement not covered" >  const menuRef = useRef&lt;HTMLDivElement&gt;(null)</span>
+export const CollectorForm: React.FC&lt;CollectorFormProps&gt; = <span class="fstat-no" title="function not covered" >({</span>
+<span class="cstat-no" title="statement not covered" >  registrationSecret,</span>
+<span class="cstat-no" title="statement not covered" >  onSuccess,</span>
+<span class="cstat-no" title="statement not covered" >  onError,</span>
+<span class="cstat-no" title="statement not covered" >}) =&gt; {</span>
+<span class="cstat-no" title="statement not covered" >  const [submitting, setSubmitting] = useState(false)</span>
+<span class="cstat-no" title="statement not covered" >  const [testingConnection, setTestingConnection] = useState(false)</span>
+<span class="cstat-no" title="statement not covered" >  const [connectionStatus, setConnectionStatus] = useState&lt;'idle' | 'success' | 'error'&gt;('idle')</span>
+<span class="cstat-no" title="statement not covered" >  const [successResponse, setSuccessResponse] = useState&lt;CollectorRegisterResponse | null&gt;(null)</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >  const currentUser = apiClient.getCurrentUser()</span>
-<span class="cstat-no" title="statement not covered" >  const isAdmin = currentUser?.role === 'admin'</span>
+<span class="cstat-no" title="statement not covered" >  const {</span>
+<span class="cstat-no" title="statement not covered" >    register,</span>
+<span class="cstat-no" title="statement not covered" >    handleSubmit,</span>
+<span class="cstat-no" title="statement not covered" >    watch,</span>
+<span class="cstat-no" title="statement not covered" >    formState: { errors },</span>
+<span class="cstat-no" title="statement not covered" >    reset,</span>
+<span class="cstat-no" title="statement not covered" >  } = useForm&lt;CollectorFormData&gt;({</span>
+<span class="cstat-no" title="statement not covered" >    resolver: zodResolver(collectorSchema),</span>
+<span class="cstat-no" title="statement not covered" >  })</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >  // Close dropdown when clicking outside</span>
-<span class="cstat-no" title="statement not covered" >  useEffect(() =&gt; {</span>
-<span class="cstat-no" title="statement not covered" >    const handleClickOutside = (event: MouseEvent) =&gt; {</span>
-<span class="cstat-no" title="statement not covered" >      if (menuRef.current &amp;&amp; !menuRef.current.contains(event.target as Node)) {</span>
-<span class="cstat-no" title="statement not covered" >        setIsOpen(false)</span>
-<span class="cstat-no" title="statement not covered" >      }</span>
+<span class="cstat-no" title="statement not covered" >  const hostname = watch('hostname')</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >  const handleTestConnection = async () =&gt; {</span>
+<span class="cstat-no" title="statement not covered" >    if (!hostname) {</span>
+<span class="cstat-no" title="statement not covered" >      setConnectionStatus('error')</span>
+<span class="cstat-no" title="statement not covered" >      return</span>
 <span class="cstat-no" title="statement not covered" >    }</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >    document.addEventListener('mousedown', handleClickOutside)</span>
-<span class="cstat-no" title="statement not covered" >    return () =&gt; document.removeEventListener('mousedown', handleClickOutside)</span>
-<span class="cstat-no" title="statement not covered" >  }, [])</span>
+<span class="cstat-no" title="statement not covered" >    setTestingConnection(true)</span>
+<span class="cstat-no" title="statement not covered" >    setConnectionStatus('idle')</span>
 <span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >  const handleLogout = () =&gt; {</span>
-<span class="cstat-no" title="statement not covered" >    if (confirm('Are you sure you want to log out?')) {</span>
-<span class="cstat-no" title="statement not covered" >      onLogout()</span>
+<span class="cstat-no" title="statement not covered" >    try {</span>
+<span class="cstat-no" title="statement not covered" >      const success = await apiClient.testConnection(hostname)</span>
+<span class="cstat-no" title="statement not covered" >      setConnectionStatus(success ? 'success' : 'error')</span>
+<span class="cstat-no" title="statement not covered" >    } catch (err) {</span>
+<span class="cstat-no" title="statement not covered" >      setConnectionStatus('error')</span>
+<span class="cstat-no" title="statement not covered" >    } finally {</span>
+<span class="cstat-no" title="statement not covered" >      setTestingConnection(false)</span>
 <span class="cstat-no" title="statement not covered" >    }</span>
 <span class="cstat-no" title="statement not covered" >  }</span>
 <span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >  const onSubmit = async (data: CollectorFormData) =&gt; {</span>
+<span class="cstat-no" title="statement not covered" >    setSubmitting(true)</span>
+<span class="cstat-no" title="statement not covered" >    try {</span>
+<span class="cstat-no" title="statement not covered" >      const response = await apiClient.registerCollector(</span>
+<span class="cstat-no" title="statement not covered" >        data as CollectorRegisterRequest,</span>
+<span class="cstat-no" title="statement not covered" >        registrationSecret</span>
+<span class="cstat-no" title="statement not covered" >      )</span>
+<span class="cstat-no" title="statement not covered" >      setSuccessResponse(response)</span>
+<span class="cstat-no" title="statement not covered" >      reset()</span>
+<span class="cstat-no" title="statement not covered" >      setConnectionStatus('idle')</span>
+<span class="cstat-no" title="statement not covered" >      onSuccess?.(response)</span>
+<span class="cstat-no" title="statement not covered" >    } catch (error) {</span>
+<span class="cstat-no" title="statement not covered" >      const err = error instanceof Error ? error : new Error('Registration failed')</span>
+<span class="cstat-no" title="statement not covered" >      onError?.(err)</span>
+<span class="cstat-no" title="statement not covered" >    } finally {</span>
+<span class="cstat-no" title="statement not covered" >      setSubmitting(false)</span>
+<span class="cstat-no" title="statement not covered" >    }</span>
+<span class="cstat-no" title="statement not covered" >  }</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >  if (successResponse) {</span>
+<span class="cstat-no" title="statement not covered" >    return (</span>
+<span class="cstat-no" title="statement not covered" >      &lt;div className="bg-green-50 border border-green-200 rounded-lg p-6"&gt;</span>
+<span class="cstat-no" title="statement not covered" >        &lt;div className="flex items-center gap-3 mb-4"&gt;</span>
+<span class="cstat-no" title="statement not covered" >          &lt;CheckCircle className="text-green-600" size={24} /&gt;</span>
+<span class="cstat-no" title="statement not covered" >          &lt;h3 className="text-lg font-semibold text-green-900"&gt;Collector Registered Successfully!&lt;/h3&gt;</span>
+<span class="cstat-no" title="statement not covered" >        &lt;/div&gt;</span>
+<span class="cstat-no" title="statement not covered" >        &lt;div className="space-y-3 mb-4"&gt;</span>
+<span class="cstat-no" title="statement not covered" >          &lt;div&gt;</span>
+<span class="cstat-no" title="statement not covered" >            &lt;label className="text-sm font-medium text-green-700"&gt;Collector ID:&lt;/label&gt;</span>
+<span class="cstat-no" title="statement not covered" >            &lt;code className="block bg-white border border-green-200 rounded p-2 mt-1 font-mono text-sm"&gt;</span>
+<span class="cstat-no" title="statement not covered" >              {successResponse.collector_id}</span>
+<span class="cstat-no" title="statement not covered" >            &lt;/code&gt;</span>
+<span class="cstat-no" title="statement not covered" >          &lt;/div&gt;</span>
+<span class="cstat-no" title="statement not covered" >          &lt;div&gt;</span>
+<span class="cstat-no" title="statement not covered" >            &lt;label className="text-sm font-medium text-green-700"&gt;Authentication Token:&lt;/label&gt;</span>
+<span class="cstat-no" title="statement not covered" >            &lt;code className="block bg-white border border-green-200 rounded p-2 mt-1 font-mono text-sm break-all"&gt;</span>
+<span class="cstat-no" title="statement not covered" >              {successResponse.token}</span>
+<span class="cstat-no" title="statement not covered" >            &lt;/code&gt;</span>
+<span class="cstat-no" title="statement not covered" >          &lt;/div&gt;</span>
+<span class="cstat-no" title="statement not covered" >          &lt;p className="text-sm text-green-700"&gt;</span>
+<span class="cstat-no" title="statement not covered" >            Use the collector ID and token to configure your collector instance:</span>
+<span class="cstat-no" title="statement not covered" >          &lt;/p&gt;</span>
+<span class="cstat-no" title="statement not covered" >          &lt;pre className="bg-white border border-green-200 rounded p-2 text-xs overflow-auto"&gt;</span>
+<span class="cstat-no" title="statement not covered" >{`export COLLECTOR_ID=${successResponse.collector_id}</span>
+<span class="cstat-no" title="statement not covered" >export COLLECTOR_JWT_TOKEN=${successResponse.token}</span>
+<span class="cstat-no" title="statement not covered" >export CENTRAL_API_URL=http://pganalytics:8080`}</span>
+<span class="cstat-no" title="statement not covered" >          &lt;/pre&gt;</span>
+<span class="cstat-no" title="statement not covered" >        &lt;/div&gt;</span>
+<span class="cstat-no" title="statement not covered" >        &lt;button</span>
+<span class="cstat-no" title="statement not covered" >          onClick={() =&gt; {</span>
+<span class="cstat-no" title="statement not covered" >            setSuccessResponse(null)</span>
+<span class="cstat-no" title="statement not covered" >            reset()</span>
+<span class="cstat-no" title="statement not covered" >          }}</span>
+<span class="cstat-no" title="statement not covered" >          className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded"</span>
+<span class="cstat-no" title="statement not covered" >        &gt;</span>
+<span class="cstat-no" title="statement not covered" >          Register Another Collector</span>
+<span class="cstat-no" title="statement not covered" >        &lt;/button&gt;</span>
+<span class="cstat-no" title="statement not covered" >      &lt;/div&gt;</span>
+<span class="cstat-no" title="statement not covered" >    )</span>
+<span class="cstat-no" title="statement not covered" >  }</span>
+<span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >  return (</span>
-<span class="cstat-no" title="statement not covered" >    &lt;div className="relative" ref={menuRef}&gt;</span>
-<span class="cstat-no" title="statement not covered" >      {/* User Info Button */}</span>
+<span class="cstat-no" title="statement not covered" >    &lt;form onSubmit={handleSubmit(onSubmit)} className="space-y-6"&gt;</span>
+<span class="cstat-no" title="statement not covered" >      &lt;div&gt;</span>
+<span class="cstat-no" title="statement not covered" >        &lt;label className="block text-sm font-medium text-gray-700 mb-1"&gt;</span>
+<span class="cstat-no" title="statement not covered" >          Collector Hostname/IP *</span>
+<span class="cstat-no" title="statement not covered" >        &lt;/label&gt;</span>
+<span class="cstat-no" title="statement not covered" >        &lt;div className="flex gap-2"&gt;</span>
+<span class="cstat-no" title="statement not covered" >          &lt;input</span>
+<span class="cstat-no" title="statement not covered" >            {...register('hostname')}</span>
+<span class="cstat-no" title="statement not covered" >            type="text"</span>
+<span class="cstat-no" title="statement not covered" >            placeholder="prod-db-1.region.rds.amazonaws.com"</span>
+<span class="cstat-no" title="statement not covered" >            className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"</span>
+<span class="cstat-no" title="statement not covered" >          /&gt;</span>
+<span class="cstat-no" title="statement not covered" >          &lt;button</span>
+<span class="cstat-no" title="statement not covered" >            type="button"</span>
+<span class="cstat-no" title="statement not covered" >            onClick={handleTestConnection}</span>
+<span class="cstat-no" title="statement not covered" >            disabled={testingConnection || !hostname}</span>
+<span class="cstat-no" title="statement not covered" >            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400"</span>
+<span class="cstat-no" title="statement not covered" >          &gt;</span>
+<span class="cstat-no" title="statement not covered" >            {testingConnection ? &lt;Loader size={18} className="animate-spin" /&gt; : 'Test'}</span>
+<span class="cstat-no" title="statement not covered" >          &lt;/button&gt;</span>
+<span class="cstat-no" title="statement not covered" >        &lt;/div&gt;</span>
+<span class="cstat-no" title="statement not covered" >        {errors.hostname &amp;&amp; (</span>
+<span class="cstat-no" title="statement not covered" >          &lt;p className="text-sm text-red-600 mt-1"&gt;{errors.hostname.message}&lt;/p&gt;</span>
+<span class="cstat-no" title="statement not covered" >        )}</span>
+<span class="cstat-no" title="statement not covered" >        {connectionStatus === 'success' &amp;&amp; (</span>
+<span class="cstat-no" title="statement not covered" >          &lt;p className="text-sm text-green-600 mt-1 flex items-center gap-1"&gt;</span>
+<span class="cstat-no" title="statement not covered" >            &lt;CheckCircle size={16} /&gt; Connection successful</span>
+<span class="cstat-no" title="statement not covered" >          &lt;/p&gt;</span>
+<span class="cstat-no" title="statement not covered" >        )}</span>
+<span class="cstat-no" title="statement not covered" >        {connectionStatus === 'error' &amp;&amp; (</span>
+<span class="cstat-no" title="statement not covered" >          &lt;p className="text-sm text-red-600 mt-1 flex items-center gap-1"&gt;</span>
+<span class="cstat-no" title="statement not covered" >            &lt;AlertCircle size={16} /&gt; Connection failed</span>
+<span class="cstat-no" title="statement not covered" >          &lt;/p&gt;</span>
+<span class="cstat-no" title="statement not covered" >        )}</span>
+<span class="cstat-no" title="statement not covered" >      &lt;/div&gt;</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >      &lt;div className="grid grid-cols-2 gap-4"&gt;</span>
+<span class="cstat-no" title="statement not covered" >        &lt;div&gt;</span>
+<span class="cstat-no" title="statement not covered" >          &lt;label className="block text-sm font-medium text-gray-700 mb-1"&gt;</span>
+<span class="cstat-no" title="statement not covered" >            Environment</span>
+<span class="cstat-no" title="statement not covered" >          &lt;/label&gt;</span>
+<span class="cstat-no" title="statement not covered" >          &lt;select</span>
+<span class="cstat-no" title="statement not covered" >            {...register('environment')}</span>
+<span class="cstat-no" title="statement not covered" >            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"</span>
+<span class="cstat-no" title="statement not covered" >          &gt;</span>
+<span class="cstat-no" title="statement not covered" >            &lt;option value=""&gt;Select environment&lt;/option&gt;</span>
+<span class="cstat-no" title="statement not covered" >            &lt;option value="development"&gt;Development&lt;/option&gt;</span>
+<span class="cstat-no" title="statement not covered" >            &lt;option value="staging"&gt;Staging&lt;/option&gt;</span>
+<span class="cstat-no" title="statement not covered" >            &lt;option value="production"&gt;Production&lt;/option&gt;</span>
+<span class="cstat-no" title="statement not covered" >          &lt;/select&gt;</span>
+<span class="cstat-no" title="statement not covered" >        &lt;/div&gt;</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >        &lt;div&gt;</span>
+<span class="cstat-no" title="statement not covered" >          &lt;label className="block text-sm font-medium text-gray-700 mb-1"&gt;</span>
+<span class="cstat-no" title="statement not covered" >            Group</span>
+<span class="cstat-no" title="statement not covered" >          &lt;/label&gt;</span>
+<span class="cstat-no" title="statement not covered" >          &lt;input</span>
+<span class="cstat-no" title="statement not covered" >            {...register('group')}</span>
+<span class="cstat-no" title="statement not covered" >            type="text"</span>
+<span class="cstat-no" title="statement not covered" >            placeholder="e.g., AWS-RDS, On-Prem"</span>
+<span class="cstat-no" title="statement not covered" >            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"</span>
+<span class="cstat-no" title="statement not covered" >          /&gt;</span>
+<span class="cstat-no" title="statement not covered" >        &lt;/div&gt;</span>
+<span class="cstat-no" title="statement not covered" >      &lt;/div&gt;</span>
+<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >      &lt;div&gt;</span>
+<span class="cstat-no" title="statement not covered" >        &lt;label className="block text-sm font-medium text-gray-700 mb-1"&gt;</span>
+<span class="cstat-no" title="statement not covered" >          Description</span>
+<span class="cstat-no" title="statement not covered" >        &lt;/label&gt;</span>
+<span class="cstat-no" title="statement not covered" >        &lt;textarea</span>
+<span class="cstat-no" title="statement not covered" >          {...register('description')}</span>
+<span class="cstat-no" title="statement not covered" >          placeholder="Optional description for this collector..."</span>
+<span class="cstat-no" title="statement not covered" >          rows={3}</span>
+<span class="cstat-no" title="statement not covered" >          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"</span>
+<span class="cstat-no" title="statement not covered" >        /&gt;</span>
+<span class="cstat-no" title="statement not covered" >      &lt;/div&gt;</span>
+<span class="cstat-no" title="statement not covered" ></span>
 <span class="cstat-no" title="statement not covered" >      &lt;button</span>
-<span class="cstat-no" title="statement not covered" >        onClick={() =&gt; setIsOpen(!isOpen)}</span>
-<span class="cstat-no" title="statement not covered" >        className="flex items-center gap-3 hover:bg-gray-100 px-3 py-2 rounded-lg transition"</span>
+<span class="cstat-no" title="statement not covered" >        type="submit"</span>
+<span class="cstat-no" title="statement not covered" >        disabled={submitting}</span>
+<span class="cstat-no" title="statement not covered" >        className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium py-2 rounded-md transition"</span>
 <span class="cstat-no" title="statement not covered" >      &gt;</span>
-<span class="cstat-no" title="statement not covered" >        {currentUser ? (</span>
-<span class="cstat-no" title="statement not covered" >          &lt;div className="text-right"&gt;</span>
-<span class="cstat-no" title="statement not covered" >            &lt;p className="text-sm font-medium text-gray-900"&gt;{currentUser.full_name || currentUser.username || 'User'}&lt;/p&gt;</span>
-<span class="cstat-no" title="statement not covered" >            &lt;p className="text-xs text-gray-500"&gt;{currentUser.email || ''}&lt;/p&gt;</span>
-<span class="cstat-no" title="statement not covered" >          &lt;/div&gt;</span>
-<span class="cstat-no" title="statement not covered" >        ) : null}</span>
-<span class="cstat-no" title="statement not covered" >        &lt;Settings size={20} className="text-gray-600" /&gt;</span>
+<span class="cstat-no" title="statement not covered" >        {submitting ? 'Registering...' : 'Register Collector'}</span>
 <span class="cstat-no" title="statement not covered" >      &lt;/button&gt;</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >      {/* Dropdown Menu */}</span>
-<span class="cstat-no" title="statement not covered" >      {isOpen &amp;&amp; (</span>
-<span class="cstat-no" title="statement not covered" >        &lt;div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 z-50"&gt;</span>
-<span class="cstat-no" title="statement not covered" >          {/* User Info Header */}</span>
-<span class="cstat-no" title="statement not covered" >          &lt;div className="px-4 py-3 border-b border-gray-200"&gt;</span>
-<span class="cstat-no" title="statement not covered" >            &lt;div className="flex items-center gap-3"&gt;</span>
-<span class="cstat-no" title="statement not covered" >              &lt;div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center"&gt;</span>
-<span class="cstat-no" title="statement not covered" >                &lt;User size={20} className="text-blue-600" /&gt;</span>
-<span class="cstat-no" title="statement not covered" >              &lt;/div&gt;</span>
-<span class="cstat-no" title="statement not covered" >              &lt;div className="flex-1 min-w-0"&gt;</span>
-<span class="cstat-no" title="statement not covered" >                &lt;p className="text-sm font-medium text-gray-900 truncate"&gt;</span>
-<span class="cstat-no" title="statement not covered" >                  {currentUser?.full_name || currentUser?.username || 'User'}</span>
-<span class="cstat-no" title="statement not covered" >                &lt;/p&gt;</span>
-<span class="cstat-no" title="statement not covered" >                &lt;p className="text-xs text-gray-500 truncate"&gt;{currentUser?.email || ''}&lt;/p&gt;</span>
-<span class="cstat-no" title="statement not covered" >              &lt;/div&gt;</span>
-<span class="cstat-no" title="statement not covered" >            &lt;/div&gt;</span>
-<span class="cstat-no" title="statement not covered" >          &lt;/div&gt;</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >          {/* Menu Options */}</span>
-<span class="cstat-no" title="statement not covered" >          &lt;div className="py-2"&gt;</span>
-<span class="cstat-no" title="statement not covered" >            &lt;button</span>
-<span class="cstat-no" title="statement not covered" >              onClick={() =&gt; {</span>
-<span class="cstat-no" title="statement not covered" >                setShowPasswordModal(true)</span>
-<span class="cstat-no" title="statement not covered" >                setIsOpen(false)</span>
-<span class="cstat-no" title="statement not covered" >              }}</span>
-<span class="cstat-no" title="statement not covered" >              className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 transition"</span>
-<span class="cstat-no" title="statement not covered" >            &gt;</span>
-<span class="cstat-no" title="statement not covered" >              &lt;Key size={16} className="text-gray-500" /&gt;</span>
-<span class="cstat-no" title="statement not covered" >              Change Password</span>
-<span class="cstat-no" title="statement not covered" >            &lt;/button&gt;</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >            {isAdmin &amp;&amp; (</span>
-<span class="cstat-no" title="statement not covered" >              &lt;button</span>
-<span class="cstat-no" title="statement not covered" >                onClick={() =&gt; {</span>
-<span class="cstat-no" title="statement not covered" >                  setShowUserManagement(true)</span>
-<span class="cstat-no" title="statement not covered" >                  setIsOpen(false)</span>
-<span class="cstat-no" title="statement not covered" >                }}</span>
-<span class="cstat-no" title="statement not covered" >                className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 transition border-t border-gray-200"</span>
-<span class="cstat-no" title="statement not covered" >              &gt;</span>
-<span class="cstat-no" title="statement not covered" >                &lt;Users size={16} className="text-gray-500" /&gt;</span>
-<span class="cstat-no" title="statement not covered" >                Manage Users</span>
-<span class="cstat-no" title="statement not covered" >              &lt;/button&gt;</span>
-<span class="cstat-no" title="statement not covered" >            )}</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >            &lt;button</span>
-<span class="cstat-no" title="statement not covered" >              onClick={handleLogout}</span>
-<span class="cstat-no" title="statement not covered" >              className="w-full px-4 py-2 text-left text-sm text-red-700 hover:bg-red-50 flex items-center gap-2 transition border-t border-gray-200"</span>
-<span class="cstat-no" title="statement not covered" >            &gt;</span>
-<span class="cstat-no" title="statement not covered" >              &lt;LogOut size={16} className="text-red-500" /&gt;</span>
-<span class="cstat-no" title="statement not covered" >              Logout</span>
-<span class="cstat-no" title="statement not covered" >            &lt;/button&gt;</span>
-<span class="cstat-no" title="statement not covered" >          &lt;/div&gt;</span>
-<span class="cstat-no" title="statement not covered" >        &lt;/div&gt;</span>
-<span class="cstat-no" title="statement not covered" >      )}</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >      {/* Change Password Modal */}</span>
-<span class="cstat-no" title="statement not covered" >      {showPasswordModal &amp;&amp; (</span>
-<span class="cstat-no" title="statement not covered" >        &lt;div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"&gt;</span>
-<span class="cstat-no" title="statement not covered" >          &lt;div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6"&gt;</span>
-<span class="cstat-no" title="statement not covered" >            &lt;h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2"&gt;</span>
-<span class="cstat-no" title="statement not covered" >              &lt;Key size={24} className="text-blue-600" /&gt;</span>
-<span class="cstat-no" title="statement not covered" >              Change Password</span>
-<span class="cstat-no" title="statement not covered" >            &lt;/h2&gt;</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >            {successMessage &amp;&amp; (</span>
-<span class="cstat-no" title="statement not covered" >              &lt;div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg"&gt;</span>
-<span class="cstat-no" title="statement not covered" >                &lt;p className="text-green-700 text-sm"&gt;{successMessage}&lt;/p&gt;</span>
-<span class="cstat-no" title="statement not covered" >              &lt;/div&gt;</span>
-<span class="cstat-no" title="statement not covered" >            )}</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >            &lt;ChangePasswordForm</span>
-<span class="cstat-no" title="statement not covered" >              onSuccess={(message) =&gt; {</span>
-<span class="cstat-no" title="statement not covered" >                setSuccessMessage(message)</span>
-<span class="cstat-no" title="statement not covered" >                setTimeout(() =&gt; {</span>
-<span class="cstat-no" title="statement not covered" >                  setShowPasswordModal(false)</span>
-<span class="cstat-no" title="statement not covered" >                  setSuccessMessage('')</span>
-<span class="cstat-no" title="statement not covered" >                }, 2000)</span>
-<span class="cstat-no" title="statement not covered" >              }}</span>
-<span class="cstat-no" title="statement not covered" >              onError={(message) =&gt; {</span>
-<span class="cstat-no" title="statement not covered" >                alert(`Error: ${message}`)</span>
-<span class="cstat-no" title="statement not covered" >              }}</span>
-<span class="cstat-no" title="statement not covered" >            /&gt;</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >            &lt;button</span>
-<span class="cstat-no" title="statement not covered" >              onClick={() =&gt; setShowPasswordModal(false)}</span>
-<span class="cstat-no" title="statement not covered" >              className="mt-4 w-full px-4 py-2 bg-gray-200 text-gray-900 font-medium rounded-md hover:bg-gray-300 transition"</span>
-<span class="cstat-no" title="statement not covered" >            &gt;</span>
-<span class="cstat-no" title="statement not covered" >              Close</span>
-<span class="cstat-no" title="statement not covered" >            &lt;/button&gt;</span>
-<span class="cstat-no" title="statement not covered" >          &lt;/div&gt;</span>
-<span class="cstat-no" title="statement not covered" >        &lt;/div&gt;</span>
-<span class="cstat-no" title="statement not covered" >      )}</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >      {/* User Management Modal */}</span>
-<span class="cstat-no" title="statement not covered" >      {showUserManagement &amp;&amp; (</span>
-<span class="cstat-no" title="statement not covered" >        &lt;div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"&gt;</span>
-<span class="cstat-no" title="statement not covered" >          &lt;div className="bg-white rounded-lg shadow-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto p-6"&gt;</span>
-<span class="cstat-no" title="statement not covered" >            &lt;div className="flex items-center justify-between mb-6"&gt;</span>
-<span class="cstat-no" title="statement not covered" >              &lt;h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2"&gt;</span>
-<span class="cstat-no" title="statement not covered" >                &lt;Users size={24} className="text-blue-600" /&gt;</span>
-<span class="cstat-no" title="statement not covered" >                Manage Users</span>
-<span class="cstat-no" title="statement not covered" >              &lt;/h2&gt;</span>
-<span class="cstat-no" title="statement not covered" >              &lt;button</span>
-<span class="cstat-no" title="statement not covered" >                onClick={() =&gt; setShowUserManagement(false)}</span>
-<span class="cstat-no" title="statement not covered" >                className="text-gray-500 hover:text-gray-700 text-2xl"</span>
-<span class="cstat-no" title="statement not covered" >              &gt;</span>
-<span class="cstat-no" title="statement not covered" >                ×</span>
-<span class="cstat-no" title="statement not covered" >              &lt;/button&gt;</span>
-<span class="cstat-no" title="statement not covered" >            &lt;/div&gt;</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >            {userMessage &amp;&amp; (</span>
-<span class="cstat-no" title="statement not covered" >              &lt;div className={`mb-4 p-3 border rounded-lg ${</span>
-<span class="cstat-no" title="statement not covered" >                userMessageType === 'success'</span>
-<span class="cstat-no" title="statement not covered" >                  ? 'bg-green-50 border-green-200'</span>
-<span class="cstat-no" title="statement not covered" >                  : 'bg-red-50 border-red-200'</span>
-<span class="cstat-no" title="statement not covered" >              }`}&gt;</span>
-<span class="cstat-no" title="statement not covered" >                &lt;p className={userMessageType === 'success' ? 'text-green-700 text-sm' : 'text-red-700 text-sm'}&gt;</span>
-<span class="cstat-no" title="statement not covered" >                  {userMessage}</span>
-<span class="cstat-no" title="statement not covered" >                &lt;/p&gt;</span>
-<span class="cstat-no" title="statement not covered" >              &lt;/div&gt;</span>
-<span class="cstat-no" title="statement not covered" >            )}</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >            &lt;UserManagementTable</span>
-<span class="cstat-no" title="statement not covered" >              onSuccess={(message) =&gt; {</span>
-<span class="cstat-no" title="statement not covered" >                setUserMessage(message)</span>
-<span class="cstat-no" title="statement not covered" >                setUserMessageType('success')</span>
-<span class="cstat-no" title="statement not covered" >                setTimeout(() =&gt; setUserMessage(''), 5000)</span>
-<span class="cstat-no" title="statement not covered" >              }}</span>
-<span class="cstat-no" title="statement not covered" >              onError={(message) =&gt; {</span>
-<span class="cstat-no" title="statement not covered" >                setUserMessage(message)</span>
-<span class="cstat-no" title="statement not covered" >                setUserMessageType('error')</span>
-<span class="cstat-no" title="statement not covered" >                setTimeout(() =&gt; setUserMessage(''), 5000)</span>
-<span class="cstat-no" title="statement not covered" >              }}</span>
-<span class="cstat-no" title="statement not covered" >            /&gt;</span>
-<span class="cstat-no" title="statement not covered" ></span>
-<span class="cstat-no" title="statement not covered" >            &lt;button</span>
-<span class="cstat-no" title="statement not covered" >              onClick={() =&gt; setShowUserManagement(false)}</span>
-<span class="cstat-no" title="statement not covered" >              className="mt-4 w-full px-4 py-2 bg-gray-200 text-gray-900 font-medium rounded-md hover:bg-gray-300 transition"</span>
-<span class="cstat-no" title="statement not covered" >            &gt;</span>
-<span class="cstat-no" title="statement not covered" >              Close</span>
-<span class="cstat-no" title="statement not covered" >            &lt;/button&gt;</span>
-<span class="cstat-no" title="statement not covered" >          &lt;/div&gt;</span>
-<span class="cstat-no" title="statement not covered" >        &lt;/div&gt;</span>
-<span class="cstat-no" title="statement not covered" >      )}</span>
-<span class="cstat-no" title="statement not covered" >    &lt;/div&gt;</span>
+<span class="cstat-no" title="statement not covered" >    &lt;/form&gt;</span>
 <span class="cstat-no" title="statement not covered" >  )</span>
 <span class="cstat-no" title="statement not covered" >}</span>
 &nbsp;</pre></td></tr></table></pre>
@@ -679,16 +709,16 @@ export const UserMenuDropdown: React.FC&lt;UserMenuDropdownProps&gt; = <span cla
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-02-27T12:29:21.207Z
+                at 2026-02-27T15:02:33.775Z
             </div>
-        <script src="../../prettify.js"></script>
+        <script src="../prettify.js"></script>
         <script>
             window.onload = function () {
                 prettyPrint();
             };
         </script>
-        <script src="../../sorter.js"></script>
-        <script src="../../block-navigation.js"></script>
+        <script src="../sorter.js"></script>
+        <script src="../block-navigation.js"></script>
     </body>
 </html>
     

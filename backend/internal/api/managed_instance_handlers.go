@@ -64,7 +64,7 @@ func (s *Server) handleCreateManagedInstance(c *gin.Context) {
 		return
 	}
 
-	if req.RDSEndpoint == "" {
+	if req.Endpoint == "" {
 		errResp := apperrors.BadRequest("RDS endpoint is required", "")
 		c.JSON(errResp.StatusCode, errResp)
 		return
@@ -101,8 +101,8 @@ func (s *Server) handleCreateManagedInstance(c *gin.Context) {
 	defer cancel()
 
 	// Test connection to Managed Instance
-	if err := testRDSConnection(ctx, req.RDSEndpoint, req.Port, req.MasterUsername, req.MasterPassword); err != nil {
-		s.logger.Warn("RDS connection test failed", zap.String("endpoint", req.RDSEndpoint), zap.Error(err))
+	if err := testRDSConnection(ctx, req.Endpoint, req.Port, req.MasterUsername, req.MasterPassword); err != nil {
+		s.logger.Warn("RDS connection test failed", zap.String("endpoint", req.Endpoint), zap.Error(err))
 		// Don't fail here, allow registration even if connection fails (may be temporary)
 	}
 
@@ -139,7 +139,7 @@ func (s *Server) handleCreateManagedInstance(c *gin.Context) {
 
 	s.logger.Info("Managed Instance created",
 		zap.String("instance_name", instance.Name),
-		zap.String("endpoint", instance.RDSEndpoint),
+		zap.String("endpoint", instance.Endpoint),
 		zap.String("created_by", user.Username),
 	)
 
@@ -278,7 +278,7 @@ func (s *Server) handleUpdateManagedInstance(c *gin.Context) {
 		return
 	}
 
-	if req.RDSEndpoint == "" {
+	if req.Endpoint == "" {
 		errResp := apperrors.BadRequest("RDS endpoint is required", "")
 		c.JSON(errResp.StatusCode, errResp)
 		return
@@ -328,7 +328,7 @@ func (s *Server) handleUpdateManagedInstance(c *gin.Context) {
 
 	s.logger.Info("Managed Instance updated",
 		zap.String("instance_name", instance.Name),
-		zap.String("endpoint", instance.RDSEndpoint),
+		zap.String("endpoint", instance.Endpoint),
 		zap.String("updated_by", user.Username),
 	)
 
@@ -418,7 +418,7 @@ func (s *Server) handleTestManagedInstanceConnectionDirect(c *gin.Context) {
 	}
 
 	// Validate required fields
-	if req.RDSEndpoint == "" {
+	if req.Endpoint == "" {
 		errResp := apperrors.BadRequest("RDS endpoint is required", "")
 		c.JSON(errResp.StatusCode, errResp)
 		return
@@ -441,14 +441,14 @@ func (s *Server) handleTestManagedInstanceConnectionDirect(c *gin.Context) {
 	defer cancel()
 
 	// Test connection
-	testErr := testRDSConnection(ctx, req.RDSEndpoint, req.Port, req.Username, req.Password)
+	testErr := testRDSConnection(ctx, req.Endpoint, req.Port, req.Username, req.Password)
 
 	response := &models.TestConnectionResponse{
 		Success: testErr == nil,
 	}
 
 	if testErr != nil {
-		response.Error = fmt.Sprintf("Connection test failed - Endpoint: %s:%d - Error: %s", req.RDSEndpoint, req.Port, testErr.Error())
+		response.Error = fmt.Sprintf("Connection test failed - Endpoint: %s:%d - Error: %s", req.Endpoint, req.Port, testErr.Error())
 	} else {
 		response.Error = ""
 	}
@@ -537,14 +537,14 @@ func (s *Server) handleTestManagedInstanceConnection(c *gin.Context) {
 	}
 
 	// Test connection
-	testErr := testRDSConnection(ctx, instance.RDSEndpoint, instance.Port, username, password)
+	testErr := testRDSConnection(ctx, instance.Endpoint, instance.Port, username, password)
 
 	response := &models.TestConnectionResponse{
 		Success: testErr == nil,
 	}
 
 	if testErr != nil {
-		response.Error = fmt.Sprintf("Connection test failed - Endpoint: %s:%d - Error: %s", instance.RDSEndpoint, instance.Port, testErr.Error())
+		response.Error = fmt.Sprintf("Connection test failed - Endpoint: %s:%d - Error: %s", instance.Endpoint, instance.Port, testErr.Error())
 	} else {
 		response.Error = ""
 	}

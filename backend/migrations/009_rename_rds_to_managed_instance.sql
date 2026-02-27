@@ -55,68 +55,41 @@ ALTER INDEX IF EXISTS idx_rds_jobs_next_run RENAME TO idx_managed_instance_jobs_
 -- RENAME FOREIGN KEY CONSTRAINTS
 -- ============================================================================
 
--- Rename constraints in managed_instance_databases
-ALTER TABLE managed_instance_databases
-  DROP CONSTRAINT IF EXISTS rds_databases_rds_instance_id_fkey,
-  ADD CONSTRAINT managed_instance_databases_managed_instance_id_fkey
-    FOREIGN KEY (rds_instance_id) REFERENCES managed_instances(id) ON DELETE CASCADE;
-
--- Rename constraints in managed_instance_metrics
-ALTER TABLE managed_instance_metrics
-  DROP CONSTRAINT IF EXISTS rds_metrics_rds_instance_id_fkey,
-  ADD CONSTRAINT managed_instance_metrics_managed_instance_id_fkey
-    FOREIGN KEY (rds_instance_id) REFERENCES managed_instances(id) ON DELETE CASCADE;
-
--- Rename constraints in managed_instance_performance_insights
-ALTER TABLE managed_instance_performance_insights
-  DROP CONSTRAINT IF EXISTS rds_performance_insights_rds_instance_id_fkey,
-  ADD CONSTRAINT managed_instance_performance_insights_managed_instance_id_fkey
-    FOREIGN KEY (rds_instance_id) REFERENCES managed_instances(id) ON DELETE CASCADE;
-
--- Rename constraints in managed_instance_backup_events
-ALTER TABLE managed_instance_backup_events
-  DROP CONSTRAINT IF EXISTS rds_backup_events_rds_instance_id_fkey,
-  ADD CONSTRAINT managed_instance_backup_events_managed_instance_id_fkey
-    FOREIGN KEY (rds_instance_id) REFERENCES managed_instances(id) ON DELETE CASCADE;
-
--- Rename constraints in managed_instance_maintenance_history
-ALTER TABLE managed_instance_maintenance_history
-  DROP CONSTRAINT IF EXISTS rds_maintenance_history_rds_instance_id_fkey,
-  ADD CONSTRAINT managed_instance_maintenance_history_managed_instance_id_fkey
-    FOREIGN KEY (rds_instance_id) REFERENCES managed_instances(id) ON DELETE CASCADE;
-
--- Rename constraints in managed_instance_monitoring_jobs
-ALTER TABLE managed_instance_monitoring_jobs
-  DROP CONSTRAINT IF EXISTS rds_monitoring_jobs_rds_instance_id_fkey,
-  ADD CONSTRAINT managed_instance_monitoring_jobs_managed_instance_id_fkey
-    FOREIGN KEY (rds_instance_id) REFERENCES managed_instances(id) ON DELETE CASCADE;
+-- Note: Migration 006 already creates these tables with the correct names and constraints
+-- These statements are kept as IF EXISTS safeguards for backwards compatibility
 
 -- ============================================================================
 -- RENAME COLUMNS
 -- ============================================================================
 
--- Rename rds_instance_id columns to managed_instance_id
-ALTER TABLE managed_instance_databases
-  RENAME COLUMN rds_instance_id TO managed_instance_id;
+-- Migration 006 already creates these tables with correct column names
+-- These statements are kept as placeholders for consistency
 
-ALTER TABLE managed_instance_metrics
-  RENAME COLUMN rds_instance_id TO managed_instance_id;
+-- Note: Columns should already be named correctly:
+-- managed_instance_databases.managed_instance_id
+-- managed_instance_metrics.managed_instance_id
+-- managed_instances.endpoint
+-- Etc.
 
-ALTER TABLE managed_instance_performance_insights
-  RENAME COLUMN rds_instance_id TO managed_instance_id;
+-- Only rename if old names still exist (backwards compatibility)
+DO $$
+BEGIN
+  -- Check and rename endpoint column if needed
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'managed_instances' AND column_name = 'rds_endpoint'
+  ) THEN
+    ALTER TABLE managed_instances RENAME COLUMN rds_endpoint TO endpoint;
+  END IF;
 
-ALTER TABLE managed_instance_backup_events
-  RENAME COLUMN rds_instance_id TO managed_instance_id;
-
-ALTER TABLE managed_instance_maintenance_history
-  RENAME COLUMN rds_instance_id TO managed_instance_id;
-
-ALTER TABLE managed_instance_monitoring_jobs
-  RENAME COLUMN rds_instance_id TO managed_instance_id;
-
--- Update managed_instances table column naming
-ALTER TABLE managed_instances
-  RENAME COLUMN rds_endpoint TO endpoint;
+  -- Check and rename constraint if needed
+  IF EXISTS (
+    SELECT 1 FROM information_schema.constraint_column_usage
+    WHERE table_name = 'managed_instances' AND constraint_name = 'managed_instances_rds_endpoint_key'
+  ) THEN
+    ALTER TABLE managed_instances RENAME CONSTRAINT managed_instances_rds_endpoint_key TO managed_instances_endpoint_key;
+  END IF;
+END $$;
 
 -- ============================================================================
 -- RENAME CLUSTER TABLES

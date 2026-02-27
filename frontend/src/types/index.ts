@@ -1,10 +1,16 @@
 export interface Collector {
   id: string
+  name: string
   hostname: string
+  version: string
   status: 'active' | 'inactive' | 'error'
   created_at: string
-  last_heartbeat?: string
-  metrics_count?: number
+  updated_at: string
+  last_seen?: string
+  metrics_count_total?: number
+  metrics_count_24h?: number
+  config_version?: number
+  health_check_interval?: number
   uptime?: number
 }
 

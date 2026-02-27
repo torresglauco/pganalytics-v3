@@ -60,6 +60,7 @@ services:
       TLS_KEY: "/etc/pganalytics/tls/server.key"
       LOG_LEVEL: "debug"
       PORT: "8080"
+      REGISTRATION_SECRET: "demo-registration-secret-change-in-production"
     ports:
       - "8080:8080"
     depends_on:
@@ -98,6 +99,9 @@ services:
       POSTGRES_DATABASES: "postgres,pganalytics"
       COLLECTION_INTERVAL: "60"
       LOG_LEVEL: "debug"
+      # Collector self-registration
+      AUTO_REGISTER: "true"
+      REGISTRATION_SECRET: "demo-registration-secret-change-in-production"
     depends_on:
       postgres:
         condition: service_healthy

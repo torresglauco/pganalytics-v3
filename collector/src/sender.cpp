@@ -457,7 +457,8 @@ std::vector<uint8_t> Sender::compressWithZstd(const std::vector<uint8_t>& data) 
 bool Sender::registerCollector(
     const std::string& registrationSecret,
     const std::string& collectorName,
-    std::string& authToken
+    std::string& authToken,
+    std::string& collectorId
 ) {
     // Initialize CURL
     CURL* curl = curl_easy_init();
@@ -519,32 +520,75 @@ bool Sender::registerCollector(
     if (httpCode == 200 || httpCode == 201) {
         // Parse response to extract auth token
         try {
+            std::cout << "DEBUG: Raw response data: " << responseData << std::endl;
+
             json response = json::parse(responseData);
-            if (response.contains("token")) {
-                authToken = response["token"].get<std::string>();
 
-                // Extract expiration if available
-                if (response.contains("expires_at")) {
-                    long expiresAt = response["expires_at"].get<long>();
-                    setAuthToken(authToken, expiresAt);
-                } else {
-                    // Default to 24 hours
-                    time_t now = std::time(nullptr);
-                    setAuthToken(authToken, now + 86400);
+            std::cout << "DEBUG: Response parsed successfully" << std::endl;
+            std::cout << "DEBUG: Response keys: ";
+            if (response.is_object()) {
+                for (auto it = response.begin(); it != response.end(); ++it) {
+                    std::cout << it.key() << " ";
                 }
+            }
+            std::cout << std::endl;
 
-                std::cout << "Collector registered successfully" << std::endl;
-                curl_slist_free_all(headers);
-                curl_easy_cleanup(curl);
-                return true;
-            } else {
-                std::cerr << "Registration response missing token field" << std::endl;
+            // Check if token field exists
+            if (!response.is_object()) {
+                std::cerr << "Registration response is not a JSON object" << std::endl;
+                std::cerr << "Response type: " << response.type_name() << std::endl;
                 curl_slist_free_all(headers);
                 curl_easy_cleanup(curl);
                 return false;
             }
+
+            if (!response.contains("token")) {
+                std::cerr << "Registration response missing token field" << std::endl;
+                std::cerr << "Raw response: " << responseData << std::endl;
+                curl_slist_free_all(headers);
+                curl_easy_cleanup(curl);
+                return false;
+            }
+
+            // Safely extract token
+            try {
+                authToken = response["token"].get<std::string>();
+            } catch (const std::exception& e) {
+                std::cerr << "Failed to extract token from response: " << e.what() << std::endl;
+                std::cerr << "Token field type: " << response["token"].type_name() << std::endl;
+                curl_slist_free_all(headers);
+                curl_easy_cleanup(curl);
+                return false;
+            }
+
+            if (authToken.empty()) {
+                std::cerr << "Token field is empty" << std::endl;
+                curl_slist_free_all(headers);
+                curl_easy_cleanup(curl);
+                return false;
+            }
+
+            // Extract collector_id if available
+            if (response.contains("collector_id")) {
+                try {
+                    collectorId = response["collector_id"].get<std::string>();
+                    std::cout << "Collector ID: " << collectorId << std::endl;
+                } catch (const std::exception& e) {
+                    std::cerr << "Failed to extract collector_id: " << e.what() << std::endl;
+                }
+            }
+
+            // Set token with 24-hour expiration
+            time_t now = std::time(nullptr);
+            setAuthToken(authToken, now + 86400);
+
+            std::cout << "Collector registered successfully" << std::endl;
+            curl_slist_free_all(headers);
+            curl_easy_cleanup(curl);
+            return true;
         } catch (const std::exception& e) {
             std::cerr << "Failed to parse registration response: " << e.what() << std::endl;
+            std::cerr << "Raw response: " << responseData << std::endl;
             curl_slist_free_all(headers);
             curl_easy_cleanup(curl);
             return false;

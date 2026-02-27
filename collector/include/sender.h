@@ -106,12 +106,14 @@ public:
      * @param registrationSecret Secret token for registration
      * @param collectorName Human-readable name for the collector
      * @param authToken Output: JWT token received from backend
+     * @param collectorId Output: Collector UUID assigned by backend
      * @return true if successful, false otherwise
      */
     bool registerCollector(
         const std::string& registrationSecret,
         const std::string& collectorName,
-        std::string& authToken
+        std::string& authToken,
+        std::string& collectorId
     );
 
 private:

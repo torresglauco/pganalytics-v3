@@ -234,6 +234,27 @@ func (s *Server) handleUpdateUser(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
 
+	// Get user to check if it's the default admin
+	userIDInt, err := strconv.Atoi(userID)
+	if err == nil {
+		userToUpdate, err := s.postgres.GetUserByID(ctx, userIDInt)
+		if err == nil && userToUpdate.Username == "admin" {
+			// Prevent changing role or disabling the default admin
+			if _, hasRole := req["role"]; hasRole {
+				errResp := apperrors.Forbidden("Cannot change role of default admin user", "")
+				c.JSON(errResp.StatusCode, errResp)
+				return
+			}
+			if isActive, hasIsActive := req["is_active"]; hasIsActive {
+				if boolVal, ok := isActive.(bool); ok && !boolVal {
+					errResp := apperrors.Forbidden("Cannot disable default admin user", "")
+					c.JSON(errResp.StatusCode, errResp)
+					return
+				}
+			}
+		}
+	}
+
 	updatedUser, err := s.postgres.UpdateUser(ctx, userID, req)
 	if err != nil {
 		s.logger.Error("Failed to update user", zap.String("user_id", userID), zap.Error(err))
@@ -359,17 +380,10 @@ func (s *Server) handleResetUserPassword(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
 
-	// Get user to check if it's the default admin
+	// Get user to check if it exists
 	userToReset, err := s.postgres.GetUserByID(ctx, userID)
 	if err != nil {
 		errResp := apperrors.NotFound("User not found", "")
-		c.JSON(errResp.StatusCode, errResp)
-		return
-	}
-
-	// Prevent reset of default admin
-	if userToReset.Username == "admin" {
-		errResp := apperrors.Forbidden("Cannot reset password for default admin user", "")
 		c.JSON(errResp.StatusCode, errResp)
 		return
 	}

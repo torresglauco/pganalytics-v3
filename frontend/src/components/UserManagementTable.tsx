@@ -59,6 +59,10 @@ export const UserManagementTable: React.FC<UserManagementTableProps> = ({ onSucc
     return user.username === 'admin'
   }
 
+  const canModifyUser = (user: User): boolean => {
+    return !isDefaultAdmin(user)
+  }
+
   const deleteUser = async (userId: number, username: string) => {
     if (!confirm(`Are you sure you want to delete user "${username}"?`)) {
       return
@@ -305,9 +309,13 @@ export const UserManagementTable: React.FC<UserManagementTableProps> = ({ onSucc
                   {/* Toggle Status */}
                   <button
                     onClick={() => toggleUserStatus(user)}
-                    disabled={togglingStatus === user.id}
-                    className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded transition disabled:opacity-50"
-                    title={user.is_active ? 'Disable user' : 'Enable user'}
+                    disabled={isDefaultAdmin(user) || togglingStatus === user.id}
+                    className={`p-2 rounded transition ${
+                      isDefaultAdmin(user)
+                        ? 'text-gray-300 cursor-not-allowed'
+                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                    }`}
+                    title={isDefaultAdmin(user) ? 'Cannot disable default admin' : (user.is_active ? 'Disable user' : 'Enable user')}
                   >
                     {user.is_active ? (
                       <Lock size={18} />
@@ -319,13 +327,9 @@ export const UserManagementTable: React.FC<UserManagementTableProps> = ({ onSucc
                   {/* Reset Password */}
                   <button
                     onClick={() => resetPassword(user.id, user.username)}
-                    disabled={isDefaultAdmin(user) || resettingPassword === user.id}
-                    className={`p-2 rounded transition ${
-                      isDefaultAdmin(user)
-                        ? 'text-gray-300 cursor-not-allowed'
-                        : 'text-orange-600 hover:text-orange-900 hover:bg-orange-100'
-                    }`}
-                    title={isDefaultAdmin(user) ? 'Cannot reset default admin password' : 'Reset password'}
+                    disabled={resettingPassword === user.id}
+                    className="p-2 text-orange-600 hover:text-orange-900 hover:bg-orange-100 rounded transition disabled:opacity-50"
+                    title="Reset password"
                   >
                     <RotateCcw size={18} />
                   </button>
@@ -333,9 +337,13 @@ export const UserManagementTable: React.FC<UserManagementTableProps> = ({ onSucc
                   {/* Change Role */}
                   <button
                     onClick={() => changeRole(user.id, user.username, user.role === 'admin' ? 'user' : 'admin')}
-                    disabled={changingRole === user.id}
-                    className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded transition disabled:opacity-50"
-                    title={user.role === 'admin' ? 'Make User' : 'Make Administrator'}
+                    disabled={isDefaultAdmin(user) || changingRole === user.id}
+                    className={`p-2 rounded transition ${
+                      isDefaultAdmin(user)
+                        ? 'text-gray-300 cursor-not-allowed'
+                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                    }`}
+                    title={isDefaultAdmin(user) ? 'Cannot change default admin role' : (user.role === 'admin' ? 'Make User' : 'Make Administrator')}
                   >
                     {user.role === 'admin' ? (
                       <User size={18} />
@@ -365,12 +373,20 @@ export const UserManagementTable: React.FC<UserManagementTableProps> = ({ onSucc
       </table>
 
       {users.some(u => isDefaultAdmin(u)) && (
-        <div className="mt-4 flex gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">
+        <div className="mt-4 flex gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
           <AlertCircle size={18} className="flex-shrink-0 mt-0.5" />
-          <p>
-            The default admin user (username: <strong>admin</strong>) cannot be deleted for security reasons.
-            You can change its role or disable it, but cannot remove it.
-          </p>
+          <div>
+            <p className="font-medium">Default Admin Account Protection</p>
+            <p>
+              The default admin user (username: <strong>admin</strong>) is protected for security reasons:
+            </p>
+            <ul className="list-disc list-inside mt-1">
+              <li>Cannot be deleted</li>
+              <li>Cannot be disabled</li>
+              <li>Cannot have role changed</li>
+              <li>Can have password reset (only)</li>
+            </ul>
+          </div>
         </div>
       )}
       </div>

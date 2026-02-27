@@ -785,8 +785,40 @@ func (s *Server) handleListCollectors(c *gin.Context) {
 // @Failure 404 {object} models.ErrorResponse
 // @Router /api/v1/collectors/{id} [get]
 func (s *Server) handleGetCollector(c *gin.Context) {
-	// TODO: Implement get collector
-	c.JSON(http.StatusNotImplemented, gin.H{"message": "Not implemented yet"})
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 30*time.Second)
+	defer cancel()
+
+	collectorID := c.Param("id")
+	if collectorID == "" {
+		errResp := apperrors.BadRequest("Invalid collector ID", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	s.logger.Debug("fetching collector", zap.String("collector_id", collectorID))
+
+	// Get collector from database
+	collector, err := s.postgres.GetCollectorByID(ctx, collectorID)
+	if err != nil {
+		s.logger.Error("failed to get collector", zap.Error(err))
+		if _, ok := err.(*apperrors.AppError); ok {
+			appErr := err.(*apperrors.AppError)
+			c.JSON(appErr.StatusCode, appErr)
+		} else {
+			c.JSON(http.StatusInternalServerError, apperrors.InternalServerError("Failed to get collector", ""))
+		}
+		return
+	}
+
+	if collector == nil {
+		errResp := apperrors.NotFound("Collector not found", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	s.logger.Debug("collector fetched successfully", zap.String("collector_id", collectorID))
+
+	c.JSON(http.StatusOK, collector)
 }
 
 // @Summary Delete Collector

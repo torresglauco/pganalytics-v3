@@ -117,6 +117,9 @@ services:
     container_name: pganalytics-frontend
     environment:
       VITE_API_BASE_URL: "http://backend:8080"
+      VITE_API_BACKEND_HOST: "backend"
+      VITE_API_BACKEND_PORT: "8080"
+      VITE_API_BACKEND_PROTOCOL: "http"
     ports:
       - "4000:3000"
     depends_on:

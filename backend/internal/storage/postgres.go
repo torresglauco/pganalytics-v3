@@ -416,6 +416,32 @@ func (p *PostgresDB) ListCollectors(ctx context.Context, offset, limit int) ([]*
 	return collectors, nil
 }
 
+// ListCollectorsWithTotal lists collectors with pagination and returns total count
+func (p *PostgresDB) ListCollectorsWithTotal(ctx context.Context, page, pageSize int) ([]*models.Collector, int, error) {
+	// Get total count
+	var total int
+	countErr := p.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM pganalytics.collectors`).Scan(&total)
+	if countErr != nil {
+		return nil, 0, apperrors.DatabaseError("count collectors", countErr.Error())
+	}
+
+	// Calculate offset
+	offset := (page - 1) * pageSize
+
+	// Get collectors for this page
+	collectors, err := p.ListCollectors(ctx, offset, pageSize)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// Return collectors (could be empty slice if query didn't find anything)
+	if collectors == nil {
+		collectors = []*models.Collector{}
+	}
+
+	return collectors, total, nil
+}
+
 // UpdateCollectorStatus updates the status of a collector
 func (p *PostgresDB) UpdateCollectorStatus(ctx context.Context, collectorID, status string) error {
 	_, err := p.db.ExecContext(

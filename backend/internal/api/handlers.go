@@ -1084,6 +1084,18 @@ func (s *Server) handleMetricsPush(c *gin.Context) {
 
 	processingTimeMs := time.Since(startTime).Milliseconds()
 
+	// Update collector's last_seen timestamp and metrics count
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	err := s.postgres.UpdateCollectorMetricsCount(ctx, req.CollectorID, len(req.Metrics))
+	if err != nil {
+		s.logger.Warn("Failed to update collector metrics",
+			zap.String("collector_id", req.CollectorID),
+			zap.Error(err))
+		// Don't fail the request, metrics are still stored
+	}
+
 	resp := &models.MetricsPushResponse{
 		Status:             "success",
 		CollectorID:        req.CollectorID,

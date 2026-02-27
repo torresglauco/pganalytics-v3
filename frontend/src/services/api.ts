@@ -154,6 +154,14 @@ class ApiClient {
     return user ? JSON.parse(user) : null
   }
 
+  getToken(): string | null {
+    return localStorage.getItem('auth_token')
+  }
+
+  getBaseURL(): string {
+    return this.client.defaults.baseURL || '/api/v1'
+  }
+
   isAuthenticated(): boolean {
     return !!localStorage.getItem('auth_token')
   }

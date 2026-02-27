@@ -102,6 +102,9 @@ func (s *Server) RegisterRoutes(router *gin.Engine) {
 		users.Use(s.AuthMiddleware())
 		{
 			users.POST("", s.handleCreateUser)
+			users.GET("", s.handleListUsers)
+			users.PUT("/:id", s.handleUpdateUser)
+			users.DELETE("/:id", s.handleDeleteUser)
 		}
 
 		// Collector routes will be defined below

@@ -262,13 +262,13 @@ export const CreateUserForm: React.FC<CreateUserFormProps> = ({ onSuccess, onErr
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             disabled={isLoading}
           >
-            <option value="user">Regular User</option>
+            <option value="user">User</option>
             <option value="admin">Administrator</option>
           </select>
           <p className="text-xs text-gray-500 mt-1">
-            • <strong>Regular User:</strong> Can view collectors and data
+            • <strong>User:</strong> Can only view collectors and data
             <br />
-            • <strong>Administrator:</strong> Can manage users and all resources
+            • <strong>Administrator:</strong> Can manage users, collectors, and all resources
           </p>
         </div>
 

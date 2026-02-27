@@ -1,0 +1,288 @@
+import React, { useState, useEffect } from 'react'
+import { Trash2, Lock, Unlock, Shield, User, AlertCircle } from 'lucide-react'
+import { apiClient } from '../services/api'
+
+interface User {
+  id: number
+  username: string
+  email: string
+  full_name: string
+  role: 'admin' | 'user'
+  is_active: boolean
+  created_at: string
+}
+
+interface UserManagementTableProps {
+  onSuccess: (message: string) => void
+  onError: (message: string) => void
+}
+
+export const UserManagementTable: React.FC<UserManagementTableProps> = ({ onSuccess, onError }) => {
+  const [users, setUsers] = useState<User[]>([])
+  const [loading, setLoading] = useState(true)
+  const [deleting, setDeleting] = useState<number | null>(null)
+  const [togglingStatus, setTogglingStatus] = useState<number | null>(null)
+  const [changingRole, setChangingRole] = useState<number | null>(null)
+
+  useEffect(() => {
+    loadUsers()
+  }, [])
+
+  const loadUsers = async () => {
+    setLoading(true)
+    try {
+      const response = await fetch('/api/v1/users', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to load users')
+      }
+
+      const data = await response.json()
+      setUsers(Array.isArray(data) ? data : data.users || [])
+    } catch (error) {
+      onError(error instanceof Error ? error.message : 'Failed to load users')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const isDefaultAdmin = (user: User): boolean => {
+    return user.username === 'admin'
+  }
+
+  const deleteUser = async (userId: number, username: string) => {
+    if (!confirm(`Are you sure you want to delete user "${username}"?`)) {
+      return
+    }
+
+    setDeleting(userId)
+    try {
+      const response = await fetch(`/api/v1/users/${userId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+        },
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.message || 'Failed to delete user')
+      }
+
+      setUsers(users.filter(u => u.id !== userId))
+      onSuccess(`User "${username}" deleted successfully`)
+    } catch (error) {
+      onError(error instanceof Error ? error.message : 'Failed to delete user')
+    } finally {
+      setDeleting(null)
+    }
+  }
+
+  const toggleUserStatus = async (user: User) => {
+    setTogglingStatus(user.id)
+    try {
+      const response = await fetch(`/api/v1/users/${user.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+        },
+        body: JSON.stringify({
+          is_active: !user.is_active,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.message || 'Failed to update user status')
+      }
+
+      const updatedUser = await response.json()
+      setUsers(users.map(u => (u.id === user.id ? updatedUser : u)))
+      const action = updatedUser.is_active ? 'enabled' : 'disabled'
+      onSuccess(`User "${user.username}" ${action} successfully`)
+    } catch (error) {
+      onError(error instanceof Error ? error.message : 'Failed to update user status')
+    } finally {
+      setTogglingStatus(null)
+    }
+  }
+
+  const changeRole = async (userId: number, username: string, newRole: 'admin' | 'user') => {
+    if (!confirm(`Change "${username}" role to ${newRole === 'admin' ? 'Administrator' : 'User'}?`)) {
+      return
+    }
+
+    setChangingRole(userId)
+    try {
+      const response = await fetch(`/api/v1/users/${userId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+        },
+        body: JSON.stringify({
+          role: newRole,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.message || 'Failed to change user role')
+      }
+
+      const updatedUser = await response.json()
+      setUsers(users.map(u => (u.id === userId ? updatedUser : u)))
+      onSuccess(`User "${username}" role changed to ${newRole === 'admin' ? 'Administrator' : 'User'}`)
+    } catch (error) {
+      onError(error instanceof Error ? error.message : 'Failed to change user role')
+    } finally {
+      setChangingRole(null)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+          <p className="text-gray-600">Loading users...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (users.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-gray-600">No users found</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="min-w-full divide-y divide-gray-200 border border-gray-200 rounded-lg">
+        <thead className="bg-gray-50">
+          <tr>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+              Username
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+              Email
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+              Full Name
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+              Role
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+              Status
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+              Actions
+            </th>
+          </tr>
+        </thead>
+        <tbody className="bg-white divide-y divide-gray-200">
+          {users.map((user) => (
+            <tr key={user.id} className="hover:bg-gray-50">
+              <td className="px-6 py-4 whitespace-nowrap">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium text-gray-900">{user.username}</span>
+                  {isDefaultAdmin(user) && (
+                    <Shield size={16} className="text-yellow-600" title="Default Admin" />
+                  )}
+                </div>
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                {user.email}
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                {user.full_name || '-'}
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap">
+                <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                  user.role === 'admin'
+                    ? 'bg-purple-100 text-purple-800'
+                    : 'bg-blue-100 text-blue-800'
+                }`}>
+                  {user.role === 'admin' ? 'Administrator' : 'User'}
+                </span>
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap">
+                <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                  user.is_active
+                    ? 'bg-green-100 text-green-800'
+                    : 'bg-red-100 text-red-800'
+                }`}>
+                  {user.is_active ? 'Active' : 'Disabled'}
+                </span>
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm">
+                <div className="flex gap-2">
+                  {/* Toggle Status */}
+                  <button
+                    onClick={() => toggleUserStatus(user)}
+                    disabled={togglingStatus === user.id}
+                    className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded transition disabled:opacity-50"
+                    title={user.is_active ? 'Disable user' : 'Enable user'}
+                  >
+                    {user.is_active ? (
+                      <Lock size={18} />
+                    ) : (
+                      <LockOpen size={18} />
+                    )}
+                  </button>
+
+                  {/* Change Role */}
+                  <button
+                    onClick={() => changeRole(user.id, user.username, user.role === 'admin' ? 'user' : 'admin')}
+                    disabled={changingRole === user.id}
+                    className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded transition disabled:opacity-50"
+                    title={user.role === 'admin' ? 'Make User' : 'Make Administrator'}
+                  >
+                    {user.role === 'admin' ? (
+                      <User size={18} />
+                    ) : (
+                      <Shield size={18} />
+                    )}
+                  </button>
+
+                  {/* Delete User */}
+                  <button
+                    onClick={() => deleteUser(user.id, user.username)}
+                    disabled={isDefaultAdmin(user) || deleting === user.id}
+                    className={`p-2 rounded transition ${
+                      isDefaultAdmin(user)
+                        ? 'text-gray-300 cursor-not-allowed'
+                        : 'text-red-600 hover:text-red-900 hover:bg-red-100'
+                    }`}
+                    title={isDefaultAdmin(user) ? 'Cannot delete default admin' : 'Delete user'}
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      {users.some(u => isDefaultAdmin(u)) && (
+        <div className="mt-4 flex gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">
+          <AlertCircle size={18} className="flex-shrink-0 mt-0.5" />
+          <p>
+            The default admin user (username: <strong>admin</strong>) cannot be deleted for security reasons.
+            You can change its role or disable it, but cannot remove it.
+          </p>
+        </div>
+      )}
+    </div>
+  )
+}

@@ -147,6 +147,178 @@ func (s *Server) handleCreateUser(c *gin.Context) {
 	c.JSON(http.StatusCreated, newUser)
 }
 
+// @Summary List Users
+// @Description Get all users (admin only)
+// @Tags Administration
+// @Security Bearer
+// @Produce json
+// @Success 200 {array} models.User
+// @Failure 403 {object} apperrors.AppError
+// @Router /api/v1/users [get]
+func (s *Server) handleListUsers(c *gin.Context) {
+	// Get current user from context
+	currentUser, exists := c.Get("user")
+	if !exists {
+		errResp := apperrors.Unauthorized("Authentication required", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	user := currentUser.(*models.User)
+
+	// Check if user is admin
+	if user.Role != "admin" {
+		errResp := apperrors.Forbidden("Only admins can list users", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	users, err := s.postgres.ListUsers(ctx)
+	if err != nil {
+		s.logger.Error("Failed to list users", zap.Error(err))
+		errResp := apperrors.ToAppError(err)
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	if users == nil {
+		users = make([]*models.User, 0)
+	}
+
+	c.JSON(http.StatusOK, users)
+}
+
+// @Summary Update User
+// @Description Update user (admin only)
+// @Tags Administration
+// @Security Bearer
+// @Accept json
+// @Produce json
+// @Param id path int true "User ID"
+// @Param request body gin.H true "Update data (role, is_active)"
+// @Success 200 {object} models.User
+// @Failure 403 {object} apperrors.AppError
+// @Failure 404 {object} apperrors.AppError
+// @Router /api/v1/users/{id} [put]
+func (s *Server) handleUpdateUser(c *gin.Context) {
+	// Get current user from context
+	currentUser, exists := c.Get("user")
+	if !exists {
+		errResp := apperrors.Unauthorized("Authentication required", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	user := currentUser.(*models.User)
+
+	// Check if user is admin
+	if user.Role != "admin" {
+		errResp := apperrors.Forbidden("Only admins can update users", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	userID := c.Param("id")
+	var req map[string]interface{}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		s.logger.Error("Failed to bind update request", zap.Error(err))
+		errResp := apperrors.BadRequest("Invalid request", err.Error())
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	updatedUser, err := s.postgres.UpdateUser(ctx, userID, req)
+	if err != nil {
+		s.logger.Error("Failed to update user", zap.String("user_id", userID), zap.Error(err))
+		errResp := apperrors.ToAppError(err)
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	s.logger.Info("User updated by admin",
+		zap.String("user_id", userID),
+		zap.String("updated_by", user.Username),
+	)
+
+	c.JSON(http.StatusOK, updatedUser)
+}
+
+// @Summary Delete User
+// @Description Delete user (admin only, cannot delete default admin)
+// @Tags Administration
+// @Security Bearer
+// @Param id path int true "User ID"
+// @Success 204 {object} nil
+// @Failure 403 {object} apperrors.AppError
+// @Failure 404 {object} apperrors.AppError
+// @Router /api/v1/users/{id} [delete]
+func (s *Server) handleDeleteUser(c *gin.Context) {
+	// Get current user from context
+	currentUser, exists := c.Get("user")
+	if !exists {
+		errResp := apperrors.Unauthorized("Authentication required", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	user := currentUser.(*models.User)
+
+	// Check if user is admin
+	if user.Role != "admin" {
+		errResp := apperrors.Forbidden("Only admins can delete users", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	userIDParam := c.Param("id")
+	userID, err := strconv.Atoi(userIDParam)
+	if err != nil {
+		errResp := apperrors.BadRequest("Invalid user ID", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	// Get user to check if it's the default admin
+	userToDelete, err := s.postgres.GetUserByID(ctx, userID)
+	if err != nil {
+		errResp := apperrors.NotFound("User not found", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	// Prevent deletion of default admin
+	if userToDelete.Username == "admin" {
+		errResp := apperrors.Forbidden("Cannot delete default admin user", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	// Delete the user
+	userIDStr := strconv.Itoa(userID)
+	if deleteErr := s.postgres.DeleteUser(ctx, userIDStr); deleteErr != nil {
+		s.logger.Error("Failed to delete user", zap.String("user_id", userIDStr), zap.Error(deleteErr))
+		errResp := apperrors.ToAppError(deleteErr)
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	s.logger.Info("User deleted by admin",
+		zap.String("user_id", userIDStr),
+		zap.String("deleted_by", user.Username),
+	)
+
+	c.JSON(http.StatusNoContent, nil)
+}
+
 func (s *Server) handleLogin(c *gin.Context) {
 	var req models.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {

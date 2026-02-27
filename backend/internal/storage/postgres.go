@@ -153,6 +153,117 @@ func (p *PostgresDB) CreateUserWithRole(ctx context.Context, username, email, pa
 	return user, nil
 }
 
+// ListUsers retrieves all users from the database
+func (p *PostgresDB) ListUsers(ctx context.Context) ([]*models.User, error) {
+	rows, err := p.db.QueryContext(
+		ctx,
+		`SELECT id, username, email, password_hash, full_name, role, is_active, last_login, created_at, updated_at
+		 FROM pganalytics.users
+		 ORDER BY created_at DESC`,
+	)
+
+	if err != nil {
+		return nil, apperrors.DatabaseError("list users", err.Error())
+	}
+	defer rows.Close()
+
+	var users []*models.User
+	for rows.Next() {
+		user := &models.User{}
+		err := rows.Scan(
+			&user.ID, &user.Username, &user.Email, &user.PasswordHash, &user.FullName,
+			&user.Role, &user.IsActive, &user.LastLogin, &user.CreatedAt, &user.UpdatedAt,
+		)
+		if err != nil {
+			return nil, apperrors.DatabaseError("scan user", err.Error())
+		}
+		users = append(users, user)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, apperrors.DatabaseError("list users", err.Error())
+	}
+
+	return users, nil
+}
+
+// UpdateUser updates user information
+func (p *PostgresDB) UpdateUser(ctx context.Context, userID string, updates map[string]interface{}) (*models.User, error) {
+	user := &models.User{}
+
+	// Build dynamic UPDATE query
+	setClauses := []string{}
+	args := []interface{}{}
+	argIndex := 1
+
+	if role, ok := updates["role"]; ok {
+		setClauses = append(setClauses, fmt.Sprintf("role = $%d", argIndex))
+		args = append(args, role)
+		argIndex++
+	}
+
+	if isActive, ok := updates["is_active"]; ok {
+		setClauses = append(setClauses, fmt.Sprintf("is_active = $%d", argIndex))
+		args = append(args, isActive)
+		argIndex++
+	}
+
+	if len(setClauses) == 0 {
+		return nil, apperrors.BadRequest("No fields to update", "")
+	}
+
+	// Add WHERE clause
+	setClauses = append(setClauses, "updated_at = CURRENT_TIMESTAMP")
+	args = append(args, userID)
+
+	query := fmt.Sprintf(
+		`UPDATE pganalytics.users
+		 SET %s
+		 WHERE id::text = $%d
+		 RETURNING id, username, email, password_hash, full_name, role, is_active, last_login, created_at, updated_at`,
+		strings.Join(setClauses[:len(setClauses)-1], ", "),
+		argIndex,
+	)
+
+	err := p.db.QueryRowContext(ctx, query, args...).Scan(
+		&user.ID, &user.Username, &user.Email, &user.PasswordHash, &user.FullName,
+		&user.Role, &user.IsActive, &user.LastLogin, &user.CreatedAt, &user.UpdatedAt,
+	)
+
+	if err == sql.ErrNoRows {
+		return nil, apperrors.NotFound("User not found", "")
+	}
+	if err != nil {
+		return nil, apperrors.DatabaseError("update user", err.Error())
+	}
+
+	return user, nil
+}
+
+// DeleteUser deletes a user from the database
+func (p *PostgresDB) DeleteUser(ctx context.Context, userID string) error {
+	result, err := p.db.ExecContext(
+		ctx,
+		`DELETE FROM pganalytics.users WHERE id::text = $1`,
+		userID,
+	)
+
+	if err != nil {
+		return apperrors.DatabaseError("delete user", err.Error())
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return apperrors.DatabaseError("delete user", err.Error())
+	}
+
+	if rowsAffected == 0 {
+		return apperrors.NotFound("User not found", "")
+	}
+
+	return nil
+}
+
 // ============================================================================
 // COLLECTOR OPERATIONS
 // ============================================================================

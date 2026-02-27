@@ -302,6 +302,15 @@ type SignupRequest struct {
 	FullName string `json:"full_name" binding:"max=255"`
 }
 
+// CreateUserRequest represents an admin request to create a new user
+type CreateUserRequest struct {
+	Username string `json:"username" binding:"required,min=3,max=255"`
+	Email    string `json:"email" binding:"required,email"`
+	Password string `json:"password" binding:"required,min=8"`
+	FullName string `json:"full_name" binding:"max=255"`
+	Role     string `json:"role" binding:"required,oneof=admin user viewer"`
+}
+
 // LoginResponse represents a successful login response
 type LoginResponse struct {
 	Token        string    `json:"token"`

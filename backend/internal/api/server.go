@@ -92,10 +92,15 @@ func (s *Server) RegisterRoutes(router *gin.Engine) {
 		// Authentication routes (no auth required)
 		auth := api.Group("/auth")
 		{
-			auth.POST("/signup", s.handleSignup)
 			auth.POST("/login", s.handleLogin)
 			auth.POST("/logout", s.handleLogout)
 			auth.POST("/refresh", s.handleRefreshToken)
+		}
+
+		// User Management routes (admin only)
+		users := api.Group("/users")
+		{
+			users.POST("", s.AuthMiddleware(), s.handleCreateUser)
 		}
 
 		// Collector routes will be defined below

@@ -34,12 +34,28 @@ func (s *Server) AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
+		// Get user from database to include all user data
+		ctx := c.Request.Context()
+		user, err := s.postgres.GetUserByID(ctx, claims.UserID)
+		if err != nil {
+			s.logger.Error("Failed to get user from database",
+				zap.Int("user_id", claims.UserID),
+				zap.Error(err),
+			)
+			errResp := apperrors.Unauthorized("User not found", "")
+			c.JSON(errResp.StatusCode, errResp)
+			c.Abort()
+			return
+		}
+
+
 		// Store user info in context for handlers to use
 		c.Set("user_id", claims.UserID)
 		c.Set("username", claims.Username)
 		c.Set("role", claims.Role)
 		c.Set("email", claims.Email)
 		c.Set("claims", claims)
+		c.Set("user", user) // Store complete user object
 
 		s.logger.Debug("User authenticated",
 			zap.Int("user_id", claims.UserID),

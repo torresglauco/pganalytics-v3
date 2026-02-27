@@ -2,8 +2,8 @@ package api
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
-	"net"
 	"strconv"
 	"time"
 
@@ -11,6 +11,7 @@ import (
 	"github.com/torresglauco/pganalytics-v3/backend/pkg/models"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
+	_ "github.com/lib/pq"
 )
 
 // ============================================================================
@@ -361,8 +362,75 @@ func (s *Server) handleDeleteRDSInstance(c *gin.Context) {
 	c.JSON(204, nil)
 }
 
-// @Summary Test RDS Connection
-// @Description Test connection to an RDS instance
+// @Summary Test RDS Connection (Direct)
+// @Description Test connection to an RDS instance without creating it (for forms)
+// @Tags RDS Management
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param request body models.TestRDSConnectionRequest true "Connection test parameters"
+// @Success 200 {object} models.TestConnectionResponse
+// @Failure 400 {object} apperrors.AppError
+// @Failure 401 {object} apperrors.AppError
+// @Router /api/v1/rds-instances/test-connection-direct [post]
+func (s *Server) handleTestRDSConnectionDirect(c *gin.Context) {
+	// Get current user from context
+	_, exists := c.Get("user")
+	if !exists {
+		errResp := apperrors.Unauthorized("Authentication required", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	var req models.TestRDSConnectionRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		s.logger.Error("Failed to bind test connection request", zap.Error(err))
+		errResp := apperrors.BadRequest("Invalid request", err.Error())
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	// Validate required fields
+	if req.RDSEndpoint == "" {
+		errResp := apperrors.BadRequest("RDS endpoint is required", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+	if req.Port == 0 {
+		req.Port = 5432
+	}
+	if req.Username == "" {
+		errResp := apperrors.BadRequest("Username is required", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+	if req.Password == "" {
+		errResp := apperrors.BadRequest("Password is required", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 15*time.Second)
+	defer cancel()
+
+	// Test connection
+	testErr := testRDSConnection(ctx, req.RDSEndpoint, req.Port, req.Username, req.Password)
+
+	response := &models.TestConnectionResponse{
+		Success: testErr == nil,
+	}
+
+	if testErr != nil {
+		response.Error = fmt.Sprintf("Connection test failed - Endpoint: %s:%d - Error: %s", req.RDSEndpoint, req.Port, testErr.Error())
+	} else {
+		response.Error = ""
+	}
+
+	c.JSON(200, response)
+}
+
+// @Summary Test RDS Connection (Existing Instance)
+// @Description Test connection to an existing registered RDS instance
 // @Tags RDS Management
 // @Accept json
 // @Produce json
@@ -429,16 +497,38 @@ func (s *Server) handleTestRDSConnection(c *gin.Context) {
 
 // Helper function to test RDS connection
 func testRDSConnection(ctx context.Context, endpoint string, port int, username, password string) error {
-	// Test TCP connection to RDS instance
-	addr := fmt.Sprintf("%s:%d", endpoint, port)
-	conn, err := net.DialTimeout("tcp", addr, 5*time.Second)
-	if err != nil {
-		return fmt.Errorf("failed to connect to RDS instance: %w", err)
+	// Build PostgreSQL connection string
+	// Try with SSL require first (for RDS), fallback to disable if that fails
+	for _, sslMode := range []string{"require", "prefer", "disable"} {
+		connStr := fmt.Sprintf("host=%s port=%d user=%s password=%s sslmode=%s connect_timeout=5",
+			endpoint, port, username, password, sslMode)
+
+		// Attempt to open connection (validates credentials and connectivity)
+		db, err := sql.Open("postgres", connStr)
+		if err != nil {
+			continue
+		}
+
+		// Test the actual connection by pinging the database
+		pingCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+		pingErr := db.PingContext(pingCtx)
+		cancel()
+		db.Close()
+
+		if pingErr == nil {
+			return nil // Success!
+		}
+
+		// If it's an SSL error, try next mode
+		if sslMode == "require" && pingErr != nil {
+			continue
+		}
+
+		// For other errors on the last attempt, return the error
+		if sslMode == "disable" {
+			return fmt.Errorf("failed to connect to PostgreSQL: %w", pingErr)
+		}
 	}
-	defer conn.Close()
 
-	// TODO: Test actual PostgreSQL connection with provided credentials
-	// This would require a PostgreSQL driver and would test the actual database connection
-
-	return nil
+	return fmt.Errorf("failed to connect to PostgreSQL: all SSL modes attempted")
 }

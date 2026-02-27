@@ -118,6 +118,7 @@ func (s *Server) RegisterRoutes(router *gin.Engine) {
 			rds.GET("/:id", s.handleGetRDSInstance)
 			rds.PUT("/:id", s.handleUpdateRDSInstance)
 			rds.DELETE("/:id", s.handleDeleteRDSInstance)
+			rds.POST("/test-connection-direct", s.handleTestRDSConnectionDirect)
 			rds.POST("/:id/test-connection", s.handleTestRDSConnection)
 		}
 

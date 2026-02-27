@@ -75,8 +75,8 @@ export const CreateRDSForm: React.FC<CreateRDSFormProps> = ({ onSuccess, onError
   }
 
   const testConnection = async () => {
-    if (!formData.master_username || !formData.master_password) {
-      onError('Please enter credentials to test connection')
+    if (!formData.rds_endpoint || !formData.master_username || !formData.master_password) {
+      onError('Please enter RDS endpoint, username, and password to test connection')
       return
     }
 
@@ -90,12 +90,38 @@ export const CreateRDSForm: React.FC<CreateRDSFormProps> = ({ onSuccess, onError
         return
       }
 
-      // For now, just validate credentials are provided
-      // In a real scenario, this would test actual connectivity
-      setConnectionTested(true)
-      setConnectionError('')
+      const response = await fetch('/api/v1/rds-instances/test-connection-direct', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          rds_endpoint: formData.rds_endpoint,
+          port: formData.port,
+          username: formData.master_username,
+          password: formData.master_password,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.message || 'Connection test failed')
+      }
+
+      const data = await response.json()
+      if (data.success) {
+        setConnectionTested(true)
+        setConnectionError('')
+        onSuccess('✓ Connection successful! Credentials are valid.')
+      } else {
+        setConnectionError(data.error || 'Connection test failed')
+        onError(`Connection test failed: ${data.error || 'Unknown error'}`)
+      }
     } catch (error) {
-      setConnectionError(error instanceof Error ? error.message : 'Connection test failed')
+      const errorMsg = error instanceof Error ? error.message : 'Connection test failed'
+      setConnectionError(errorMsg)
+      onError(errorMsg)
     } finally {
       setTestingConnection(false)
     }

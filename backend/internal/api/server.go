@@ -95,6 +95,7 @@ func (s *Server) RegisterRoutes(router *gin.Engine) {
 			auth.POST("/login", s.handleLogin)
 			auth.POST("/logout", s.handleLogout)
 			auth.POST("/refresh", s.handleRefreshToken)
+			auth.POST("/change-password", s.AuthMiddleware(), s.handleChangePassword)
 		}
 
 		// User Management routes (admin only)
@@ -105,6 +106,7 @@ func (s *Server) RegisterRoutes(router *gin.Engine) {
 			users.GET("", s.handleListUsers)
 			users.PUT("/:id", s.handleUpdateUser)
 			users.DELETE("/:id", s.handleDeleteUser)
+			users.POST("/:id/reset-password", s.handleResetUserPassword)
 		}
 
 		// Collector routes will be defined below

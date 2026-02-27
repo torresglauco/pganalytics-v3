@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"net/http"
 	"strconv"
 	"time"
@@ -317,6 +318,213 @@ func (s *Server) handleDeleteUser(c *gin.Context) {
 	)
 
 	c.JSON(http.StatusNoContent, nil)
+}
+
+// @Summary Reset User Password (Admin Only)
+// @Description Reset a user's password to a temporary value (admin only)
+// @Tags Administration
+// @Security Bearer
+// @Produce json
+// @Param id path int true "User ID"
+// @Success 200 {object} models.ResetPasswordResponse
+// @Failure 403 {object} apperrors.AppError
+// @Failure 404 {object} apperrors.AppError
+// @Router /api/v1/users/{id}/reset-password [post]
+func (s *Server) handleResetUserPassword(c *gin.Context) {
+	// Get current user from context
+	currentUser, exists := c.Get("user")
+	if !exists {
+		errResp := apperrors.Unauthorized("Authentication required", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	user := currentUser.(*models.User)
+
+	// Check if user is admin
+	if user.Role != "admin" {
+		errResp := apperrors.Forbidden("Only admins can reset passwords", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	userIDParam := c.Param("id")
+	userID, err := strconv.Atoi(userIDParam)
+	if err != nil {
+		errResp := apperrors.BadRequest("Invalid user ID", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	// Get user to check if it's the default admin
+	userToReset, err := s.postgres.GetUserByID(ctx, userID)
+	if err != nil {
+		errResp := apperrors.NotFound("User not found", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	// Prevent reset of default admin
+	if userToReset.Username == "admin" {
+		errResp := apperrors.Forbidden("Cannot reset password for default admin user", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	// Generate temporary password (12 characters, mixed case + digits)
+	tempPassword := generateTemporaryPassword(12)
+
+	// Hash the temporary password
+	passwordHash, err := s.authService.PasswordManager.HashPassword(tempPassword)
+	if err != nil {
+		s.logger.Error("Failed to hash temporary password", zap.Error(err))
+		errResp := apperrors.InternalServerError("Failed to process request", err.Error())
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	// Update user password in database
+	if err := s.postgres.ResetUserPassword(ctx, userID, passwordHash); err != nil {
+		s.logger.Error("Failed to reset user password",
+			zap.Int("user_id", userID),
+			zap.Error(err),
+		)
+		errResp := apperrors.ToAppError(err)
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	s.logger.Info("User password reset by admin",
+		zap.String("user_id", userIDParam),
+		zap.String("reset_by", user.Username),
+	)
+
+	resp := &models.ResetPasswordResponse{
+		Username:    userToReset.Username,
+		TempPassword: tempPassword,
+		Message:     "Password reset. User must change it on next login",
+	}
+
+	c.JSON(http.StatusOK, resp)
+}
+
+// @Summary Change User Password
+// @Description Change password for authenticated user
+// @Tags Authentication
+// @Security Bearer
+// @Accept json
+// @Produce json
+// @Param request body models.ChangePasswordRequest true "Current and new passwords"
+// @Success 200 {object} gin.H
+// @Failure 400 {object} apperrors.AppError
+// @Failure 401 {object} apperrors.AppError
+// @Router /api/v1/auth/change-password [post]
+func (s *Server) handleChangePassword(c *gin.Context) {
+	// Get current user from context
+	currentUser, exists := c.Get("user")
+	if !exists {
+		errResp := apperrors.Unauthorized("Authentication required", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	user := currentUser.(*models.User)
+
+	var req models.ChangePasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		s.logger.Error("Failed to bind change password request", zap.Error(err))
+		errResp := apperrors.BadRequest("Invalid request", err.Error())
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	// Check if new password is different from old password
+	if req.OldPassword == req.NewPassword {
+		errResp := apperrors.BadRequest("New password must be different from current password", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	// Get current user with password hash
+	userRecord, err := s.postgres.GetUserByID(ctx, user.ID)
+	if err != nil {
+		s.logger.Error("Failed to fetch user", zap.Int("user_id", user.ID), zap.Error(err))
+		errResp := apperrors.InternalServerError("Failed to process request", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	// Verify old password
+	if !s.authService.PasswordManager.VerifyPassword(userRecord.PasswordHash, req.OldPassword) {
+		s.logger.Debug("Invalid old password", zap.Int("user_id", user.ID))
+		errResp := apperrors.Unauthorized("Current password is incorrect", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	// Hash new password
+	newPasswordHash, err := s.authService.PasswordManager.HashPassword(req.NewPassword)
+	if err != nil {
+		s.logger.Error("Failed to hash password", zap.Error(err))
+		errResp := apperrors.InternalServerError("Failed to process request", err.Error())
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	// Update password in database
+	if err := s.postgres.ResetUserPassword(ctx, user.ID, newPasswordHash); err != nil {
+		s.logger.Error("Failed to change password", zap.Int("user_id", user.ID), zap.Error(err))
+		errResp := apperrors.ToAppError(err)
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	s.logger.Info("User changed password",
+		zap.Int("user_id", user.ID),
+		zap.String("username", user.Username),
+	)
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Password changed successfully",
+	})
+}
+
+// generateTemporaryPassword generates a random 12-character password with mixed case and digits
+func generateTemporaryPassword(length int) string {
+	const (
+		uppercase = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+		lowercase = "abcdefghijklmnopqrstuvwxyz"
+		digits    = "0123456789"
+		all       = uppercase + lowercase + digits
+	)
+
+	rand.Seed(time.Now().UnixNano())
+	password := make([]byte, length)
+
+	// Ensure at least one character from each category
+	categories := []string{uppercase, lowercase, digits}
+	for i, category := range categories {
+		password[i] = category[rand.Intn(len(category))]
+	}
+
+	// Fill the rest randomly
+	for i := len(categories); i < length; i++ {
+		password[i] = all[rand.Intn(len(all))]
+	}
+
+	// Shuffle the password
+	for i := length - 1; i > 0; i-- {
+		j := rand.Intn(i + 1)
+		password[i], password[j] = password[j], password[i]
+	}
+
+	return string(password)
 }
 
 func (s *Server) handleLogin(c *gin.Context) {

@@ -264,6 +264,31 @@ func (p *PostgresDB) DeleteUser(ctx context.Context, userID string) error {
 	return nil
 }
 
+// ResetUserPassword updates a user's password (admin action)
+func (p *PostgresDB) ResetUserPassword(ctx context.Context, userID int, newPasswordHash string) error {
+	result, err := p.db.ExecContext(
+		ctx,
+		`UPDATE pganalytics.users SET password_hash = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2`,
+		newPasswordHash,
+		userID,
+	)
+
+	if err != nil {
+		return apperrors.DatabaseError("reset user password", err.Error())
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return apperrors.DatabaseError("reset user password", err.Error())
+	}
+
+	if rowsAffected == 0 {
+		return apperrors.NotFound("User not found", fmt.Sprintf("User ID %d not found", userID))
+	}
+
+	return nil
+}
+
 // ============================================================================
 // COLLECTOR OPERATIONS
 // ============================================================================

@@ -294,6 +294,14 @@ type LoginRequest struct {
 	Password string `json:"password" binding:"required"`
 }
 
+// SignupRequest represents a user signup request
+type SignupRequest struct {
+	Username string `json:"username" binding:"required,min=3,max=255"`
+	Email    string `json:"email" binding:"required,email"`
+	Password string `json:"password" binding:"required,min=8"`
+	FullName string `json:"full_name" binding:"max=255"`
+}
+
 // LoginResponse represents a successful login response
 type LoginResponse struct {
 	Token        string    `json:"token"`

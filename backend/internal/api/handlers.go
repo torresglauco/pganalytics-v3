@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -74,17 +75,100 @@ func (s *Server) handleVersion(c *gin.Context) {
 // @Success 200 {object} models.LoginResponse
 // @Failure 401 {object} models.ErrorResponse
 // @Router /api/v1/auth/login [post]
-func (s *Server) handleLogin(c *gin.Context) {
-	var req models.LoginRequest
+// @Summary User Signup
+// @Description Create a new user account
+// @Tags Authentication
+// @Accept json
+// @Produce json
+// @Param req body models.SignupRequest true "Signup request"
+// @Success 201 {object} models.LoginResponse
+// @Failure 400 {object} apperrors.AppError
+// @Router /auth/signup [post]
+func (s *Server) handleSignup(c *gin.Context) {
+	var req models.SignupRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		s.logger.Error("Failed to bind signup request", zap.Error(err))
 		errResp := apperrors.BadRequest("Invalid request", err.Error())
 		c.JSON(errResp.StatusCode, errResp)
 		return
 	}
 
+	s.logger.Debug("Signup attempt", zap.String("username", req.Username), zap.String("email", req.Email))
+
+	// Hash password using PasswordManager
+	passwordHash, err := s.authService.PasswordManager.HashPassword(req.Password)
+	if err != nil {
+		s.logger.Error("Failed to hash password", zap.Error(err))
+		errResp := apperrors.InternalServerError("Failed to process signup", err.Error())
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	// Create user in database
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	user, err := s.postgres.CreateUser(ctx, req.Username, req.Email, passwordHash, req.FullName)
+	if err != nil {
+		s.logger.Error("Failed to create user",
+			zap.String("username", req.Username),
+			zap.Error(err),
+		)
+		errResp := apperrors.ToAppError(err)
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	// Generate tokens for new user
+	accessToken, expiresAt, err := s.authService.JWTManager.GenerateUserToken(user)
+	if err != nil {
+		s.logger.Error("Failed to generate token", zap.Error(err))
+		errResp := apperrors.InternalServerError("Failed to generate token", err.Error())
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	refreshToken, _, err := s.authService.JWTManager.GenerateUserRefreshToken(user)
+	if err != nil {
+		s.logger.Error("Failed to generate refresh token", zap.Error(err))
+		errResp := apperrors.InternalServerError("Failed to generate token", err.Error())
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	s.logger.Info("User signup successful",
+		zap.String("username", req.Username),
+		zap.Int("user_id", user.ID),
+	)
+
+	loginResp := &models.LoginResponse{
+		Token:        accessToken,
+		RefreshToken: refreshToken,
+		ExpiresAt:    *expiresAt,
+		User:         user,
+	}
+
+	c.JSON(http.StatusCreated, loginResp)
+}
+
+func (s *Server) handleLogin(c *gin.Context) {
+	var req models.LoginRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		s.logger.Error("Failed to bind login request", zap.Error(err))
+		errResp := apperrors.BadRequest("Invalid request", err.Error())
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	s.logger.Debug("Login attempt", zap.String("username", req.Username))
+
 	// Authenticate user
 	loginResp, err := s.authService.LoginUser(req.Username, req.Password)
 	if err != nil {
+		s.logger.Debug("Login failed",
+			zap.String("username", req.Username),
+			zap.Error(err),
+		)
 		errResp := apperrors.ToAppError(err)
 		c.JSON(errResp.StatusCode, errResp)
 		return

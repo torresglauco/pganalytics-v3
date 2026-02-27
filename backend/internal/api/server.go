@@ -92,6 +92,7 @@ func (s *Server) RegisterRoutes(router *gin.Engine) {
 		// Authentication routes (no auth required)
 		auth := api.Group("/auth")
 		{
+			auth.POST("/signup", s.handleSignup)
 			auth.POST("/login", s.handleLogin)
 			auth.POST("/logout", s.handleLogout)
 			auth.POST("/refresh", s.handleRefreshToken)

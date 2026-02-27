@@ -11,9 +11,9 @@ import (
 
 // AuthService handles authentication operations
 type AuthService struct {
-	jwtManager      *JWTManager
-	passwordManager *PasswordManager
-	certManager     *CertificateManager
+	JWTManager      *JWTManager
+	PasswordManager *PasswordManager
+	CertManager     *CertificateManager
 	userStore       UserStore
 	collectorStore  CollectorStore
 	tokenStore      TokenStore
@@ -51,9 +51,9 @@ func NewAuthService(
 	tokenStore TokenStore,
 ) *AuthService {
 	return &AuthService{
-		jwtManager:      jwtManager,
-		passwordManager: passwordManager,
-		certManager:     certManager,
+		JWTManager:      jwtManager,
+		PasswordManager: passwordManager,
+		CertManager:     certManager,
 		userStore:       userStore,
 		collectorStore:  collectorStore,
 		tokenStore:      tokenStore,
@@ -78,17 +78,18 @@ func (as *AuthService) LoginUser(username, password string) (*models.LoginRespon
 	}
 
 	// Verify password
-	if !as.passwordManager.VerifyPassword(user.PasswordHash, password) {
+	passwordMatch := as.PasswordManager.VerifyPassword(user.PasswordHash, password)
+	if !passwordMatch {
 		return nil, apperrors.InvalidCredentials()
 	}
 
 	// Generate tokens
-	accessToken, expiresAt, err := as.jwtManager.GenerateUserToken(user)
+	accessToken, expiresAt, err := as.JWTManager.GenerateUserToken(user)
 	if err != nil {
 		return nil, err
 	}
 
-	refreshToken, _, err := as.jwtManager.GenerateUserRefreshToken(user)
+	refreshToken, _, err := as.JWTManager.GenerateUserRefreshToken(user)
 	if err != nil {
 		return nil, err
 	}
@@ -107,7 +108,7 @@ func (as *AuthService) LoginUser(username, password string) (*models.LoginRespon
 // RefreshUserToken generates a new access token from a refresh token
 func (as *AuthService) RefreshUserToken(refreshToken string) (*models.LoginResponse, error) {
 	// Validate refresh token
-	claims, err := as.jwtManager.ValidateUserRefreshToken(refreshToken)
+	claims, err := as.JWTManager.ValidateUserRefreshToken(refreshToken)
 	if err != nil {
 		return nil, err
 	}
@@ -123,7 +124,7 @@ func (as *AuthService) RefreshUserToken(refreshToken string) (*models.LoginRespo
 	}
 
 	// Generate new access token
-	accessToken, expiresAt, err := as.jwtManager.GenerateUserToken(user)
+	accessToken, expiresAt, err := as.JWTManager.GenerateUserToken(user)
 	if err != nil {
 		return nil, err
 	}
@@ -167,7 +168,7 @@ func (as *AuthService) RegisterCollector(req *models.CollectorRegisterRequest) (
 	}
 
 	// Generate certificate
-	certPair, err := as.certManager.GenerateCollectorCertificate(
+	certPair, err := as.CertManager.GenerateCollectorCertificate(
 		collector.ID,
 		req.Hostname,
 		365, // 1 year validity
@@ -183,7 +184,7 @@ func (as *AuthService) RegisterCollector(req *models.CollectorRegisterRequest) (
 	}
 
 	// Generate JWT token for collector
-	token, expiresAt, err := as.jwtManager.GenerateCollectorToken(collector)
+	token, expiresAt, err := as.JWTManager.GenerateCollectorToken(collector)
 	if err != nil {
 		return nil, err
 	}
@@ -199,7 +200,7 @@ func (as *AuthService) RegisterCollector(req *models.CollectorRegisterRequest) (
 
 // ValidateCollectorToken validates a collector's JWT token
 func (as *AuthService) ValidateCollectorToken(token string) (*models.Collector, error) {
-	claims, err := as.jwtManager.ValidateCollectorToken(token)
+	claims, err := as.JWTManager.ValidateCollectorToken(token)
 	if err != nil {
 		return nil, err
 	}
@@ -233,7 +234,7 @@ func (as *AuthService) ValidateCollectorToken(token string) (*models.Collector, 
 
 // ValidateUserToken validates a user's JWT token
 func (as *AuthService) ValidateUserToken(token string) (*models.User, error) {
-	claims, err := as.jwtManager.ValidateUserToken(token)
+	claims, err := as.JWTManager.ValidateUserToken(token)
 	if err != nil {
 		return nil, err
 	}

@@ -65,11 +65,11 @@ func (p *PostgresDB) GetUserByUsername(ctx context.Context, username string) (*m
 
 	err := p.db.QueryRowContext(
 		ctx,
-		`SELECT id, username, email, full_name, role, is_active, last_login, created_at, updated_at
+		`SELECT id, username, email, password_hash, full_name, role, is_active, last_login, created_at, updated_at
 		 FROM pganalytics.users WHERE username = $1`,
 		username,
 	).Scan(
-		&user.ID, &user.Username, &user.Email, &user.FullName,
+		&user.ID, &user.Username, &user.Email, &user.PasswordHash, &user.FullName,
 		&user.Role, &user.IsActive, &user.LastLogin, &user.CreatedAt, &user.UpdatedAt,
 	)
 
@@ -89,11 +89,11 @@ func (p *PostgresDB) GetUserByID(ctx context.Context, userID int) (*models.User,
 
 	err := p.db.QueryRowContext(
 		ctx,
-		`SELECT id, username, email, full_name, role, is_active, last_login, created_at, updated_at
+		`SELECT id, username, email, password_hash, full_name, role, is_active, last_login, created_at, updated_at
 		 FROM pganalytics.users WHERE id = $1`,
 		userID,
 	).Scan(
-		&user.ID, &user.Username, &user.Email, &user.FullName,
+		&user.ID, &user.Username, &user.Email, &user.PasswordHash, &user.FullName,
 		&user.Role, &user.IsActive, &user.LastLogin, &user.CreatedAt, &user.UpdatedAt,
 	)
 
@@ -120,6 +120,32 @@ func (p *PostgresDB) UpdateUserLastLogin(ctx context.Context, userID int) error 
 	}
 
 	return nil
+}
+
+// CreateUser creates a new user with hashed password
+func (p *PostgresDB) CreateUser(ctx context.Context, username, email, passwordHash, fullName string) (*models.User, error) {
+	user := &models.User{}
+
+	err := p.db.QueryRowContext(
+		ctx,
+		`INSERT INTO pganalytics.users (username, email, password_hash, full_name, role, is_active)
+		 VALUES ($1, $2, $3, $4, 'user', true)
+		 RETURNING id, username, email, password_hash, full_name, role, is_active, last_login, created_at, updated_at`,
+		username, email, passwordHash, fullName,
+	).Scan(
+		&user.ID, &user.Username, &user.Email, &user.PasswordHash, &user.FullName,
+		&user.Role, &user.IsActive, &user.LastLogin, &user.CreatedAt, &user.UpdatedAt,
+	)
+
+	if err != nil {
+		if err.Error() == "pq: duplicate key value violates unique constraint \"users_username_key\"" ||
+			err.Error() == "pq: duplicate key value violates unique constraint \"users_email_key\"" {
+			return nil, apperrors.BadRequest("User already exists", "Username or email already in use")
+		}
+		return nil, apperrors.DatabaseError("create user", err.Error())
+	}
+
+	return user, nil
 }
 
 // ============================================================================

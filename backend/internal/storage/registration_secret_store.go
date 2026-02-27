@@ -12,7 +12,7 @@ import (
 )
 
 // CreateRegistrationSecret creates a new registration secret
-func (s *PostgresStore) CreateRegistrationSecret(
+func (s *PostgresDB) CreateRegistrationSecret(
 	ctx context.Context,
 	name string,
 	description string,
@@ -58,7 +58,7 @@ func (s *PostgresStore) CreateRegistrationSecret(
 }
 
 // GetRegistrationSecret retrieves a registration secret by ID
-func (s *PostgresStore) GetRegistrationSecret(ctx context.Context, id string) (*models.RegistrationSecret, error) {
+func (s *PostgresDB) GetRegistrationSecret(ctx context.Context, id string) (*models.RegistrationSecret, error) {
 	query := `
 		SELECT rs.id, rs.name, rs.description, rs.active, rs.created_by, u.username,
 		       rs.created_at, rs.updated_at, rs.expires_at, rs.total_registrations, rs.last_used_at
@@ -87,7 +87,7 @@ func (s *PostgresStore) GetRegistrationSecret(ctx context.Context, id string) (*
 }
 
 // ListRegistrationSecrets retrieves all registration secrets
-func (s *PostgresStore) ListRegistrationSecrets(ctx context.Context) ([]models.RegistrationSecret, error) {
+func (s *PostgresDB) ListRegistrationSecrets(ctx context.Context) ([]models.RegistrationSecret, error) {
 	query := `
 		SELECT rs.id, rs.name, rs.description, rs.active, rs.created_by, u.username,
 		       rs.created_at, rs.updated_at, rs.expires_at, rs.total_registrations, rs.last_used_at
@@ -126,7 +126,7 @@ func (s *PostgresStore) ListRegistrationSecrets(ctx context.Context) ([]models.R
 }
 
 // UpdateRegistrationSecret updates a registration secret
-func (s *PostgresStore) UpdateRegistrationSecret(
+func (s *PostgresDB) UpdateRegistrationSecret(
 	ctx context.Context,
 	id string,
 	name *string,
@@ -158,7 +158,7 @@ func (s *PostgresStore) UpdateRegistrationSecret(
 }
 
 // DeleteRegistrationSecret deletes a registration secret
-func (s *PostgresStore) DeleteRegistrationSecret(ctx context.Context, id string) error {
+func (s *PostgresDB) DeleteRegistrationSecret(ctx context.Context, id string) error {
 	query := `DELETE FROM registration_secrets WHERE id = $1`
 	result, err := s.db.ExecContext(ctx, query, id)
 	if err != nil {
@@ -178,7 +178,7 @@ func (s *PostgresStore) DeleteRegistrationSecret(ctx context.Context, id string)
 }
 
 // ValidateRegistrationSecret validates a registration secret
-func (s *PostgresStore) ValidateRegistrationSecret(ctx context.Context, secretValue string) (*models.RegistrationSecret, error) {
+func (s *PostgresDB) ValidateRegistrationSecret(ctx context.Context, secretValue string) (*models.RegistrationSecret, error) {
 	query := `
 		SELECT id, name, description, active, created_by, created_at, updated_at, expires_at, total_registrations, last_used_at
 		FROM registration_secrets
@@ -201,7 +201,7 @@ func (s *PostgresStore) ValidateRegistrationSecret(ctx context.Context, secretVa
 }
 
 // RecordRegistrationSecretUsage records the usage of a registration secret
-func (s *PostgresStore) RecordRegistrationSecretUsage(
+func (s *PostgresDB) RecordRegistrationSecretUsage(
 	ctx context.Context,
 	secretID string,
 	collectorID string,

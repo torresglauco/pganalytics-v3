@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { Settings, LogOut, User, Key } from 'lucide-react'
+import { Settings, LogOut, User, Key, Users } from 'lucide-react'
 import { ChangePasswordForm } from './ChangePasswordForm'
+import { UserManagementTable } from './UserManagementTable'
 import { apiClient } from '../services/api'
 
 interface UserMenuDropdownProps {
@@ -10,10 +11,14 @@ interface UserMenuDropdownProps {
 export const UserMenuDropdown: React.FC<UserMenuDropdownProps> = ({ onLogout }) => {
   const [isOpen, setIsOpen] = useState(false)
   const [showPasswordModal, setShowPasswordModal] = useState(false)
+  const [showUserManagement, setShowUserManagement] = useState(false)
   const [successMessage, setSuccessMessage] = useState('')
+  const [userMessage, setUserMessage] = useState('')
+  const [userMessageType, setUserMessageType] = useState<'success' | 'error' | ''>('')
   const menuRef = useRef<HTMLDivElement>(null)
 
   const currentUser = apiClient.getCurrentUser()
+  const isAdmin = currentUser?.role === 'admin'
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -80,9 +85,22 @@ export const UserMenuDropdown: React.FC<UserMenuDropdownProps> = ({ onLogout }) 
               Change Password
             </button>
 
+            {isAdmin && (
+              <button
+                onClick={() => {
+                  setShowUserManagement(true)
+                  setIsOpen(false)
+                }}
+                className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 transition border-t border-gray-200"
+              >
+                <Users size={16} className="text-gray-500" />
+                Manage Users
+              </button>
+            )}
+
             <button
               onClick={handleLogout}
-              className="w-full px-4 py-2 text-left text-sm text-red-700 hover:bg-red-50 flex items-center gap-2 transition"
+              className="w-full px-4 py-2 text-left text-sm text-red-700 hover:bg-red-50 flex items-center gap-2 transition border-t border-gray-200"
             >
               <LogOut size={16} className="text-red-500" />
               Logout
@@ -121,6 +139,58 @@ export const UserMenuDropdown: React.FC<UserMenuDropdownProps> = ({ onLogout }) 
 
             <button
               onClick={() => setShowPasswordModal(false)}
+              className="mt-4 w-full px-4 py-2 bg-gray-200 text-gray-900 font-medium rounded-md hover:bg-gray-300 transition"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* User Management Modal */}
+      {showUserManagement && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                <Users size={24} className="text-blue-600" />
+                Manage Users
+              </h2>
+              <button
+                onClick={() => setShowUserManagement(false)}
+                className="text-gray-500 hover:text-gray-700 text-2xl"
+              >
+                ×
+              </button>
+            </div>
+
+            {userMessage && (
+              <div className={`mb-4 p-3 border rounded-lg ${
+                userMessageType === 'success'
+                  ? 'bg-green-50 border-green-200'
+                  : 'bg-red-50 border-red-200'
+              }`}>
+                <p className={userMessageType === 'success' ? 'text-green-700 text-sm' : 'text-red-700 text-sm'}>
+                  {userMessage}
+                </p>
+              </div>
+            )}
+
+            <UserManagementTable
+              onSuccess={(message) => {
+                setUserMessage(message)
+                setUserMessageType('success')
+                setTimeout(() => setUserMessage(''), 5000)
+              }}
+              onError={(message) => {
+                setUserMessage(message)
+                setUserMessageType('error')
+                setTimeout(() => setUserMessage(''), 5000)
+              }}
+            />
+
+            <button
+              onClick={() => setShowUserManagement(false)}
               className="mt-4 w-full px-4 py-2 bg-gray-200 text-gray-900 font-medium rounded-md hover:bg-gray-300 transition"
             >
               Close

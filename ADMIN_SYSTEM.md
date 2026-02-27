@@ -47,14 +47,24 @@ pgAnalytics agora utiliza um sistema de login administrativo automático onde:
 
 ## Fluxo de Uso
 
-### Primeiro Login
+### Primeiro Login (Auto-Login)
 1. Abrir http://localhost:4000
-2. Frontend faz auto-login com `admin:admin`
-3. Usuário é redirecionado para Dashboard
+2. Frontend tenta auto-login com `admin:admin`
+3. Se bem-sucedido: Usuário é redirecionado para Dashboard
 4. Admin vê o painel completo incluindo aba "Create User"
 
+### Login Manual Após Logout
+1. Clicar botão "Logout" na parte superior direita do Dashboard
+2. LocalStorage é limpo (auth_token, refresh_token, user)
+3. Aplicação mostra AuthPage com LoginForm
+4. Usuário insere novas credenciais:
+   - Username: admin ou outro usuário
+   - Password: senha correspondente
+5. Clicar "Log In"
+6. Dashboard atualiza com dados do novo usuário
+
 ### Criar Novo Usuário (como Admin)
-1. Na aba "Create User" do Dashboard
+1. Na aba "Create User" do Dashboard (apenas para admins)
 2. Preencher:
    - Username (3+ caracteres)
    - Email (formato válido)
@@ -63,11 +73,13 @@ pgAnalytics agora utiliza um sistema de login administrativo automático onde:
    - Role (user ou admin)
 3. Clicar "Create User"
 4. Mensagem de sucesso aparece
+5. Novo usuário pode fazer login com suas credenciais
 
 ### Usuários Criados
-- Podem fazer login via POST /api/v1/auth/login
+- Podem fazer login via LoginForm ou POST /api/v1/auth/login
 - Se role="user": acesso limitado (sem aba "Create User")
 - Se role="admin": acesso total (com aba "Create User")
+- Logout disponível para todos os usuários
 
 ## Status de Implementação
 
@@ -131,15 +143,22 @@ Se desejar voltar ao sistema de signup público:
 
 ## Testes e Validação
 
-Todos os testes abaixo foram executados e passaram com sucesso:
+Todos os testes abaixo foram executados e passaram com sucesso (6/6 testes):
 
 ### ✅ Testes Realizados
-1. **Frontend Acessível**: http://localhost:4000
+1. **Frontend Acessível**: ✓ http://localhost:4000 respondendo
 2. **Admin Login**: ✓ Sucesso com admin:admin
-3. **Regular User Login**: ✓ Sucesso (john_doe criado durante testes)
+3. **Regular User Login**: ✓ Sucesso (john_doe)
 4. **Admin User Creation**: ✓ Admins podem criar novos usuários
 5. **Role-Based Access Control**: ✓ Usuários normais recebem 403 ao tentar criar usuários
 6. **Admin User Creation**: ✓ Admins podem criar outros admins
+
+### ✅ Logout e Login
+1. **Logout**: ✓ Limpa localStorage e mostra AuthPage
+2. **Login Manual**: ✓ LoginForm funciona após logout
+3. **Múltiplos Usuários**: ✓ Pode trocar entre admin/user seamlessly
+4. **Token Refresh**: ✓ Novos tokens gerados para cada login
+5. **Role Preservation**: ✓ Role mantido após logout/login
 
 ### Acessar o Sistema
 

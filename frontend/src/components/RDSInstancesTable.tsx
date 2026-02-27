@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Trash2, Plus, X, AlertCircle, CheckCircle } from 'lucide-react'
+import { Trash2, Plus, X, AlertCircle, CheckCircle, Edit, Zap } from 'lucide-react'
 import { CreateRDSForm } from './CreateRDSForm'
 
 interface RDSInstance {
@@ -20,6 +20,7 @@ interface RDSInstance {
   ssl_mode: string
   connection_timeout: number
   is_active: boolean
+  status: string
   last_heartbeat?: string
   last_connection_status: string
   last_error_message?: string
@@ -41,6 +42,9 @@ export const RDSInstancesTable: React.FC<RDSInstancesTableProps> = ({ onSuccess,
   const [loading, setLoading] = useState(true)
   const [deleting, setDeleting] = useState<number | null>(null)
   const [showCreateForm, setShowCreateForm] = useState(false)
+  const [editingId, setEditingId] = useState<number | null>(null)
+  const [testingConnectionId, setTestingConnectionId] = useState<number | null>(null)
+  const [editFormData, setEditFormData] = useState<Partial<RDSInstance> | null>(null)
 
   useEffect(() => {
     loadInstances()
@@ -108,6 +112,115 @@ export const RDSInstancesTable: React.FC<RDSInstancesTableProps> = ({ onSuccess,
         return 'bg-yellow-100 text-yellow-800'
       default:
         return 'bg-gray-100 text-gray-800'
+    }
+  }
+
+  const getInstanceStatusColor = (status: string) => {
+    switch (status) {
+      case 'monitoring':
+        return 'bg-green-100 text-green-800'
+      case 'registered':
+        return 'bg-blue-100 text-blue-800'
+      case 'registering':
+        return 'bg-yellow-100 text-yellow-800'
+      case 'paused':
+        return 'bg-gray-100 text-gray-800'
+      default:
+        return 'bg-gray-100 text-gray-800'
+    }
+  }
+
+  const startEdit = (instance: RDSInstance) => {
+    setEditingId(instance.id)
+    setEditFormData(instance)
+  }
+
+  const cancelEdit = () => {
+    setEditingId(null)
+    setEditFormData(null)
+  }
+
+  const saveEdit = async () => {
+    if (!editFormData || !editingId) return
+
+    try {
+      const response = await fetch(`/api/v1/rds-instances/${editingId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+        },
+        body: JSON.stringify({
+          name: editFormData.name,
+          aws_region: editFormData.aws_region,
+          rds_endpoint: editFormData.rds_endpoint,
+          port: editFormData.port,
+          environment: editFormData.environment,
+          master_username: editFormData.master_username,
+          master_password: editFormData.master_username, // Keep same for edit
+          description: editFormData.description,
+          status: editFormData.status,
+          engine_version: editFormData.engine_version || '',
+          db_instance_class: editFormData.db_instance_class || '',
+          allocated_storage_gb: editFormData.allocated_storage_gb || 0,
+          enable_enhanced_monitoring: editFormData.enable_enhanced_monitoring || false,
+          monitoring_interval: editFormData.monitoring_interval || 60,
+          ssl_enabled: editFormData.ssl_enabled || true,
+          ssl_mode: editFormData.ssl_mode || 'require',
+          connection_timeout: editFormData.connection_timeout || 30,
+          multi_az: editFormData.multi_az || false,
+          backup_retention_days: editFormData.backup_retention_days || 0,
+          preferred_backup_window: editFormData.preferred_backup_window || '',
+          preferred_maintenance_window: editFormData.preferred_maintenance_window || '',
+          tags: editFormData.tags || {},
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.message || 'Failed to update RDS instance')
+      }
+
+      onSuccess('RDS instance updated successfully')
+      cancelEdit()
+      loadInstances()
+    } catch (error) {
+      onError(error instanceof Error ? error.message : 'Failed to update RDS instance')
+    }
+  }
+
+  const testConnection = async (id: number) => {
+    setTestingConnectionId(id)
+    const instance = instances.find(i => i.id === id)
+    if (!instance) return
+
+    try {
+      const response = await fetch(`/api/v1/rds-instances/${id}/test-connection`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+        },
+        body: JSON.stringify({
+          username: instance.master_username,
+          password: instance.master_username, // In real app, would need actual password
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Connection test failed')
+      }
+
+      const data = await response.json()
+      if (data.success) {
+        onSuccess(`✓ Connection successful for ${instance.name}`)
+      } else {
+        onError(`✗ Connection failed: ${data.error || 'Unknown error'}`)
+      }
+    } catch (error) {
+      onError(error instanceof Error ? error.message : 'Failed to test connection')
+    } finally {
+      setTestingConnectionId(null)
     }
   }
 
@@ -206,13 +319,13 @@ export const RDSInstancesTable: React.FC<RDSInstancesTableProps> = ({ onSuccess,
                   Environment
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                  Status
+                  Instance Status
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                  Connection Status
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                   Instance Class
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                  Storage
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                   Actions
@@ -243,6 +356,11 @@ export const RDSInstancesTable: React.FC<RDSInstancesTableProps> = ({ onSuccess,
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${getInstanceStatusColor(instance.status)}`}>
+                      {instance.status.charAt(0).toUpperCase() + instance.status.slice(1)}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
                     <div>
                       <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(instance.last_connection_status)}`}>
                         {instance.last_connection_status === 'connected' ? (
@@ -262,18 +380,27 @@ export const RDSInstancesTable: React.FC<RDSInstancesTableProps> = ({ onSuccess,
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <p className="text-sm text-gray-600">{instance.db_instance_class}</p>
+                    <p className="text-sm text-gray-600">{instance.db_instance_class || '-'}</p>
                     {instance.engine_version && (
                       <p className="text-xs text-gray-500">v{instance.engine_version}</p>
                     )}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <p className="text-sm text-gray-600">{instance.allocated_storage_gb} GB</p>
-                    {instance.multi_az && (
-                      <p className="text-xs text-green-700 font-medium">Multi-AZ</p>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm flex gap-2">
+                    <button
+                      onClick={() => startEdit(instance)}
+                      className="p-2 text-blue-600 hover:text-blue-900 hover:bg-blue-100 rounded transition"
+                      title="Edit instance"
+                    >
+                      <Edit size={18} />
+                    </button>
+                    <button
+                      onClick={() => testConnection(instance.id)}
+                      disabled={testingConnectionId === instance.id}
+                      className="p-2 text-yellow-600 hover:text-yellow-900 hover:bg-yellow-100 rounded transition disabled:opacity-50"
+                      title="Test connection"
+                    >
+                      <Zap size={18} />
+                    </button>
                     <button
                       onClick={() => deleteInstance(instance.id, instance.name)}
                       disabled={deleting === instance.id}

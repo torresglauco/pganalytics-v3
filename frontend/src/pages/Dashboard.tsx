@@ -43,12 +43,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
               <p className="text-gray-600 mt-1">v3.3.0 - Manage PostgreSQL database collectors</p>
             </div>
             <div className="flex items-center gap-4">
-              {currentUser && (
+              {currentUser ? (
                 <div className="text-right">
-                  <p className="text-sm font-medium text-gray-900">{currentUser.full_name || currentUser.username}</p>
-                  <p className="text-xs text-gray-500">{currentUser.email}</p>
+                  <p className="text-sm font-medium text-gray-900">{currentUser.full_name || currentUser.username || 'User'}</p>
+                  <p className="text-xs text-gray-500">{currentUser.email || ''}</p>
                 </div>
-              )}
+              ) : null}
               <button
                 onClick={handleLogout}
                 className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 flex items-center gap-2 text-sm font-medium"

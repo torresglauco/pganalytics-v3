@@ -10,8 +10,8 @@ import (
 	"github.com/torresglauco/pganalytics-v3/backend/pkg/models"
 )
 
-// CreateRDSInstance creates a new RDS instance record
-func (p *PostgresDB) CreateRDSInstance(ctx context.Context, instance *models.CreateRDSInstanceRequest, secretID *int, userID int) (*models.RDSInstance, error) {
+// CreateManagedInstance creates a new RDS instance record
+func (p *PostgresDB) CreateManagedInstance(ctx context.Context, instance *models.CreateManagedInstanceRequest, secretID *int, userID int) (*models.RDSInstance, error) {
 	var id int
 	var createdAt, updatedAt sql.NullTime
 
@@ -25,7 +25,7 @@ func (p *PostgresDB) CreateRDSInstance(ctx context.Context, instance *models.Cre
 
 	err := p.db.QueryRowContext(
 		ctx,
-		`INSERT INTO pganalytics.rds_instances (
+		`INSERT INTO pganalytics.managed_instances (
 			name, description, aws_region, rds_endpoint, port,
 			engine_version, db_instance_class, allocated_storage_gb,
 			environment, master_username, secret_id,
@@ -93,8 +93,8 @@ func (p *PostgresDB) CreateRDSInstance(ctx context.Context, instance *models.Cre
 	return result, nil
 }
 
-// GetRDSInstance retrieves an RDS instance by ID
-func (p *PostgresDB) GetRDSInstance(ctx context.Context, id int) (*models.RDSInstance, error) {
+// GetManagedInstance retrieves an RDS instance by ID
+func (p *PostgresDB) GetManagedInstance(ctx context.Context, id int) (*models.RDSInstance, error) {
 	instance := &models.RDSInstance{}
 	var tags json.RawMessage
 
@@ -110,7 +110,7 @@ func (p *PostgresDB) GetRDSInstance(ctx context.Context, id int) (*models.RDSIns
 			multi_az, backup_retention_days, preferred_backup_window,
 			preferred_maintenance_window, tags,
 			created_at, updated_at, created_by, updated_by
-		FROM pganalytics.rds_instances WHERE id = $1`,
+		FROM pganalytics.managed_instances WHERE id = $1`,
 		id,
 	).Scan(
 		&instance.ID, &instance.Name, &instance.Description, &instance.AWSRegion,
@@ -142,8 +142,8 @@ func (p *PostgresDB) GetRDSInstance(ctx context.Context, id int) (*models.RDSIns
 	return instance, nil
 }
 
-// ListRDSInstances retrieves all active RDS instances
-func (p *PostgresDB) ListRDSInstances(ctx context.Context) ([]*models.RDSInstance, error) {
+// ListManagedInstances retrieves all active RDS instances
+func (p *PostgresDB) ListManagedInstances(ctx context.Context) ([]*models.RDSInstance, error) {
 	rows, err := p.db.QueryContext(
 		ctx,
 		`SELECT id, name, description, aws_region, rds_endpoint, port,
@@ -156,7 +156,7 @@ func (p *PostgresDB) ListRDSInstances(ctx context.Context) ([]*models.RDSInstanc
 			multi_az, backup_retention_days, preferred_backup_window,
 			preferred_maintenance_window, tags,
 			created_at, updated_at, created_by, updated_by
-		FROM pganalytics.rds_instances WHERE is_active = true
+		FROM pganalytics.managed_instances WHERE is_active = true
 		ORDER BY name ASC`,
 	)
 
@@ -198,11 +198,11 @@ func (p *PostgresDB) ListRDSInstances(ctx context.Context) ([]*models.RDSInstanc
 	return instances, rows.Err()
 }
 
-// UpdateRDSInstanceStatus updates the connection status and last heartbeat
-func (p *PostgresDB) UpdateRDSInstanceStatus(ctx context.Context, id int, status string, errorMsg *string) error {
+// UpdateManagedInstanceStatus updates the connection status and last heartbeat
+func (p *PostgresDB) UpdateManagedInstanceStatus(ctx context.Context, id int, status string, errorMsg *string) error {
 	result, err := p.db.ExecContext(
 		ctx,
-		`UPDATE pganalytics.rds_instances
+		`UPDATE pganalytics.managed_instances
 		SET last_connection_status = $1, last_heartbeat = CURRENT_TIMESTAMP,
 		    last_error_message = $2, last_error_time = CASE WHEN $2 IS NOT NULL THEN CURRENT_TIMESTAMP ELSE last_error_time END,
 		    updated_at = CURRENT_TIMESTAMP
@@ -226,8 +226,8 @@ func (p *PostgresDB) UpdateRDSInstanceStatus(ctx context.Context, id int, status
 	return nil
 }
 
-// UpdateRDSInstance updates an RDS instance
-func (p *PostgresDB) UpdateRDSInstance(ctx context.Context, id int, instance *models.UpdateRDSInstanceRequest, userID int) (*models.RDSInstance, error) {
+// UpdateManagedInstance updates an RDS instance
+func (p *PostgresDB) UpdateManagedInstance(ctx context.Context, id int, instance *models.UpdateManagedInstanceRequest, userID int) (*models.RDSInstance, error) {
 	tagsJSON, _ := json.Marshal(instance.Tags)
 
 	// Convert nil pointer to interface{} for proper NULL handling
@@ -238,7 +238,7 @@ func (p *PostgresDB) UpdateRDSInstance(ctx context.Context, id int, instance *mo
 
 	err := p.db.QueryRowContext(
 		ctx,
-		`UPDATE pganalytics.rds_instances SET
+		`UPDATE pganalytics.managed_instances SET
 			name = $1, description = $2, aws_region = $3, rds_endpoint = $4, port = $5,
 			engine_version = $6, db_instance_class = $7, allocated_storage_gb = $8,
 			environment = $9, master_username = $10, secret_id = $11,
@@ -295,11 +295,11 @@ func (p *PostgresDB) UpdateRDSInstance(ctx context.Context, id int, instance *mo
 	return updatedInstance, nil
 }
 
-// DeleteRDSInstance deletes an RDS instance (soft delete)
-func (p *PostgresDB) DeleteRDSInstance(ctx context.Context, id int) error {
+// DeleteManagedInstance deletes an RDS instance (soft delete)
+func (p *PostgresDB) DeleteManagedInstance(ctx context.Context, id int) error {
 	result, err := p.db.ExecContext(
 		ctx,
-		`UPDATE pganalytics.rds_instances SET is_active = false, updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
+		`UPDATE pganalytics.managed_instances SET is_active = false, updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
 		id,
 	)
 

@@ -111,8 +111,8 @@ type Database struct {
 // RDS MONITORING MODELS
 // ============================================================================
 
-// RDSCluster represents a group of RDS instances (master + replicas)
-type RDSCluster struct {
+// ManagedInstanceCluster represents a group of RDS instances (master + replicas)
+type ManagedInstanceCluster struct {
 	ID          int                   `db:"id" json:"id"`
 	Name        string                `db:"name" json:"name"`
 	Description *string               `db:"description" json:"description,omitempty"`
@@ -125,18 +125,18 @@ type RDSCluster struct {
 	UpdatedAt   time.Time             `db:"updated_at" json:"updated_at"`
 	CreatedBy   *int                  `db:"created_by" json:"created_by,omitempty"`
 	UpdatedBy   *int                  `db:"updated_by" json:"updated_by,omitempty"`
-	Instances   []*RDSInstance        `db:"-" json:"instances,omitempty"`
+	Instances   []*ManagedInstance        `db:"-" json:"instances,omitempty"`
 }
 
-// RDSInstance represents an AWS RDS PostgreSQL instance
-type RDSInstance struct {
+// ManagedInstance represents an AWS RDS PostgreSQL instance
+type ManagedInstance struct {
 	ID                      int        `db:"id" json:"id"`
 	Name                    string     `db:"name" json:"name"`
 	Description             *string    `db:"description" json:"description,omitempty"`
 	ClusterID               *int       `db:"cluster_id" json:"cluster_id,omitempty"`
 	InstanceRole            string     `db:"instance_role" json:"instance_role"`
 	AWSRegion               string     `db:"aws_region" json:"aws_region"`
-	RDSEndpoint             string     `db:"rds_endpoint" json:"rds_endpoint"`
+	Endpoint             string     `db:"rds_endpoint" json:"rds_endpoint"`
 	Port                    int        `db:"port" json:"port"`
 	EngineVersion           *string    `db:"engine_version" json:"engine_version,omitempty"`
 	DBInstanceClass         *string    `db:"db_instance_class" json:"db_instance_class,omitempty"`
@@ -166,10 +166,10 @@ type RDSInstance struct {
 	UpdatedBy               *int       `db:"updated_by" json:"updated_by,omitempty"`
 }
 
-// RDSDatabase represents a database within an RDS instance
-type RDSDatabase struct {
+// ManagedInstanceDatabase represents a database within an RDS instance
+type ManagedInstanceDatabase struct {
 	ID           int        `db:"id" json:"id"`
-	RDSInstanceID int       `db:"rds_instance_id" json:"rds_instance_id"`
+	ManagedInstanceID int       `db:"rds_instance_id" json:"rds_instance_id"`
 	Name         string     `db:"name" json:"name"`
 	Owner        *string    `db:"owner" json:"owner,omitempty"`
 	SizeBytes    *int64     `db:"size_bytes" json:"size_bytes,omitempty"`
@@ -180,10 +180,10 @@ type RDSDatabase struct {
 	UpdatedAt    time.Time  `db:"updated_at" json:"updated_at"`
 }
 
-// RDSMetric represents a CloudWatch metric for an RDS instance
-type RDSMetric struct {
+// ManagedInstanceMetric represents a CloudWatch metric for an RDS instance
+type ManagedInstanceMetric struct {
 	ID                int        `db:"id" json:"id"`
-	RDSInstanceID     int        `db:"rds_instance_id" json:"rds_instance_id"`
+	ManagedInstanceID     int        `db:"rds_instance_id" json:"rds_instance_id"`
 	MetricTimestamp   time.Time  `db:"metric_timestamp" json:"metric_timestamp"`
 	MetricType        string     `db:"metric_type" json:"metric_type"`
 	MetricValue       float64    `db:"metric_value" json:"metric_value"`
@@ -192,12 +192,12 @@ type RDSMetric struct {
 	CreatedAt         time.Time  `db:"created_at" json:"created_at"`
 }
 
-// CreateRDSInstanceRequest represents a request to add a new RDS instance
+// CreateManagedInstanceRequest represents a request to add a new RDS instance
 // Requires minimum: name, rds_endpoint, port, environment, master_username, master_password
-type CreateRDSInstanceRequest struct {
+type CreateManagedInstanceRequest struct {
 	Name                      string `json:"name" binding:"required,min=3"`
 	AWSRegion                 string `json:"aws_region"`                 // Optional - defaults to us-east-1
-	RDSEndpoint               string `json:"rds_endpoint" binding:"required"`
+	Endpoint               string `json:"rds_endpoint" binding:"required"`
 	Port                      int    `json:"port" binding:"required,min=1,max=65535"`
 	Environment               string `json:"environment"`               // Optional - defaults to development
 	MasterUsername            string `json:"master_username" binding:"required"`
@@ -218,11 +218,11 @@ type CreateRDSInstanceRequest struct {
 	Tags                      map[string]interface{} `json:"tags"`
 }
 
-// UpdateRDSInstanceRequest represents a request to update an RDS instance
-type UpdateRDSInstanceRequest struct {
+// UpdateManagedInstanceRequest represents a request to update an RDS instance
+type UpdateManagedInstanceRequest struct {
 	Name                      string `json:"name" binding:"required,min=3"`
 	AWSRegion                 string `json:"aws_region"`                 // Optional
-	RDSEndpoint               string `json:"rds_endpoint" binding:"required"`
+	Endpoint               string `json:"rds_endpoint" binding:"required"`
 	Port                      int    `json:"port" binding:"required,min=1,max=65535"`
 	Environment               string `json:"environment"`               // Optional
 	MasterUsername            string `json:"master_username" binding:"required"`
@@ -244,8 +244,8 @@ type UpdateRDSInstanceRequest struct {
 	Tags                      map[string]interface{} `json:"tags"`
 }
 
-// CreateRDSClusterRequest represents a request to create an RDS cluster
-type CreateRDSClusterRequest struct {
+// CreateManagedInstanceClusterRequest represents a request to create an RDS cluster
+type CreateManagedInstanceClusterRequest struct {
 	Name        string                 `json:"name" binding:"required,min=3"`
 	Description string                 `json:"description"`
 	ClusterType string                 `json:"cluster_type" binding:"required,oneof=single-az multi-az aurora custom"`
@@ -253,8 +253,8 @@ type CreateRDSClusterRequest struct {
 	Tags        map[string]interface{} `json:"tags"`
 }
 
-// UpdateRDSClusterRequest represents a request to update an RDS cluster
-type UpdateRDSClusterRequest struct {
+// UpdateManagedInstanceClusterRequest represents a request to update an RDS cluster
+type UpdateManagedInstanceClusterRequest struct {
 	Name        string                 `json:"name" binding:"required,min=3"`
 	Description string                 `json:"description"`
 	ClusterType string                 `json:"cluster_type" binding:"required,oneof=single-az multi-az aurora custom"`
@@ -263,9 +263,9 @@ type UpdateRDSClusterRequest struct {
 	Tags        map[string]interface{} `json:"tags"`
 }
 
-// CreateRDSInstanceWithClusterRequest extends CreateRDSInstanceRequest with cluster info
-type CreateRDSInstanceWithClusterRequest struct {
-	CreateRDSInstanceRequest
+// CreateManagedInstanceWithClusterRequest extends CreateManagedInstanceRequest with cluster info
+type CreateManagedInstanceWithClusterRequest struct {
+	CreateManagedInstanceRequest
 	ClusterID    *int   `json:"cluster_id"`
 	InstanceRole string `json:"instance_role" binding:"required,oneof=master read-replica standby standalone"`
 }
@@ -505,9 +505,9 @@ type TestConnectionRequest struct {
 	Password string `json:"password"` // Optional - uses decrypted password from secret if not provided
 }
 
-// TestRDSConnectionRequest represents a request to test RDS connection with endpoint details
-type TestRDSConnectionRequest struct {
-	RDSEndpoint string `json:"rds_endpoint" binding:"required"`
+// TestManagedInstanceConnectionRequest represents a request to test RDS connection with endpoint details
+type TestManagedInstanceConnectionRequest struct {
+	Endpoint string `json:"rds_endpoint" binding:"required"`
 	Port        int    `json:"port" binding:"required,min=1,max=65535"`
 	Username    string `json:"username" binding:"required"`
 	Password    string `json:"password" binding:"required"`

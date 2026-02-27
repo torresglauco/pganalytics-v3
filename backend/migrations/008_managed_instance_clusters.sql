@@ -1,13 +1,13 @@
--- RDS Cluster Support
+-- Managed Instance Cluster Support
 -- Allows grouping multiple RDS instances into clusters (master + replicas)
 
 SET search_path TO pganalytics, public;
 
 -- ============================================================================
--- RDS CLUSTERS TABLE
+-- Managed Instance CLUSTERS TABLE
 -- ============================================================================
 
-CREATE TABLE IF NOT EXISTS rds_clusters (
+CREATE TABLE IF NOT EXISTS managed_instance_clusters (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL UNIQUE,
     description TEXT,
@@ -22,24 +22,24 @@ CREATE TABLE IF NOT EXISTS rds_clusters (
     updated_by INTEGER REFERENCES users(id) ON DELETE SET NULL
 );
 
-CREATE INDEX idx_rds_clusters_environment ON rds_clusters(environment);
-CREATE INDEX idx_rds_clusters_status ON rds_clusters(status);
-CREATE INDEX idx_rds_clusters_active ON rds_clusters(is_active);
+CREATE INDEX idx_managed_instance_clusters_environment ON managed_instance_clusters(environment);
+CREATE INDEX idx_managed_instance_clusters_status ON managed_instance_clusters(status);
+CREATE INDEX idx_managed_instance_clusters_active ON managed_instance_clusters(is_active);
 
 -- ============================================================================
 -- UPDATE RDS INSTANCES - ADD CLUSTER RELATIONSHIP
 -- ============================================================================
 
-ALTER TABLE rds_instances ADD COLUMN cluster_id INTEGER REFERENCES rds_clusters(id) ON DELETE SET NULL;
-ALTER TABLE rds_instances ADD COLUMN instance_role VARCHAR(50) DEFAULT 'standalone' CHECK (instance_role IN ('master', 'read-replica', 'standby', 'standalone'));
+ALTER TABLE managed_instances ADD COLUMN cluster_id INTEGER REFERENCES managed_instance_clusters(id) ON DELETE SET NULL;
+ALTER TABLE managed_instances ADD COLUMN instance_role VARCHAR(50) DEFAULT 'standalone' CHECK (instance_role IN ('master', 'read-replica', 'standby', 'standalone'));
 
-CREATE INDEX idx_rds_instances_cluster ON rds_instances(cluster_id);
-CREATE INDEX idx_rds_instances_role ON rds_instances(instance_role);
+CREATE INDEX idx_managed_instances_cluster ON managed_instances(cluster_id);
+CREATE INDEX idx_managed_instances_role ON managed_instances(instance_role);
 
 -- ============================================================================
 -- SCHEMA MIGRATION TRACKING
 -- ============================================================================
 
 INSERT INTO schema_versions (version, description) VALUES
-    ('008_rds_clusters', 'Add RDS cluster support with master/replica grouping')
+    ('008_managed_instance_clusters', 'Add RDS cluster support with master/replica grouping')
 ON CONFLICT DO NOTHING;

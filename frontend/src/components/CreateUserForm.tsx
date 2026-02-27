@@ -75,11 +75,19 @@ export const CreateUserForm: React.FC<CreateUserFormProps> = ({ onSuccess, onErr
     setIsLoading(true)
 
     try {
+      const token = localStorage.getItem('auth_token')
+
+      if (!token) {
+        onError('Authentication token not found. Please log in again.')
+        setIsLoading(false)
+        return
+      }
+
       const response = await fetch('/api/v1/users', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
           username: formData.username,
@@ -91,14 +99,19 @@ export const CreateUserForm: React.FC<CreateUserFormProps> = ({ onSuccess, onErr
       })
 
       if (!response.ok) {
-        const errorData = await response.json()
-        onError(errorData.message || `Failed to create user (HTTP ${response.status})`)
+        try {
+          const errorData = await response.json()
+          onError(errorData.message || `Failed to create user (HTTP ${response.status})`)
+        } catch {
+          onError(`Failed to create user (HTTP ${response.status})`)
+        }
         setIsLoading(false)
         return
       }
 
+      const createdUser = await response.json()
       onSuccess(
-        `User ${formData.username} created successfully as ${formData.role}`
+        `User ${createdUser.username} created successfully as ${createdUser.role}`
       )
 
       // Reset form
@@ -111,7 +124,9 @@ export const CreateUserForm: React.FC<CreateUserFormProps> = ({ onSuccess, onErr
       })
       setErrors({})
     } catch (error) {
-      onError(error instanceof Error ? error.message : 'Failed to create user')
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create user'
+      console.error('Create user error:', errorMessage)
+      onError(errorMessage)
     } finally {
       setIsLoading(false)
     }

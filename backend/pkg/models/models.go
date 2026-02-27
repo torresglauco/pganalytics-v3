@@ -912,3 +912,48 @@ type WorkloadPatternSummary struct {
 	LatestDetection time.Time     `json:"latest_detection"`
 	AllMetadata     []interface{} `json:"all_metadata"`
 }
+
+// ============================================================================
+// REGISTRATION SECRET MODELS
+// ============================================================================
+
+// RegistrationSecret represents a secret for collector self-registration
+type RegistrationSecret struct {
+	ID                 string     `db:"id" json:"id"`
+	Name               string     `db:"name" json:"name"`
+	SecretValue        string     `db:"secret_value" json:"secret_value,omitempty"` // Only returned on creation
+	Description        string     `db:"description" json:"description,omitempty"`
+	Active             bool       `db:"active" json:"active"`
+	CreatedBy          *int       `db:"created_by" json:"created_by,omitempty"`
+	CreatedByUsername  string     `json:"created_by_username,omitempty"`
+	CreatedAt          time.Time  `db:"created_at" json:"created_at"`
+	UpdatedAt          time.Time  `db:"updated_at" json:"updated_at"`
+	ExpiresAt          *time.Time `db:"expires_at" json:"expires_at,omitempty"`
+	TotalRegistrations int        `db:"total_registrations" json:"total_registrations"`
+	LastUsedAt         *time.Time `db:"last_used_at" json:"last_used_at,omitempty"`
+}
+
+// CreateRegistrationSecretRequest is the request to create a new registration secret
+type CreateRegistrationSecretRequest struct {
+	Name        string     `json:"name" binding:"required,min=1,max=255"`
+	Description string     `json:"description"`
+	ExpiresAt   *time.Time `json:"expires_at,omitempty"`
+}
+
+// UpdateRegistrationSecretRequest is the request to update a registration secret
+type UpdateRegistrationSecretRequest struct {
+	Name        string `json:"name" binding:"min=1,max=255"`
+	Description string `json:"description"`
+	Active      *bool  `json:"active,omitempty"`
+}
+
+// CreateRegistrationSecretResponse is the response when creating a registration secret
+type CreateRegistrationSecretResponse struct {
+	ID          string    `json:"id"`
+	Name        string    `json:"name"`
+	SecretValue string    `json:"secret_value"` // Only returned on creation
+	Description string    `json:"description,omitempty"`
+	Active      bool      `json:"active"`
+	CreatedAt   time.Time `json:"created_at"`
+	Message     string    `json:"message"`
+}

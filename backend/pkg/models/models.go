@@ -499,10 +499,18 @@ type ResetPasswordResponse struct {
 // RDS MODELS
 // ============================================================================
 
-// TestConnectionRequest represents a request to test RDS connection
+// TestConnectionRequest represents a request to test RDS connection (for existing instance)
 type TestConnectionRequest struct {
 	Username string `json:"username" binding:"required"`
 	Password string `json:"password" binding:"required"`
+}
+
+// TestRDSConnectionRequest represents a request to test RDS connection with endpoint details
+type TestRDSConnectionRequest struct {
+	RDSEndpoint string `json:"rds_endpoint" binding:"required"`
+	Port        int    `json:"port" binding:"required,min=1,max=65535"`
+	Username    string `json:"username" binding:"required"`
+	Password    string `json:"password" binding:"required"`
 }
 
 // TestConnectionResponse represents the response from a connection test

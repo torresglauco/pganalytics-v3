@@ -203,12 +203,13 @@ export const RDSInstancesTable: React.FC<RDSInstancesTableProps> = ({ onSuccess,
         },
         body: JSON.stringify({
           username: instance.master_username,
-          password: instance.master_username, // In real app, would need actual password
+          password: instance.master_username, // Note: In real scenario would need actual password from secure storage
         }),
       })
 
       if (!response.ok) {
-        throw new Error('Connection test failed')
+        const errorData = await response.json()
+        throw new Error(errorData.message || 'Connection test failed')
       }
 
       const data = await response.json()

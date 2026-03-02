@@ -204,7 +204,7 @@ func (p *PostgresDB) UpdateManagedInstanceStatus(ctx context.Context, id int, st
 		ctx,
 		`UPDATE pganalytics.managed_instances
 		SET last_connection_status = $1, last_heartbeat = CURRENT_TIMESTAMP,
-		    last_error_message = $2, last_error_time = CASE WHEN $2 IS NOT NULL THEN CURRENT_TIMESTAMP ELSE last_error_time END,
+		    last_error_message = $2::text, last_error_time = CASE WHEN $2 IS NOT NULL THEN CURRENT_TIMESTAMP ELSE last_error_time END,
 		    updated_at = CURRENT_TIMESTAMP
 		WHERE id = $3`,
 		status, errorMsg, id,

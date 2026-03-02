@@ -654,6 +654,7 @@ func (s *Server) handleCollectorRegister(c *gin.Context) {
 	}
 
 	// Validate secret from database (new way)
+	var validSecret *models.RegistrationSecret
 	validSecret, err := s.postgres.ValidateRegistrationSecret(c.Request.Context(), registrationSecret)
 	if err != nil {
 		// Fallback to hardcoded config for backward compatibility
@@ -662,8 +663,15 @@ func (s *Server) handleCollectorRegister(c *gin.Context) {
 			c.JSON(errResp.StatusCode, errResp)
 			return
 		}
-	} else {
-		// Record the usage in audit log
+		// If using fallback secret from config, still try to find it in DB to record usage
+		fallbackSecret, dbErr := s.postgres.ValidateRegistrationSecret(c.Request.Context(), registrationSecret)
+		if dbErr == nil {
+			validSecret = fallbackSecret
+		}
+	}
+
+	// Record the usage in audit log if secret was validated
+	if validSecret != nil {
 		go func() {
 			ipAddress := c.ClientIP()
 			_ = s.postgres.RecordRegistrationSecretUsage(

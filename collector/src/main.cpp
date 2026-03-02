@@ -281,33 +281,41 @@ int runCronMode() {
             json metricsArray;
             std::vector<json> metricsVector;
 
-            if (buffer.getUncompressed(metricsArray) && metricsArray.is_array()) {
+            if (!buffer.getUncompressed(metricsArray)) {
+                std::cerr << "ERROR: Failed to get uncompressed metrics from buffer" << std::endl;
+                lastPushTime = now;
+            } else if (!metricsArray.is_array()) {
+                std::cerr << "ERROR: Uncompressed metrics is not an array" << std::endl;
+                lastPushTime = now;
+            } else {
                 // Convert JSON array to vector for createPayload
                 for (const auto& metric : metricsArray) {
                     metricsVector.push_back(metric);
                 }
+
+                // Use registered collector ID if available, otherwise use config ID
+                std::string collectorIdForPayload = registeredCollectorId.empty() ?
+                    gConfig->getCollectorId() : registeredCollectorId;
+
+                json payload = MetricsSerializer::createPayload(
+                    collectorIdForPayload,
+                    gConfig->getHostname(),
+                    "3.0.0",
+                    metricsVector
+                );
+                payload["metrics_count"] = metricCount;
+
+                std::cout << "DEBUG: Payload has " << payload["metrics"].size() << " metrics" << std::endl;
+
+                if (sender.pushMetrics(payload)) {
+                    std::cout << "Metrics pushed successfully" << std::endl;
+                    buffer.clear();
+                } else {
+                    std::cerr << "Failed to push metrics" << std::endl;
+                }
+
+                lastPushTime = now;
             }
-
-            // Use registered collector ID if available, otherwise use config ID
-            std::string collectorIdForPayload = registeredCollectorId.empty() ?
-                gConfig->getCollectorId() : registeredCollectorId;
-
-            json payload = MetricsSerializer::createPayload(
-                collectorIdForPayload,
-                gConfig->getHostname(),
-                "3.0.0",
-                metricsVector
-            );
-            payload["metrics_count"] = metricCount;
-
-            if (sender.pushMetrics(payload)) {
-                std::cout << "Metrics pushed successfully" << std::endl;
-                buffer.clear();
-            } else {
-                std::cerr << "Failed to push metrics" << std::endl;
-            }
-
-            lastPushTime = now;
         }
 
         // Check if it's time to pull configuration

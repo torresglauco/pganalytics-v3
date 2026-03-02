@@ -81,4 +81,4 @@ EXPOSE 9090
 
 # Start the collector
 ENTRYPOINT ["/app/entrypoint.sh"]
-CMD ["cron"]
+CMD ["/usr/local/bin/pganalytics-collector"]

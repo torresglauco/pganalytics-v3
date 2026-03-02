@@ -458,7 +458,9 @@ bool Sender::registerCollector(
     const std::string& registrationSecret,
     const std::string& collectorName,
     std::string& authToken,
-    std::string& collectorId
+    std::string& collectorId,
+    std::string& certificate,
+    std::string& privateKey
 ) {
     // Initialize CURL
     CURL* curl = curl_easy_init();
@@ -575,6 +577,26 @@ bool Sender::registerCollector(
                     std::cout << "Collector ID: " << collectorId << std::endl;
                 } catch (const std::exception& e) {
                     std::cerr << "Failed to extract collector_id: " << e.what() << std::endl;
+                }
+            }
+
+            // Extract certificate if available
+            if (response.contains("certificate")) {
+                try {
+                    certificate = response["certificate"].get<std::string>();
+                    std::cout << "Certificate received from backend" << std::endl;
+                } catch (const std::exception& e) {
+                    std::cerr << "Failed to extract certificate: " << e.what() << std::endl;
+                }
+            }
+
+            // Extract private key if available
+            if (response.contains("private_key")) {
+                try {
+                    privateKey = response["private_key"].get<std::string>();
+                    std::cout << "Private key received from backend" << std::endl;
+                } catch (const std::exception& e) {
+                    std::cerr << "Failed to extract private_key: " << e.what() << std::endl;
                 }
             }
 

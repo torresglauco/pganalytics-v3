@@ -13,7 +13,9 @@
 #include "../include/sender.h"
 #include "../include/metrics_serializer.h"
 #include "../include/metrics_buffer.h"
+#ifdef HAVE_LIBPQ
 #include "../include/query_stats_plugin.h"
+#endif
 #include "../include/replication_plugin.h"
 
 // Global state (gConfig is defined in config_manager.cpp)
@@ -119,6 +121,7 @@ int runCronMode() {
     }
 
     // Create query stats collector (will be collected separately if enabled)
+#ifdef HAVE_LIBPQ
     std::unique_ptr<PgQueryStatsCollector> queryStatsCollector = nullptr;
     if (gConfig->isCollectorEnabled("pg_query_stats")) {
         queryStatsCollector = std::make_unique<PgQueryStatsCollector>(
@@ -132,6 +135,7 @@ int runCronMode() {
         );
         std::cout << "Added PgQueryStatsCollector" << std::endl;
     }
+#endif
 
     // Initialize metrics buffer with larger capacity (50MB to handle query stats with 100 queries × 2 databases)
     MetricsBuffer buffer(50 * 1024 * 1024);
@@ -230,6 +234,7 @@ int runCronMode() {
         }
 
         // Collect query statistics if enabled
+#ifdef HAVE_LIBPQ
         if (queryStatsCollector && queryStatsCollector->isEnabled()) {
             std::cout << "Collecting query statistics..." << std::endl;
             json queryStats = queryStatsCollector->execute();
@@ -256,6 +261,7 @@ int runCronMode() {
                 }
             }
         }
+#endif
 
         // Check if it's time to push metrics
         auto now = std::chrono::steady_clock::now();

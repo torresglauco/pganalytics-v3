@@ -16,6 +16,8 @@ typedef struct pg_conn PGconn;
 #include <memory>
 #include <string>
 
+#ifdef HAVE_LIBPQ
+
 /**
  * PostgreSQL Connection Pool
  *
@@ -163,3 +165,5 @@ private:
      */
     void initialize();
 };
+
+#endif  // HAVE_LIBPQ

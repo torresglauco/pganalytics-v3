@@ -107,13 +107,17 @@ public:
      * @param collectorName Human-readable name for the collector
      * @param authToken Output: JWT token received from backend
      * @param collectorId Output: Collector UUID assigned by backend
+     * @param certificate Output: Client certificate for mTLS
+     * @param privateKey Output: Client private key for mTLS
      * @return true if successful, false otherwise
      */
     bool registerCollector(
         const std::string& registrationSecret,
         const std::string& collectorName,
         std::string& authToken,
-        std::string& collectorId
+        std::string& collectorId,
+        std::string& certificate,
+        std::string& privateKey
     );
 
 private:

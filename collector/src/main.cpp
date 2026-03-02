@@ -379,10 +379,12 @@ int runRegister() {
     // Attempt registration
     std::string authToken;
     std::string registeredCollectorId;
+    std::string certificate;
+    std::string privateKey;
     std::string collectorName = gConfig->getHostname();
     std::cout << "Registering with backend as '" << collectorName << "'..." << std::endl;
 
-    if (!sender.registerCollector(registrationSecret, collectorName, authToken, registeredCollectorId)) {
+    if (!sender.registerCollector(registrationSecret, collectorName, authToken, registeredCollectorId, certificate, privateKey)) {
         std::cerr << "Registration failed" << std::endl;
         return 1;
     }
@@ -419,6 +421,40 @@ int runRegister() {
         }
     } else {
         std::cerr << "Warning: No collector ID received from backend" << std::endl;
+    }
+
+    // Save client certificate for mTLS
+    if (!certificate.empty()) {
+        std::string certFilePath = "/etc/pganalytics/collector.crt";
+        std::ofstream certFile(certFilePath);
+        if (certFile.is_open()) {
+            certFile << certificate;
+            certFile.close();
+            std::cout << "Client certificate saved to " << certFilePath << std::endl;
+            // Make it readable only by pganalytics user
+            chmod(certFilePath.c_str(), 0600);
+        } else {
+            std::cerr << "Warning: Could not save client certificate to file" << std::endl;
+        }
+    } else {
+        std::cerr << "Warning: No certificate received from backend" << std::endl;
+    }
+
+    // Save client private key for mTLS
+    if (!privateKey.empty()) {
+        std::string keyFilePath = "/etc/pganalytics/collector.key";
+        std::ofstream keyFile(keyFilePath);
+        if (keyFile.is_open()) {
+            keyFile << privateKey;
+            keyFile.close();
+            std::cout << "Client private key saved to " << keyFilePath << std::endl;
+            // Make it readable only by pganalytics user
+            chmod(keyFilePath.c_str(), 0600);
+        } else {
+            std::cerr << "Warning: Could not save client private key to file" << std::endl;
+        }
+    } else {
+        std::cerr << "Warning: No private key received from backend" << std::endl;
     }
 
     std::cout << "You can now run the collector in normal mode" << std::endl;

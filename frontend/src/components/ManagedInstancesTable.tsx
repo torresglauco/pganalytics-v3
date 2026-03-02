@@ -469,15 +469,11 @@ export const ManagedInstancesTable: React.FC<ManagedInstancesTableProps> = ({ on
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div>
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(instance.last_connection_status)}`}>
-                        {instance.last_connection_status === 'connected' ? (
-                          <span className="flex items-center gap-1">
-                            <CheckCircle size={14} />
-                            Connected
-                          </span>
-                        ) : (
-                          instance.last_connection_status.charAt(0).toUpperCase() + instance.last_connection_status.slice(1).replace('_', ' ')
+                      <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(instance.last_connection_status)}`}>
+                        {instance.last_connection_status === 'connected' && (
+                          <CheckCircle size={14} />
                         )}
+                        {instance.last_connection_status.charAt(0).toUpperCase() + instance.last_connection_status.slice(1).replace('_', ' ')}
                       </span>
                       {instance.last_heartbeat && (
                         <p className="text-xs text-gray-500 mt-1">

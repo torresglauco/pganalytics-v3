@@ -1,13 +1,23 @@
 #!/bin/bash
 set -e
 
+# Check if collector has been previously registered and has a persisted ID
+PERSISTED_COLLECTOR_ID=""
+if [ -f /var/lib/pganalytics/collector.id ]; then
+    PERSISTED_COLLECTOR_ID=$(cat /var/lib/pganalytics/collector.id)
+    echo "Found persisted collector ID: $PERSISTED_COLLECTOR_ID"
+fi
+
+# Use persisted ID if available, otherwise use the configured ID
+COLLECTOR_ID_TO_USE="${PERSISTED_COLLECTOR_ID:-${COLLECTOR_ID:-collector-001}}"
+
 # Generate configuration file from environment variables
 cat > /etc/pganalytics/collector.toml << EOF
 # pgAnalytics Collector v3.0 Configuration
 # Generated from environment variables
 
 [collector]
-id = "${COLLECTOR_ID:-collector-001}"
+id = "$COLLECTOR_ID_TO_USE"
 hostname = "${COLLECTOR_NAME:-localhost}"
 interval = ${COLLECTION_INTERVAL:-60}
 push_interval = ${PUSH_INTERVAL:-60}
@@ -58,12 +68,17 @@ EOF
 chown pganalytics:pganalytics /etc/pganalytics/collector.toml
 chmod 640 /etc/pganalytics/collector.toml
 
-# Auto-register if configured and not already registered
-if [ "${AUTO_REGISTER}" = "true" ] && [ -n "${REGISTRATION_SECRET}" ]; then
-    echo "Auto-registering collector..."
+# Auto-register only if:
+# 1. AUTO_REGISTER is enabled
+# 2. REGISTRATION_SECRET is provided
+# 3. Collector hasn't been registered yet (no persisted ID)
+if [ "${AUTO_REGISTER}" = "true" ] && [ -n "${REGISTRATION_SECRET}" ] && [ -z "${PERSISTED_COLLECTOR_ID}" ]; then
+    echo "Auto-registering collector for the first time..."
     /usr/local/bin/pganalytics-collector register || {
         echo "Warning: Auto-registration failed, continuing anyway..."
     }
+elif [ -n "${PERSISTED_COLLECTOR_ID}" ]; then
+    echo "Collector already registered with ID: $PERSISTED_COLLECTOR_ID (skipping registration)"
 fi
 
 # Execute the collector

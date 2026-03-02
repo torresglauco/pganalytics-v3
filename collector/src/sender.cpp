@@ -130,43 +130,94 @@ void Sender::setRegistrationSecret(const std::string& secret) {
 }
 
 void Sender::refreshAuthToken() {
-    // If no registration secret is configured, we can't refresh tokens
-    // In this case, the token must be manually refreshed by re-registering
-    if (registrationSecret_.empty()) {
-        std::cerr << "WARNING: No registration secret configured for token refresh" << std::endl;
+    // If no token exists, we can't refresh
+    if (authToken_.empty()) {
+        std::cerr << "ERROR: No token to refresh" << std::endl;
         return;
     }
 
-    // Get the hostname from the collector ID (it's used as the display name)
-    // The backend will map it back to the same UUID deterministically
-    std::string collectorName = collectorId_;
-    if (collectorName.empty()) {
-        // Fallback: use hostname from environment or default
-        const char* envHostname = std::getenv("COLLECTOR_NAME");
-        collectorName = envHostname ? envHostname : "collector";
+    // Use the dedicated token refresh endpoint
+    // This is more efficient than re-registration
+    CURL* curl = curl_easy_init();
+    if (!curl) {
+        std::cerr << "ERROR: Failed to initialize CURL for token refresh" << std::endl;
+        return;
     }
 
-    // Re-register the collector to get a new token
-    // The backend will recognize this as the same collector (via hostname hash)
-    // and return the same UUID, but with a fresh token
-    std::string newAuthToken, newCollectorId, dummyCert, dummyKey;
-    if (registerCollector(registrationSecret_, collectorName, newAuthToken, newCollectorId, dummyCert, dummyKey)) {
-        // Successfully got a new token from registration
-        authToken_ = newAuthToken;
+    // Configure CURL for TLS
+    if (!setupCurl(curl)) {
+        curl_easy_cleanup(curl);
+        std::cerr << "ERROR: Failed to setup CURL for token refresh" << std::endl;
+        return;
+    }
 
-        // Update collector ID in case it changed
-        if (!newCollectorId.empty()) {
-            collectorId_ = newCollectorId;
+    // Prepare URL and headers
+    std::string url = backendUrl_ + "/api/v1/collectors/refresh-token";
+    struct curl_slist* headers = nullptr;
+    headers = curl_slist_append(headers, "Content-Type: application/json");
+
+    // Add current authorization header
+    std::string authHeader = "Authorization: Bearer " + authToken_;
+    headers = curl_slist_append(headers, authHeader.c_str());
+
+    // Set CURL options
+    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+    curl_easy_setopt(curl, CURLOPT_POST, 1L);
+
+    // Response callback
+    std::string responseData;
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeCallback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &responseData);
+
+    // Perform request
+    CURLcode res = curl_easy_perform(curl);
+
+    if (res != CURLE_OK) {
+        std::cerr << "ERROR: Token refresh CURL error: " << curl_easy_strerror(res) << std::endl;
+        curl_slist_free_all(headers);
+        curl_easy_cleanup(curl);
+        return;
+    }
+
+    // Check HTTP status code
+    long httpCode = 0;
+    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpCode);
+
+    if (httpCode == 200 || httpCode == 201) {
+        try {
+            json response = json::parse(responseData);
+
+            // Extract new token
+            if (response.contains("token")) {
+                authToken_ = response["token"].get<std::string>();
+
+                // Extract token expiration time if available
+                if (response.contains("expires_at")) {
+                    // Parse timestamp - it's a JSON timestamp, use as-is
+                    // Default to 1 hour from now for safety
+                    time_t now = std::time(nullptr);
+                    tokenExpiresAt_ = now + 3600;
+                } else {
+                    // Default to 1 hour expiration
+                    time_t now = std::time(nullptr);
+                    tokenExpiresAt_ = now + 3600;
+                }
+
+                std::cout << "Token refreshed successfully" << std::endl;
+            } else {
+                std::cerr << "ERROR: Token refresh response missing 'token' field" << std::endl;
+            }
+        } catch (const std::exception& e) {
+            std::cerr << "ERROR: Failed to parse token refresh response: " << e.what() << std::endl;
         }
-
-        // Set expiration time: default to 1 hour from now
-        time_t now = std::time(nullptr);
-        tokenExpiresAt_ = now + 3600;
-
-        std::cout << "Token refreshed successfully via re-registration" << std::endl;
     } else {
-        std::cerr << "ERROR: Failed to refresh token via re-registration" << std::endl;
+        std::cerr << "ERROR: Token refresh failed with HTTP " << httpCode << std::endl;
     }
+
+    // Cleanup
+    curl_slist_free_all(headers);
+    curl_easy_cleanup(curl);
 }
 
 void Sender::setAuthToken(const std::string& token, long expiresAt) {

@@ -273,6 +273,9 @@ int runCronMode() {
         if (secsSincePush >= pushInterval && !buffer.isEmpty()) {
             std::cout << "Pushing " << buffer.getMetricCount() << " metrics to backend..." << std::endl;
 
+            // Refresh auth token if needed before pushing
+            sender.refreshAuthToken();
+
             // Create payload with uncompressed metrics from buffer
             int metricCount = buffer.getMetricCount();
             json metricsArray;

@@ -74,9 +74,10 @@ echo -e "${YELLOW}Phase 2: Collector Registration Validation${NC}"
 COLLECTORS_RESPONSE=$(curl -sf -X GET \
     "$API_BASE_URL/api/v1/collectors" \
     -H "Authorization: Bearer $TOKEN" \
-    2>/dev/null || echo "[]")
+    2>/dev/null || echo "{\"total\":0}")
 
-COLLECTOR_COUNT=$(echo "$COLLECTORS_RESPONSE" | grep -o '"id":"col_[0-9]*' | wc -l)
+# Extract total from response JSON
+COLLECTOR_COUNT=$(echo "$COLLECTORS_RESPONSE" | grep -o '"total":[0-9]*' | cut -d':' -f2)
 
 if [ "$COLLECTOR_COUNT" -eq "$EXPECTED_COLLECTORS" ]; then
     test_result "Collector count equals $EXPECTED_COLLECTORS" "PASS" "$EXPECTED_COLLECTORS" "$COLLECTOR_COUNT"
@@ -100,10 +101,11 @@ echo ""
 echo -e "${YELLOW}Phase 3: Managed Instances Validation${NC}"
 
 MANAGED_RESPONSE=$(curl -sf -X GET \
-    "$API_BASE_URL/api/v1/rds-instances" \
+    "$API_BASE_URL/api/v1/managed-instances" \
     -H "Authorization: Bearer $TOKEN" \
     2>/dev/null || echo "[]")
 
+# Count objects in array (each has "id":N)
 MANAGED_COUNT=$(echo "$MANAGED_RESPONSE" | grep -o '"id":[0-9]*' | wc -l)
 
 if [ "$MANAGED_COUNT" -eq "$EXPECTED_MANAGED_INSTANCES" ]; then
@@ -126,8 +128,8 @@ else
     test_result "All collectors have 'registered' status" "FAIL" "$EXPECTED_COLLECTORS" "$REGISTERED_STATUS"
 fi
 
-# Check that collectors have last_heartbeat set (indicating they've communicated)
-HEARTBEAT_COUNT=$(echo "$COLLECTORS_RESPONSE" | grep -o '"last_heartbeat":"[^"]*"' | wc -l)
+# Check that collectors have last_seen set (indicating they've communicated)
+HEARTBEAT_COUNT=$(echo "$COLLECTORS_RESPONSE" | grep -o '"last_seen":"[^"]*"' | wc -l)
 if [ "$HEARTBEAT_COUNT" -gt 0 ]; then
     test_result "Collectors sending heartbeats ($HEARTBEAT_COUNT/$EXPECTED_COLLECTORS)" "PASS" "$EXPECTED_COLLECTORS" "$HEARTBEAT_COUNT"
 else

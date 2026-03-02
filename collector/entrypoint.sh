@@ -61,10 +61,11 @@ chmod 640 /etc/pganalytics/collector.toml
 # Auto-register if configured and not already registered
 if [ "${AUTO_REGISTER}" = "true" ] && [ -n "${REGISTRATION_SECRET}" ]; then
     echo "Auto-registering collector..."
-    su -s /bin/bash pganalytics -c "cd /app && ./pganalytics register" || {
+    cd /app && ./pganalytics register || {
         echo "Warning: Auto-registration failed, continuing anyway..."
     }
 fi
 
-# Switch to pganalytics user and execute the collector
-exec su -s /bin/bash pganalytics -c "cd /app && $@"
+# Execute the collector
+cd /app
+exec $@

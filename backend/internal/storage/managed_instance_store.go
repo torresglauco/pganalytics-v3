@@ -10,6 +10,19 @@ import (
 	"github.com/torresglauco/pganalytics-v3/backend/pkg/models"
 )
 
+// HealthCheckInstance represents a managed instance with encrypted credentials for health checks
+type HealthCheckInstance struct {
+	ID                int
+	Name              string
+	Endpoint          string
+	Port              int
+	MasterUsername    string
+	EncryptedPassword string
+	SSLMode           string
+	ConnectionTimeout int
+	Status            string
+}
+
 // CreateManagedInstance creates a new RDS instance record
 func (p *PostgresDB) CreateManagedInstance(ctx context.Context, instance *models.CreateManagedInstanceRequest, secretID *int, userID int) (*models.ManagedInstance, error) {
 	var id int
@@ -319,28 +332,30 @@ func (p *PostgresDB) DeleteManagedInstance(ctx context.Context, id int) error {
 	return nil
 }
 
-// ListManagedInstances retrieves all managed instances for background health checks
-func (p *PostgresDB) ListManagedInstancesForHealthCheck(ctx context.Context) ([]*models.ManagedInstance, error) {
+// ListManagedInstancesForHealthCheck retrieves all managed instances with encrypted passwords for background health checks
+func (p *PostgresDB) ListManagedInstancesForHealthCheck(ctx context.Context) ([]*HealthCheckInstance, error) {
 	rows, err := p.db.QueryContext(
 		ctx,
-		`SELECT id, name, endpoint, port, master_username,
-		        ssl_mode, connection_timeout, status, is_active
-		 FROM pganalytics.managed_instances
-		 WHERE is_active = true
-		 ORDER BY id ASC`,
+		`SELECT m.id, m.name, m.endpoint, m.port, m.master_username,
+		        m.ssl_mode, m.connection_timeout, m.status,
+		        COALESCE(s.secret_encrypted, '')
+		 FROM pganalytics.managed_instances m
+		 LEFT JOIN pganalytics.secrets s ON m.secret_id = s.id
+		 WHERE m.is_active = true
+		 ORDER BY m.id ASC`,
 	)
 	if err != nil {
 		return nil, apperrors.DatabaseError("list managed instances", err.Error())
 	}
 	defer rows.Close()
 
-	var instances []*models.ManagedInstance
+	var instances []*HealthCheckInstance
 	for rows.Next() {
-		instance := &models.ManagedInstance{}
+		instance := &HealthCheckInstance{}
 		err := rows.Scan(
 			&instance.ID, &instance.Name, &instance.Endpoint, &instance.Port,
 			&instance.MasterUsername, &instance.SSLMode, &instance.ConnectionTimeout,
-			&instance.Status, &instance.IsActive,
+			&instance.Status, &instance.EncryptedPassword,
 		)
 		if err != nil {
 			return nil, apperrors.DatabaseError("scan managed instance", err.Error())
@@ -354,37 +369,6 @@ func (p *PostgresDB) ListManagedInstancesForHealthCheck(ctx context.Context) ([]
 
 	return instances, nil
 }
-
-// UpdateManagedInstanceStatus updates the connection status and heartbeat of a managed instance
-func (p *PostgresDB) UpdateManagedInstanceStatus(ctx context.Context, id int, status string, errorMsg *string) error {
-	result, err := p.db.ExecContext(
-		ctx,
-		`UPDATE pganalytics.managed_instances
-		 SET last_connection_status = $1,
-		     last_heartbeat = CURRENT_TIMESTAMP,
-		     last_error_message = $2,
-		     last_error_time = CASE WHEN $2 IS NOT NULL THEN CURRENT_TIMESTAMP ELSE last_error_time END,
-		     updated_at = CURRENT_TIMESTAMP
-		 WHERE id = $3`,
-		status, errorMsg, id,
-	)
-
-	if err != nil {
-		return apperrors.DatabaseError("update managed instance status", err.Error())
-	}
-
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return apperrors.DatabaseError("update managed instance status", err.Error())
-	}
-
-	if rowsAffected == 0 {
-		return apperrors.NotFound("managed instance not found", fmt.Sprintf("ID: %d", id))
-	}
-
-	return nil
-}
-
 // Helper functions for pointer conversion
 func ptrString(s string) *string {
 	if s == "" {

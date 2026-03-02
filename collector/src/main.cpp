@@ -147,6 +147,12 @@ int runCronMode() {
         tlsConfig.verify
     );
 
+    // Set registration secret for token refresh if available
+    const char* registrationSecret = std::getenv("REGISTRATION_SECRET");
+    if (registrationSecret && !std::string(registrationSecret).empty()) {
+        sender.setRegistrationSecret(registrationSecret);
+    }
+
     // Try to load auth token from file (saved during registration)
     std::string authToken;
     std::string registeredCollectorId;

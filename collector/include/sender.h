@@ -120,6 +120,12 @@ public:
         std::string& privateKey
     );
 
+    /**
+     * Set registration secret for token refresh
+     * @param secret Registration secret to use for token renewal
+     */
+    void setRegistrationSecret(const std::string& secret);
+
 private:
     std::string backendUrl_;
     std::string collectorId_;
@@ -129,6 +135,7 @@ private:
     std::string authToken_;
     long tokenExpiresAt_;
     Protocol protocol_;
+    std::string registrationSecret_;
 
     // Helper methods
     static size_t writeCallback(void* contents, size_t size, size_t nmemb, std::string* userp);

@@ -27,6 +27,7 @@ services:
   timescale:
     image: postgres:16-bullseye
     container_name: pganalytics-timescale
+    init: true
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: pganalytics
@@ -60,7 +61,7 @@ services:
       TLS_KEY: "/etc/pganalytics/tls/server.key"
       LOG_LEVEL: "debug"
       PORT: "8080"
-      REGISTRATION_SECRET: "demo-registration-secret-change-in-production"
+      REGISTRATION_SECRET: "${REGISTRATION_SECRET:-demo-registration-secret-change-in-production}"
     ports:
       - "8080:8080"
     depends_on:
@@ -101,7 +102,7 @@ services:
       LOG_LEVEL: "debug"
       # Collector self-registration
       AUTO_REGISTER: "true"
-      REGISTRATION_SECRET: "demo-registration-secret-change-in-production"
+      REGISTRATION_SECRET: "${REGISTRATION_SECRET:-demo-registration-secret-change-in-production}"
     depends_on:
       postgres:
         condition: service_healthy

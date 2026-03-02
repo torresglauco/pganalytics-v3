@@ -5,8 +5,15 @@
 CREATE SCHEMA IF NOT EXISTS metrics;
 SET search_path TO metrics, public;
 
--- Create extension
-CREATE EXTENSION IF NOT EXISTS timescaledb;
+-- Try to create extension, but gracefully handle if not available
+-- TimescaleDB is optional for this deployment
+DO $$
+BEGIN
+  CREATE EXTENSION IF NOT EXISTS timescaledb WITH SCHEMA public;
+EXCEPTION WHEN others THEN
+  RAISE NOTICE 'TimescaleDB extension not available - continuing with standard PostgreSQL tables';
+END;
+$$;
 
 -- ============================================================================
 -- TIME-SERIES TABLES (Hypertables)
@@ -51,7 +58,13 @@ CREATE TABLE IF NOT EXISTS metrics_pg_stats_table (
 );
 
 -- Create hypertable
-SELECT create_hypertable('metrics_pg_stats_table', 'time', if_not_exists => TRUE);
+DO $$
+BEGIN
+  SELECT create_hypertable('metrics_pg_stats_table', 'time', if_not_exists => TRUE);
+EXCEPTION WHEN others THEN
+  RAISE NOTICE 'Could not create hypertable metrics_pg_stats_table - TimescaleDB may not be available';
+END;
+$$;
 
 -- Add indexes for common queries
 CREATE INDEX IF NOT EXISTS idx_metrics_pg_stats_table_server_time
@@ -88,7 +101,13 @@ CREATE TABLE IF NOT EXISTS metrics_pg_stats_index (
     is_primary BOOLEAN
 );
 
-SELECT create_hypertable('metrics_pg_stats_index', 'time', if_not_exists => TRUE);
+DO $$
+BEGIN
+  SELECT create_hypertable('metrics_pg_stats_index', 'time', if_not_exists => TRUE);
+EXCEPTION WHEN others THEN
+  RAISE NOTICE 'Could not create hypertable metrics_pg_stats_index - TimescaleDB may not be available';
+END;
+$$;
 
 CREATE INDEX IF NOT EXISTS idx_metrics_pg_stats_index_db_time
     ON metrics_pg_stats_index (database_id, time DESC)
@@ -127,7 +146,13 @@ CREATE TABLE IF NOT EXISTS metrics_pg_stats_database (
     database_size BIGINT
 );
 
-SELECT create_hypertable('metrics_pg_stats_database', 'time', if_not_exists => TRUE);
+DO $$
+BEGIN
+  SELECT create_hypertable('metrics_pg_stats_database', 'time', if_not_exists => TRUE);
+EXCEPTION WHEN others THEN
+  RAISE NOTICE 'Could not create hypertable metrics_pg_stats_database - TimescaleDB may not be available';
+END;
+$$;
 
 CREATE INDEX IF NOT EXISTS idx_metrics_pg_stats_database_time
     ON metrics_pg_stats_database (server_id, time DESC);
@@ -171,7 +196,13 @@ CREATE TABLE IF NOT EXISTS metrics_sysstat (
     context_switches FLOAT8
 );
 
-SELECT create_hypertable('metrics_sysstat', 'time', if_not_exists => TRUE);
+DO $$
+BEGIN
+  SELECT create_hypertable('metrics_sysstat', 'time', if_not_exists => TRUE);
+EXCEPTION WHEN others THEN
+  RAISE NOTICE 'Could not create hypertable metrics_sysstat - TimescaleDB may not be available';
+END;
+$$;
 
 CREATE INDEX IF NOT EXISTS idx_metrics_sysstat_server_time
     ON metrics_sysstat (server_id, time DESC);
@@ -201,7 +232,13 @@ CREATE TABLE IF NOT EXISTS metrics_disk_usage (
     inode_free BIGINT
 );
 
-SELECT create_hypertable('metrics_disk_usage', 'time', if_not_exists => TRUE);
+DO $$
+BEGIN
+  SELECT create_hypertable('metrics_disk_usage', 'time', if_not_exists => TRUE);
+EXCEPTION WHEN others THEN
+  RAISE NOTICE 'Could not create hypertable metrics_disk_usage - TimescaleDB may not be available';
+END;
+$$;
 
 CREATE INDEX IF NOT EXISTS idx_metrics_disk_usage_server_time
     ON metrics_disk_usage (server_id, time DESC);
@@ -241,7 +278,13 @@ CREATE TABLE IF NOT EXISTS metrics_pg_log (
     checkpoint_duration_ms FLOAT8
 );
 
-SELECT create_hypertable('metrics_pg_log', 'time', if_not_exists => TRUE);
+DO $$
+BEGIN
+  SELECT create_hypertable('metrics_pg_log', 'time', if_not_exists => TRUE);
+EXCEPTION WHEN others THEN
+  RAISE NOTICE 'Could not create hypertable metrics_pg_log - TimescaleDB may not be available';
+END;
+$$;
 
 CREATE INDEX IF NOT EXISTS idx_metrics_pg_log_database_time
     ON metrics_pg_log (database_id, time DESC)
@@ -279,7 +322,13 @@ CREATE TABLE IF NOT EXISTS metrics_replication (
     reply_time TIMESTAMP WITH TIME ZONE
 );
 
-SELECT create_hypertable('metrics_replication', 'time', if_not_exists => TRUE);
+DO $$
+BEGIN
+  SELECT create_hypertable('metrics_replication', 'time', if_not_exists => TRUE);
+EXCEPTION WHEN others THEN
+  RAISE NOTICE 'Could not create hypertable metrics_replication - TimescaleDB may not be available';
+END;
+$$;
 
 CREATE INDEX IF NOT EXISTS idx_metrics_replication_server_time
     ON metrics_replication (server_id, time DESC);
@@ -292,7 +341,9 @@ CREATE INDEX IF NOT EXISTS idx_metrics_replication_collector
 -- ============================================================================
 
 -- Hourly aggregates for table metrics (useful for dashboards)
-CREATE MATERIALIZED VIEW IF NOT EXISTS metrics_pg_stats_table_1h AS
+DO $$
+BEGIN
+  CREATE MATERIALIZED VIEW IF NOT EXISTS metrics_pg_stats_table_1h AS
 SELECT
     time_bucket('1 hour', time) as time,
     collector_id,
@@ -313,9 +364,19 @@ SELECT
 FROM metrics_pg_stats_table
 WHERE time > now() - INTERVAL '30 days'
 GROUP BY 1, 2, 3, 4, 5, 6, 7, 8;
+EXCEPTION WHEN others THEN
+  RAISE NOTICE 'Could not create materialized view - TimescaleDB functions may not be available';
+END;
+$$;
 
-CREATE INDEX IF NOT EXISTS idx_metrics_pg_stats_table_1h_time
-    ON metrics_pg_stats_table_1h (server_id, time DESC);
+DO $$
+BEGIN
+  CREATE INDEX IF NOT EXISTS idx_metrics_pg_stats_table_1h_time
+      ON metrics_pg_stats_table_1h (server_id, time DESC);
+EXCEPTION WHEN others THEN
+  RAISE NOTICE 'Could not create index on metrics_pg_stats_table_1h - view may not exist';
+END;
+$$;
 
 -- ============================================================================
 -- RETENTION POLICIES
@@ -324,18 +385,64 @@ CREATE INDEX IF NOT EXISTS idx_metrics_pg_stats_table_1h_time
 -- Drop existing policies (if any) to avoid errors
 DO $$
 BEGIN
+  BEGIN
     EXECUTE 'SELECT drop_chunks(interval ''7 days'', ''metrics_pg_stats_table'')';
+  EXCEPTION WHEN others THEN
+    RAISE NOTICE 'Could not drop chunks - TimescaleDB may not be available';
+  END;
 EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 -- Set retention to 7 days for high-resolution tables
-SELECT add_retention_policy('metrics_pg_stats_table', INTERVAL '7 days', if_not_exists => TRUE);
-SELECT add_retention_policy('metrics_pg_stats_index', INTERVAL '7 days', if_not_exists => TRUE);
-SELECT add_retention_policy('metrics_pg_stats_database', INTERVAL '7 days', if_not_exists => TRUE);
-SELECT add_retention_policy('metrics_sysstat', INTERVAL '7 days', if_not_exists => TRUE);
-SELECT add_retention_policy('metrics_disk_usage', INTERVAL '30 days', if_not_exists => TRUE);
-SELECT add_retention_policy('metrics_pg_log', INTERVAL '7 days', if_not_exists => TRUE);
-SELECT add_retention_policy('metrics_replication', INTERVAL '7 days', if_not_exists => TRUE);
+DO $$
+BEGIN
+  SELECT add_retention_policy('metrics_pg_stats_table', INTERVAL '7 days', if_not_exists => TRUE);
+EXCEPTION WHEN others THEN
+  RAISE NOTICE 'Could not add retention policy for metrics_pg_stats_table';
+END;
+$$;
+DO $$
+BEGIN
+  SELECT add_retention_policy('metrics_pg_stats_index', INTERVAL '7 days', if_not_exists => TRUE);
+EXCEPTION WHEN others THEN
+  RAISE NOTICE 'Could not add retention policy for metrics_pg_stats_index';
+END;
+$$;
+DO $$
+BEGIN
+  SELECT add_retention_policy('metrics_pg_stats_database', INTERVAL '7 days', if_not_exists => TRUE);
+EXCEPTION WHEN others THEN
+  RAISE NOTICE 'Could not add retention policy for metrics_pg_stats_database';
+END;
+$$;
+DO $$
+BEGIN
+  SELECT add_retention_policy('metrics_sysstat', INTERVAL '7 days', if_not_exists => TRUE);
+EXCEPTION WHEN others THEN
+  RAISE NOTICE 'Could not add retention policy for metrics_sysstat';
+END;
+$$;
+DO $$
+BEGIN
+  SELECT add_retention_policy('metrics_disk_usage', INTERVAL '30 days', if_not_exists => TRUE);
+EXCEPTION WHEN others THEN
+  RAISE NOTICE 'Could not add retention policy for metrics_disk_usage';
+END;
+$$;
+DO $$
+BEGIN
+  SELECT add_retention_policy('metrics_pg_log', INTERVAL '7 days', if_not_exists => TRUE);
+EXCEPTION WHEN others THEN
+  RAISE NOTICE 'Could not add retention policy for metrics_pg_log';
+END;
+$$;
+DO $$
+BEGIN
+  SELECT add_retention_policy('metrics_replication', INTERVAL '7 days', if_not_exists => TRUE);
+EXCEPTION WHEN others THEN
+  RAISE NOTICE 'Could not add retention policy for metrics_replication';
+END;
+$$;
 
 -- ============================================================================
 -- GRANTS

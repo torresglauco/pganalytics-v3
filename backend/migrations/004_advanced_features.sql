@@ -523,7 +523,12 @@ GRANT EXECUTE ON FUNCTION calculate_baselines_and_anomalies TO pg_monitor;
 GRANT EXECUTE ON FUNCTION create_performance_snapshot TO pg_monitor;
 GRANT EXECUTE ON FUNCTION compare_snapshots TO pg_monitor;
 
--- Record migration completion
-INSERT INTO schema_migrations (version, description, executed_at)
-VALUES (4, 'Phase 4.4: Advanced query performance features', NOW())
-ON CONFLICT DO NOTHING;
+-- Record migration completion (wrapped in DO block for safety)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'schema_versions') THEN
+    INSERT INTO schema_versions (version, description, executed_at)
+    VALUES (4, 'Phase 4.4: Advanced query performance features', NOW())
+    ON CONFLICT DO NOTHING;
+  END IF;
+END $$;

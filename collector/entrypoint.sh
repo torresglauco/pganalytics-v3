@@ -61,11 +61,21 @@ chmod 640 /etc/pganalytics/collector.toml
 # Auto-register if configured and not already registered
 if [ "${AUTO_REGISTER}" = "true" ] && [ -n "${REGISTRATION_SECRET}" ]; then
     echo "Auto-registering collector..."
-    cd /app && ./pganalytics register || {
+    /usr/local/bin/pganalytics-collector register || {
         echo "Warning: Auto-registration failed, continuing anyway..."
     }
 fi
 
 # Execute the collector
-cd /app
-exec $@
+# If only the binary path is provided (from CMD), run in normal collection mode
+# Otherwise, pass arguments to the binary
+if [ $# -eq 1 ] && [ "$1" = "/usr/local/bin/pganalytics-collector" ]; then
+    # Standard mode - just run the collector
+    exec "$1"
+elif [ $# -eq 0 ]; then
+    # No arguments provided
+    exec /usr/local/bin/pganalytics-collector
+else
+    # Arguments provided - pass them through
+    exec "$@"
+fi

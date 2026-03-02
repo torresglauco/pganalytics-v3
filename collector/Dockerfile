@@ -44,7 +44,7 @@ RUN groupadd -g 1000 pganalytics && \
     chown -R pganalytics:pganalytics /var/lib/pganalytics /etc/pganalytics
 
 # Copy compiled binary from builder
-COPY --from=builder /build/build/pganalytics /usr/local/bin/pganalytics-collector
+COPY --from=builder /build/build/src/pganalytics /usr/local/bin/pganalytics-collector
 RUN chmod +x /usr/local/bin/pganalytics-collector
 
 # Copy entrypoint script

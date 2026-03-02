@@ -20,7 +20,8 @@ Sender::Sender(
     keyFile_(keyFile),
     tlsVerify_(tlsVerify),
     tokenExpiresAt_(0),
-    protocol_(protocol) {
+    protocol_(protocol),
+    registrationSecret_("") {
 }
 
 void Sender::setProtocol(Protocol protocol) {
@@ -124,10 +125,48 @@ std::string Sender::getAuthToken() {
     return authToken_;
 }
 
+void Sender::setRegistrationSecret(const std::string& secret) {
+    registrationSecret_ = secret;
+}
+
 void Sender::refreshAuthToken() {
-    // In a real implementation, this would refresh the token from the backend
-    // For now, just regenerate it locally
-    // This would be called after registration
+    // If no registration secret is configured, we can't refresh tokens
+    // In this case, the token must be manually refreshed by re-registering
+    if (registrationSecret_.empty()) {
+        std::cerr << "WARNING: No registration secret configured for token refresh" << std::endl;
+        return;
+    }
+
+    // Get the hostname from the collector ID (it's used as the display name)
+    // The backend will map it back to the same UUID deterministically
+    std::string collectorName = collectorId_;
+    if (collectorName.empty()) {
+        // Fallback: use hostname from environment or default
+        const char* envHostname = std::getenv("COLLECTOR_NAME");
+        collectorName = envHostname ? envHostname : "collector";
+    }
+
+    // Re-register the collector to get a new token
+    // The backend will recognize this as the same collector (via hostname hash)
+    // and return the same UUID, but with a fresh token
+    std::string newAuthToken, newCollectorId, dummyCert, dummyKey;
+    if (registerCollector(registrationSecret_, collectorName, newAuthToken, newCollectorId, dummyCert, dummyKey)) {
+        // Successfully got a new token from registration
+        authToken_ = newAuthToken;
+
+        // Update collector ID in case it changed
+        if (!newCollectorId.empty()) {
+            collectorId_ = newCollectorId;
+        }
+
+        // Set expiration time: default to 1 hour from now
+        time_t now = std::time(nullptr);
+        tokenExpiresAt_ = now + 3600;
+
+        std::cout << "Token refreshed successfully via re-registration" << std::endl;
+    } else {
+        std::cerr << "ERROR: Failed to refresh token via re-registration" << std::endl;
+    }
 }
 
 void Sender::setAuthToken(const std::string& token, long expiresAt) {

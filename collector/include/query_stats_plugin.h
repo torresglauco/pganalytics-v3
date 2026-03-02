@@ -4,12 +4,17 @@
 #include <vector>
 #include <memory>
 #include <nlohmann/json.hpp>
+
+#ifdef HAVE_LIBPQ
 #include "connection_pool.h"
+#endif
 
 using json = nlohmann::json;
 
 // Forward declarations
 class PQconn;
+
+#ifdef HAVE_LIBPQ
 
 /**
  * PostgreSQL Query Statistics Collector
@@ -118,3 +123,5 @@ private:
      */
     bool shouldExplainQuery(float meanTime) const { return meanTime > 1000.0f; }
 };
+
+#endif  // HAVE_LIBPQ

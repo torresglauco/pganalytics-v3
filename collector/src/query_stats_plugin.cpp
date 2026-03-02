@@ -10,7 +10,6 @@
 
 #ifdef HAVE_LIBPQ
 #include <libpq-fe.h>
-#endif
 
 /**
  * Constructor
@@ -488,3 +487,5 @@ json PgQueryStatsCollector::executeExplainPlan(
     return json::object();
 #endif
 }
+
+#endif  // HAVE_LIBPQ - closing the overall file-level conditional

@@ -153,11 +153,11 @@ int runCronMode() {
         sender.setRegistrationSecret(registrationSecret);
     }
 
-    // Try to load auth token from file (saved during registration)
+    // Try to load auth token and collector ID from persistent volume (saved during registration)
     std::string authToken;
     std::string registeredCollectorId;
-    std::string tokenFilePath = "/etc/pganalytics/collector.token";
-    std::string collectorIdFilePath = "/etc/pganalytics/collector.id";
+    std::string tokenFilePath = "/var/lib/pganalytics/collector.token";
+    std::string collectorIdFilePath = "/var/lib/pganalytics/collector.id";
     std::ifstream tokenFile(tokenFilePath);
     std::ifstream collectorIdFile(collectorIdFilePath);
 
@@ -416,8 +416,8 @@ int runRegister() {
     std::cout << "Auth Token: " << authToken.substr(0, 20) << "..." << std::endl;
     std::cout << "Collector ID: " << gConfig->getCollectorId() << std::endl;
 
-    // Save auth token to file for later use
-    std::string tokenFilePath = "/etc/pganalytics/collector.token";
+    // Save auth token to persistent volume for later use
+    std::string tokenFilePath = "/var/lib/pganalytics/collector.token";
     std::ofstream tokenFile(tokenFilePath);
     if (tokenFile.is_open()) {
         tokenFile << authToken;
@@ -429,9 +429,9 @@ int runRegister() {
         std::cerr << "Warning: Could not save auth token to file" << std::endl;
     }
 
-    // Save registered collector ID to file for later use in metrics push
+    // Save registered collector ID to persistent volume for later use in metrics push
     if (!registeredCollectorId.empty()) {
-        std::string collectorIdFilePath = "/etc/pganalytics/collector.id";
+        std::string collectorIdFilePath = "/var/lib/pganalytics/collector.id";
         std::ofstream collectorIdFile(collectorIdFilePath);
         if (collectorIdFile.is_open()) {
             collectorIdFile << registeredCollectorId;

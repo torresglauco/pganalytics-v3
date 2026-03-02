@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/lib/pq"
+	"github.com/torresglauco/pganalytics-v3/backend/internal/crypto"
 	"github.com/torresglauco/pganalytics-v3/backend/internal/storage"
 	"go.uber.org/zap"
 )
@@ -17,6 +17,7 @@ import (
 // HealthCheckScheduler manages periodic health checks for managed instances
 type HealthCheckScheduler struct {
 	db              *storage.PostgresDB
+	secretManager   *crypto.SecretManager
 	logger          *zap.Logger
 	ctx             context.Context
 	cancel          context.CancelFunc
@@ -32,11 +33,13 @@ type HealthCheckScheduler struct {
 // NewHealthCheckScheduler creates a new health check scheduler
 func NewHealthCheckScheduler(
 	db *storage.PostgresDB,
+	secretManager *crypto.SecretManager,
 	logger *zap.Logger,
 ) *HealthCheckScheduler {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &HealthCheckScheduler{
 		db:             db,
+		secretManager:  secretManager,
 		logger:         logger,
 		ctx:            ctx,
 		cancel:         cancel,
@@ -112,7 +115,7 @@ func (s *HealthCheckScheduler) run() {
 			return
 
 		case <-ticker.C:
-			// Get all active managed instances
+			// Get all active managed instances with encrypted passwords
 			instances, err := s.db.ListManagedInstancesForHealthCheck(s.ctx)
 			if err != nil {
 				s.logger.Error("Failed to list managed instances", zap.Error(err))
@@ -124,7 +127,7 @@ func (s *HealthCheckScheduler) run() {
 			}
 
 			// Randomize order to avoid always checking the same instances first
-			shuffleInstances(instances)
+			shuffleHealthCheckInstances(instances)
 
 			// Schedule health checks with randomized delays
 			for _, instance := range instances {
@@ -140,7 +143,7 @@ func (s *HealthCheckScheduler) run() {
 				semaphore <- struct{}{}
 
 				s.wg.Add(1)
-				go func(inst *storage.ManagedInstance, delayDuration time.Duration) {
+				go func(inst *storage.HealthCheckInstance, delayDuration time.Duration) {
 					defer s.wg.Done()
 					defer func() { <-semaphore }()
 
@@ -160,7 +163,7 @@ func (s *HealthCheckScheduler) run() {
 }
 
 // performHealthCheck tests the connection to a managed instance
-func (s *HealthCheckScheduler) performHealthCheck(instance *storage.ManagedInstance) {
+func (s *HealthCheckScheduler) performHealthCheck(instance *storage.HealthCheckInstance) {
 	ctx, cancel := context.WithTimeout(s.ctx, 10*time.Second)
 	defer cancel()
 
@@ -169,6 +172,27 @@ func (s *HealthCheckScheduler) performHealthCheck(instance *storage.ManagedInsta
 		zap.String("instance_name", instance.Name),
 		zap.String("endpoint", instance.Endpoint),
 	)
+
+	// Decrypt password if available
+	password := ""
+	if instance.EncryptedPassword != "" {
+		decrypted, err := s.secretManager.Decrypt(instance.EncryptedPassword)
+		if err != nil {
+			s.logger.Error("Failed to decrypt password",
+				zap.Int("instance_id", instance.ID),
+				zap.Error(err),
+			)
+			errorMsg := fmt.Sprintf("failed to decrypt password: %v", err)
+			if err := s.db.UpdateManagedInstanceStatus(ctx, instance.ID, "error", &errorMsg); err != nil {
+				s.logger.Error("Failed to update instance error status",
+					zap.Int("instance_id", instance.ID),
+					zap.Error(err),
+				)
+			}
+			return
+		}
+		password = decrypted
+	}
 
 	// Test connection with various SSL modes
 	var connErr error
@@ -181,7 +205,7 @@ func (s *HealthCheckScheduler) performHealthCheck(instance *storage.ManagedInsta
 			Host:     instance.Endpoint,
 			Port:     instance.Port,
 			User:     instance.MasterUsername,
-			Password: instance.MasterPassword,
+			Password: password,
 			Database: "postgres",
 			SSLMode:  sslMode,
 			Timeout:  5,
@@ -245,7 +269,7 @@ func (s *HealthCheckScheduler) GetActiveTaskCount() int {
 }
 
 // shuffleInstances randomizes the order of managed instances
-func shuffleInstances(instances []*storage.ManagedInstance) {
+func shuffleHealthCheckInstances(instances []*storage.HealthCheckInstance) {
 	for i := len(instances) - 1; i > 0; i-- {
 		j := rand.Intn(i + 1)
 		instances[i], instances[j] = instances[j], instances[i]

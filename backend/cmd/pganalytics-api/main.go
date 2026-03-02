@@ -165,7 +165,7 @@ func main() {
 	apiServer.RegisterRoutes(router)
 
 	// Initialize and start health check scheduler for managed instances
-	healthCheckScheduler := jobs.NewHealthCheckScheduler(postgresDB, logger)
+	healthCheckScheduler := jobs.NewHealthCheckScheduler(postgresDB, secretManager, logger)
 	if err := healthCheckScheduler.Start(); err != nil {
 		logger.Error("Failed to start health check scheduler", zap.Error(err))
 	}

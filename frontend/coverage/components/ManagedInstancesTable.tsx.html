@@ -23,9 +23,9 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">7.6% </span>
+                <span class="strong">7.73% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>40/526</span>
+                <span class='fraction'>40/517</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">7.6% </span>
+                <span class="strong">7.73% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>40/526</span>
+                <span class='fraction'>40/517</span>
             </div>
         
             
@@ -580,16 +580,7 @@
 <a name='L515'></a><a href='#L515'>515</a>
 <a name='L516'></a><a href='#L516'>516</a>
 <a name='L517'></a><a href='#L517'>517</a>
-<a name='L518'></a><a href='#L518'>518</a>
-<a name='L519'></a><a href='#L519'>519</a>
-<a name='L520'></a><a href='#L520'>520</a>
-<a name='L521'></a><a href='#L521'>521</a>
-<a name='L522'></a><a href='#L522'>522</a>
-<a name='L523'></a><a href='#L523'>523</a>
-<a name='L524'></a><a href='#L524'>524</a>
-<a name='L525'></a><a href='#L525'>525</a>
-<a name='L526'></a><a href='#L526'>526</a>
-<a name='L527'></a><a href='#L527'>527</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<a name='L518'></a><a href='#L518'>518</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
@@ -629,15 +620,6 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -1330,6 +1312,8 @@ export const ManagedInstancesTable: React.FC&lt;ManagedInstancesTableProps&gt; =
 <span class="cstat-no" title="statement not covered" >      const data = await response.json()</span>
 <span class="cstat-no" title="statement not covered" >      if (data.success) {</span>
 <span class="cstat-no" title="statement not covered" >        onSuccess(`✓ Connection successful for ${instance.name}`)</span>
+<span class="cstat-no" title="statement not covered" >        // Reload instances to update the connection status in the UI</span>
+<span class="cstat-no" title="statement not covered" >        loadInstances()</span>
 <span class="cstat-no" title="statement not covered" >      } else {</span>
 <span class="cstat-no" title="statement not covered" >        onError(`${data.error || 'Connection test failed'}`)</span>
 <span class="cstat-no" title="statement not covered" >      }</span>
@@ -1583,23 +1567,12 @@ export const ManagedInstancesTable: React.FC&lt;ManagedInstancesTableProps&gt; =
 <span class="cstat-no" title="statement not covered" >                    &lt;/span&gt;</span>
 <span class="cstat-no" title="statement not covered" >                  &lt;/td&gt;</span>
 <span class="cstat-no" title="statement not covered" >                  &lt;td className="px-6 py-4 whitespace-nowrap"&gt;</span>
-<span class="cstat-no" title="statement not covered" >                    &lt;div&gt;</span>
-<span class="cstat-no" title="statement not covered" >                      &lt;span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(instance.last_connection_status)}`}&gt;</span>
-<span class="cstat-no" title="statement not covered" >                        {instance.last_connection_status === 'connected' ? (</span>
-<span class="cstat-no" title="statement not covered" >                          &lt;span className="flex items-center gap-1"&gt;</span>
-<span class="cstat-no" title="statement not covered" >                            &lt;CheckCircle size={14} /&gt;</span>
-<span class="cstat-no" title="statement not covered" >                            Connected</span>
-<span class="cstat-no" title="statement not covered" >                          &lt;/span&gt;</span>
-<span class="cstat-no" title="statement not covered" >                        ) : (</span>
-<span class="cstat-no" title="statement not covered" >                          instance.last_connection_status.charAt(0).toUpperCase() + instance.last_connection_status.slice(1).replace('_', ' ')</span>
-<span class="cstat-no" title="statement not covered" >                        )}</span>
-<span class="cstat-no" title="statement not covered" >                      &lt;/span&gt;</span>
-<span class="cstat-no" title="statement not covered" >                      {instance.last_heartbeat &amp;&amp; (</span>
-<span class="cstat-no" title="statement not covered" >                        &lt;p className="text-xs text-gray-500 mt-1"&gt;</span>
-<span class="cstat-no" title="statement not covered" >                          {new Date(instance.last_heartbeat).toLocaleString()}</span>
-<span class="cstat-no" title="statement not covered" >                        &lt;/p&gt;</span>
+<span class="cstat-no" title="statement not covered" >                    &lt;span className={`inline-flex items-center gap-0.5 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(instance.last_connection_status)}`}&gt;</span>
+<span class="cstat-no" title="statement not covered" >                      {instance.last_connection_status === 'connected' &amp;&amp; (</span>
+<span class="cstat-no" title="statement not covered" >                        &lt;CheckCircle size={12} /&gt;</span>
 <span class="cstat-no" title="statement not covered" >                      )}</span>
-<span class="cstat-no" title="statement not covered" >                    &lt;/div&gt;</span>
+<span class="cstat-no" title="statement not covered" >                      &lt;span&gt;{instance.last_connection_status.charAt(0).toUpperCase() + instance.last_connection_status.slice(1).replace('_', ' ')}&lt;/span&gt;</span>
+<span class="cstat-no" title="statement not covered" >                    &lt;/span&gt;</span>
 <span class="cstat-no" title="statement not covered" >                  &lt;/td&gt;</span>
 <span class="cstat-no" title="statement not covered" >                  &lt;td className="px-6 py-4 whitespace-nowrap"&gt;</span>
 <span class="cstat-no" title="statement not covered" >                    &lt;p className="text-sm text-gray-600"&gt;{instance.db_instance_class || '-'}&lt;/p&gt;</span>
@@ -1648,7 +1621,7 @@ export const ManagedInstancesTable: React.FC&lt;ManagedInstancesTableProps&gt; =
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-02-27T15:02:33.775Z
+                at 2026-03-02T11:10:31.542Z
             </div>
         <script src="../prettify.js"></script>
         <script>

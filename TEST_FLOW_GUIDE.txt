@@ -1,0 +1,275 @@
+================================================================================
+pgAnalytics v3 - Full Regression Test Flow
+================================================================================
+
+TIMELINE: ~30-45 minutes total
+
+================================================================================
+PHASE 1: Infrastructure Setup (10-15 minutes)
+================================================================================
+
+Command:  ./cleanup-and-start-load-test.sh
+
+What it does:
+  1. Stops existing containers (both docker-compose.yml and load test)
+  2. Removes all pganalytics volumes
+  3. Cleans Docker resources
+  4. Verifies cleanup complete
+  5. Starts docker-compose-load-test.yml
+  6. Waits for core services to be healthy:
+     ✓ PostgreSQL (metadata)
+     ✓ TimescaleDB (metrics)
+     ✓ Backend API
+     ✓ Frontend UI
+  7. Displays access URLs
+
+Expected Output:
+  Infrastructure started
+  Waiting for core services to be healthy...
+  ✓ PostgreSQL OK
+  ✓ TimescaleDB OK
+  ✓ Backend OK
+  ✓ Frontend OK
+
+During this phase:
+  - 40 Target PostgreSQL instances start automatically
+  - 40 Collectors start automatically and begin auto-registering
+  - Collectors attempt registration with backend (~1-2 min)
+
+Log patterns to look for:
+  [collector-001] Auto-registering collector for the first time...
+  [collector-002] Auto-registering collector for the first time...
+  ...
+  [backend] Registered collector: col_001 (UUID: xxx)
+  [backend] Registered collector: col_002 (UUID: xxx)
+
+Warning signs (if you see these, something is wrong):
+  - "connection refused" from collectors
+  - "backend unhealthy" in status
+  - "error: timeout waiting for service"
+  → Check: docker logs backend, docker ps, docker network ls
+
+Success indicators:
+  - docker ps shows 84 containers
+  - curl http://localhost:8080/api/v1/health returns 200
+  - curl http://localhost:4000 returns 200
+
+================================================================================
+WAIT: 1-2 minutes for collectors to finish registering
+================================================================================
+
+Monitor collector registration:
+  docker-compose -f docker-compose-load-test.yml logs collector-001 | head -20
+
+Should see:
+  "Successfully registered with backend"
+  "Collector ID persisted to /var/lib/pganalytics/collector.id"
+  "Starting metrics collection"
+
+================================================================================
+PHASE 2: Setup Managed Instances (1-2 minutes)
+================================================================================
+
+Command:  ./test-setup-managed-instances.sh
+
+What it does:
+  1. Waits for backend to be healthy
+  2. Authenticates with admin:admin
+  3. Creates 20 managed instance entries via API
+     - For collectors 001-020
+     - Pointing to target-postgres-001 through target-postgres-020
+  4. Validates each registration successful
+  5. Generates report: regression-test-setup-report.txt
+
+Expected Output:
+  Phase 1: Waiting for all services to be healthy...
+    Waiting for Backend... OK
+  
+  Phase 2: Authenticating with backend...
+  ✓ Authenticated successfully
+  
+  Phase 3: Registering 20 managed instances...
+    Registering managed instance 1/20... OK (ID: 1)
+    Registering managed instance 2/20... OK (ID: 2)
+    ...
+    Registering managed instance 20/20... OK (ID: 20)
+  
+  Registration Summary:
+    Total Registered: 20 / 20
+    Total Failed: 0 / 20
+    Total Collectors in backend: 40 / 40
+
+Log patterns:
+  "Registering managed instance X/20..."
+  "OK (ID: X)"
+  "Authenticated successfully"
+
+Success indicators:
+  - All 20 instances show "OK"
+  - Setup report generated
+  - No "FAILED" lines
+
+================================================================================
+WAIT: 2-3 minutes for metrics to be collected
+================================================================================
+
+Collectors should be sending metrics now:
+  docker-compose -f docker-compose-load-test.yml logs collector-001 | grep -i metric
+
+Should see:
+  "Pushing X metrics to backend"
+  "Successfully pushed X metrics"
+
+Monitor backend:
+  docker-compose -f docker-compose-load-test.yml logs backend | grep -i metric
+
+Should see:
+  "Received metrics from collector col_001"
+  "Metrics stored in TimescaleDB"
+
+================================================================================
+PHASE 3: Verification (2-3 minutes)
+================================================================================
+
+Command:  ./verify-regression-tests.sh
+
+What it does:
+  1. Authenticates with admin credentials
+  2. Queries API for collector list
+  3. Validates exactly 40 collectors
+  4. Checks for duplicate UUIDs
+  5. Queries managed instances
+  6. Validates exactly 20 instances
+  7. Checks collector status fields
+  8. Waits for metrics (up to 2 minutes)
+  9. Validates metrics are being collected
+  10. Checks frontend accessibility
+  11. Generates report: regression-test-report.txt
+
+Expected Output:
+  Phase 1: Authentication
+    ✓ Authenticated successfully
+  
+  Phase 2: Collector Registration Validation
+    ✓ Collector count equals 40
+    ✓ No duplicate collector UUIDs
+  
+  Phase 3: Managed Instances Validation
+    ✓ Managed instance count equals 20
+  
+  Phase 4: Collector Status Validation
+    ✓ All collectors have 'registered' status
+    ✓ Collectors sending heartbeats (40/40)
+  
+  Phase 5: Metrics Collection Validation
+    ✓ Collectors collecting metrics
+  
+  Phase 6: Collector ID Persistence Validation
+    ✓ Collector ID persisted to volume
+  
+  Phase 7: Registration Secret Validation
+    ✓ All collectors registered with correct secret
+  
+  Phase 8: Frontend Accessibility
+    ✓ Frontend is accessible
+  
+  === ALL TESTS PASSED ===
+  Regression test completed successfully!
+
+Test Results Summary:
+  Tests Passed: 9
+  Tests Failed: 0
+  Total Tests: 9
+
+Success indicators:
+  - All tests show ✓ (checkmark)
+  - "=== ALL TESTS PASSED ===" at bottom
+  - Test report generated
+
+================================================================================
+SUCCESS: All phases completed
+================================================================================
+
+Files created:
+  ✓ docker-compose-load-test.yml (infrastructure)
+  ✓ regression-test-setup-report.txt (phase 2 results)
+  ✓ regression-test-report.txt (phase 3 results)
+
+System State:
+  ✓ 84 containers running
+  ✓ 40 collectors registered
+  ✓ 40 collector IDs persisted
+  ✓ 20 managed instances created
+  ✓ Metrics being collected
+  ✓ Frontend accessible
+  ✓ System stable
+
+What was validated:
+  ✓ Collector auto-registration (once per collector)
+  ✓ Collector ID persistence (file persisted)
+  ✓ No duplicate registrations (40 unique UUIDs)
+  ✓ Registration secret usage (all use same secret)
+  ✓ Metrics collection (monotonic increase)
+  ✓ Managed instances (20 created successfully)
+  ✓ System stability (no errors)
+
+================================================================================
+NEXT STEPS (Optional Extended Testing)
+================================================================================
+
+1. Monitor for 1+ hour
+   docker-compose -f docker-compose-load-test.yml logs -f
+
+   Expected: Regular metric collection every 60 seconds
+
+2. Test collector restart (ID persistence)
+   docker-compose -f docker-compose-load-test.yml restart collector-001
+   
+   Verify:
+   - No new registration attempt
+   - Same collector ID loaded from file
+   - Metrics resume collection
+
+3. Test metrics growth
+   Connect to TimescaleDB and query:
+   SELECT COUNT(*) FROM metrics WHERE collector_id = 'col_001';
+   
+   Expected: Increasing count over time
+
+4. Test service failures
+   Restart backend: docker-compose restart backend
+   → Collectors should accumulate metrics and retry
+   
+   Restart target: docker-compose restart target-postgres-001
+   → Collector-001 should log error but keep running
+
+5. Frontend testing
+   Visit http://localhost:4000
+   - Check collectors are displayed
+   - Check managed instances are listed
+   - Verify metrics are visible
+   - Test filtering and sorting
+
+================================================================================
+TROUBLESHOOTING QUICK REFERENCE
+================================================================================
+
+Container not starting?
+  docker-compose -f docker-compose-load-test.yml logs <service_name>
+
+Collector not registering?
+  docker-compose -f docker-compose-load-test.yml logs collector-001 | tail -20
+
+Metrics not appearing?
+  docker-compose -f docker-compose-load-test.yml logs backend | grep -i metric
+
+API not responding?
+  curl http://localhost:8080/api/v1/health
+
+Too many containers?
+  docker-compose -f docker-compose-load-test.yml down -v
+
+Need fresh start?
+  ./cleanup-and-start-load-test.sh
+
+================================================================================

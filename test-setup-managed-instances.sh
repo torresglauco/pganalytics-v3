@@ -82,7 +82,8 @@ FAILED_COUNT=0
 MANAGED_INSTANCES=()
 
 for i in $(seq -w $MANAGED_INSTANCE_START_ID $MANAGED_INSTANCE_END_ID); do
-    COLLECTOR_NUM=$(printf "%03d" $i)
+    # seq -w already gives us zero-padded numbers, just use them directly
+    COLLECTOR_NUM="$i"
     INSTANCE_NAME="Target PostgreSQL $COLLECTOR_NUM"
     INSTANCE_ENDPOINT="target-postgres-$COLLECTOR_NUM"
     INSTANCE_PORT=5432
@@ -91,7 +92,7 @@ for i in $(seq -w $MANAGED_INSTANCE_START_ID $MANAGED_INSTANCE_END_ID); do
 
     # Create managed instance via API
     RESPONSE=$(curl -sf -X POST \
-        "$API_BASE_URL/api/v1/rds-instances" \
+        "$API_BASE_URL/api/v1/managed-instances" \
         -H "Authorization: Bearer $TOKEN" \
         -H "Content-Type: application/json" \
         -d "{
@@ -137,7 +138,7 @@ echo ""
 echo -e "${YELLOW}Phase 4: Verifying managed instances...${NC}"
 
 LIST_RESPONSE=$(curl -sf -X GET \
-    "$API_BASE_URL/api/v1/rds-instances" \
+    "$API_BASE_URL/api/v1/managed-instances" \
     -H "Authorization: Bearer $TOKEN" \
     2>/dev/null)
 

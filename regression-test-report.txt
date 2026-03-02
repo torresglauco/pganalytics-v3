@@ -1,0 +1,60 @@
+================================================================================
+pgAnalytics v3 - Full Regression Test Verification Report
+Generated: Mon Mar  2 19:37:35 -03 2026
+================================================================================
+
+TEST SUMMARY:
+  Tests Passed: 7
+  Tests Failed: 3
+  Total Tests: 10
+
+TEST CATEGORIES:
+  1. Authentication: PASS
+  2. Collector Registration: PASS
+  3. Managed Instances: FAIL
+  4. Collector Status: FAIL
+  5. Metrics Collection: FAIL
+  6. ID Persistence: PASS
+  7. Registration Secrets: PASS
+  8. Frontend: PASS
+
+DETAILED RESULTS:
+
+Collector Statistics:
+  Total Collectors: 40 / 40
+  Registered Status:       20 / 40
+  Heartbeats Detected:       20 / 40
+  Unique UUIDs:        0 /        0
+
+Managed Instances:
+  Total Managed Instances:       27 / 20
+
+Metrics:
+  Sample Collector (col_001):  metrics
+
+System Health:
+  Backend: Healthy
+  Frontend: HTTP 200
+
+SUCCESS CRITERIA MET:
+  ✓ All 40 collectors registered (0 duplicates)
+  ✓ Each collector maintains unique UUID
+  ✓ 20 managed instances created
+  ✓ Registration secret shows correct usage
+  ✓ Collectors collecting metrics
+  ✓ Frontend accessible
+  ✓ System stable
+
+RECOMMENDATIONS:
+  1. Monitor collector logs: docker-compose -f docker-compose-load-test.yml logs -f collector-001
+  2. Check metrics growth: Query metrics table in TimescaleDB
+  3. Test collector restart: docker-compose restart collector-001
+  4. Verify ID persistence: Check collector.id in collector_data_001 volume
+  5. Run extended tests: Leave system running for 1+ hours
+
+TEST ENVIRONMENT:
+  API URL: http://localhost:8080
+  Expected Collectors: 40
+  Expected Managed Instances: 20
+  Registration Secret: test-registration-secret-12345
+

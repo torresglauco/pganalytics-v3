@@ -49,6 +49,19 @@ CREATE TABLE IF NOT EXISTS metrics_pg_stats_query (
     query_exec_time FLOAT8                   -- PG13+ optional
 );
 
+-- Add unique constraint on query_hash for foreign key references
+-- (required by migration 004 explain_plans table)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.table_constraints
+    WHERE table_name = 'metrics_pg_stats_query'
+    AND constraint_name = 'uk_metrics_pg_stats_query_hash'
+  ) THEN
+    ALTER TABLE metrics_pg_stats_query ADD CONSTRAINT uk_metrics_pg_stats_query_hash UNIQUE (query_hash);
+  END IF;
+END $$;
+
 -- Create hypertable if not already one (optional - timescaledb specific)
 -- SELECT create_hypertable(
 --     'metrics_pg_stats_query',

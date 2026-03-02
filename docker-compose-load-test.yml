@@ -1,0 +1,2177 @@
+version: '3.8'
+
+services:
+  # ============================================================================
+  # CORE SERVICES
+  # ============================================================================
+
+  # Main PostgreSQL for pgAnalytics metadata & monitoring data
+  postgres:
+    image: postgres:16-bullseye
+    container_name: pganalytics-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: pganalytics
+      POSTGRES_DB: pganalytics
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/migrations:/docker-entrypoint-initdb.d
+      - ./postgresql.conf:/etc/postgresql/postgresql.conf:ro
+    command: -c config_file=/etc/postgresql/postgresql.conf
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.0.10
+
+  # TimescaleDB for time-series metrics storage
+  timescale:
+    image: postgres:16-bullseye
+    container_name: pganalytics-timescale
+    init: true
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: pganalytics
+      POSTGRES_DB: metrics
+    ports:
+      - "5433:5432"
+    volumes:
+      - timescale_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.0.11
+
+  # Backend API Server
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: pganalytics-backend
+    environment:
+      DATABASE_URL: "postgres://postgres:pganalytics@postgres:5432/pganalytics?sslmode=disable"
+      TIMESCALE_URL: "postgres://postgres:pganalytics@timescale:5432/metrics?sslmode=disable"
+      JWT_SECRET: "demo-secret-key-change-in-production"
+      JWT_EXPIRATION: "900"  # 15 minutes
+      ENCRYPTION_KEY: "WkSMJvo2wKQ1FuceaE2yW2lEyxKIcJ1wfbrcNUOGUkE="  # 32-byte AES-256 key (base64 encoded)
+      TLS_CERT: "/etc/pganalytics/tls/server.crt"
+      TLS_KEY: "/etc/pganalytics/tls/server.key"
+      LOG_LEVEL: "debug"
+      PORT: "8080"
+      REGISTRATION_SECRET: "${REGISTRATION_SECRET}"
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      timescale:
+        condition: service_healthy
+    volumes:
+      - ./backend/migrations:/migrations:ro
+      - ./tls:/etc/pganalytics/tls:ro
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.0.20
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/v1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # React Frontend UI
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    container_name: pganalytics-frontend
+    environment:
+      VITE_API_BASE_URL: "http://backend:8080"
+      VITE_API_BACKEND_HOST: "backend"
+      VITE_API_BACKEND_PORT: "8080"
+      VITE_API_BACKEND_PROTOCOL: "http"
+    ports:
+      - "4000:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.0.60
+    healthcheck:
+      test: ["CMD", "curl", "-s", "http://localhost:3000"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+
+  # ============================================================================
+  # 40 TARGET POSTGRESQL INSTANCES (172.20.1.101 - 172.20.1.140)
+  # ============================================================================
+
+  target-postgres-001:
+    image: postgres:16-bullseye
+    container_name: pganalytics-target-001
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: pganalytics
+      POSTGRES_DB: postgres
+    ports:
+      - "5450:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.101
+
+  target-postgres-002:
+    image: postgres:16-bullseye
+    container_name: pganalytics-target-002
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: pganalytics
+      POSTGRES_DB: postgres
+    ports:
+      - "5451:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.102
+
+  target-postgres-003:
+    image: postgres:16-bullseye
+    container_name: pganalytics-target-003
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: pganalytics
+      POSTGRES_DB: postgres
+    ports:
+      - "5452:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.103
+
+  target-postgres-004:
+    image: postgres:16-bullseye
+    container_name: pganalytics-target-004
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: pganalytics
+      POSTGRES_DB: postgres
+    ports:
+      - "5453:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.104
+
+  target-postgres-005:
+    image: postgres:16-bullseye
+    container_name: pganalytics-target-005
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: pganalytics
+      POSTGRES_DB: postgres
+    ports:
+      - "5454:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.105
+
+  target-postgres-006:
+    image: postgres:16-bullseye
+    container_name: pganalytics-target-006
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: pganalytics
+      POSTGRES_DB: postgres
+    ports:
+      - "5455:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.106
+
+  target-postgres-007:
+    image: postgres:16-bullseye
+    container_name: pganalytics-target-007
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: pganalytics
+      POSTGRES_DB: postgres
+    ports:
+      - "5456:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.107
+
+  target-postgres-008:
+    image: postgres:16-bullseye
+    container_name: pganalytics-target-008
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: pganalytics
+      POSTGRES_DB: postgres
+    ports:
+      - "5457:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.108
+
+  target-postgres-009:
+    image: postgres:16-bullseye
+    container_name: pganalytics-target-009
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: pganalytics
+      POSTGRES_DB: postgres
+    ports:
+      - "5458:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.109
+
+  target-postgres-010:
+    image: postgres:16-bullseye
+    container_name: pganalytics-target-010
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: pganalytics
+      POSTGRES_DB: postgres
+    ports:
+      - "5459:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.110
+
+  target-postgres-011:
+    image: postgres:16-bullseye
+    container_name: pganalytics-target-011
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: pganalytics
+      POSTGRES_DB: postgres
+    ports:
+      - "5460:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.111
+
+  target-postgres-012:
+    image: postgres:16-bullseye
+    container_name: pganalytics-target-012
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: pganalytics
+      POSTGRES_DB: postgres
+    ports:
+      - "5461:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.112
+
+  target-postgres-013:
+    image: postgres:16-bullseye
+    container_name: pganalytics-target-013
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: pganalytics
+      POSTGRES_DB: postgres
+    ports:
+      - "5462:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.113
+
+  target-postgres-014:
+    image: postgres:16-bullseye
+    container_name: pganalytics-target-014
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: pganalytics
+      POSTGRES_DB: postgres
+    ports:
+      - "5463:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.114
+
+  target-postgres-015:
+    image: postgres:16-bullseye
+    container_name: pganalytics-target-015
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: pganalytics
+      POSTGRES_DB: postgres
+    ports:
+      - "5464:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.115
+
+  target-postgres-016:
+    image: postgres:16-bullseye
+    container_name: pganalytics-target-016
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: pganalytics
+      POSTGRES_DB: postgres
+    ports:
+      - "5465:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.116
+
+  target-postgres-017:
+    image: postgres:16-bullseye
+    container_name: pganalytics-target-017
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: pganalytics
+      POSTGRES_DB: postgres
+    ports:
+      - "5466:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.117
+
+  target-postgres-018:
+    image: postgres:16-bullseye
+    container_name: pganalytics-target-018
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: pganalytics
+      POSTGRES_DB: postgres
+    ports:
+      - "5467:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.118
+
+  target-postgres-019:
+    image: postgres:16-bullseye
+    container_name: pganalytics-target-019
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: pganalytics
+      POSTGRES_DB: postgres
+    ports:
+      - "5468:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.119
+
+  target-postgres-020:
+    image: postgres:16-bullseye
+    container_name: pganalytics-target-020
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: pganalytics
+      POSTGRES_DB: postgres
+    ports:
+      - "5469:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.120
+
+  target-postgres-021:
+    image: postgres:16-bullseye
+    container_name: pganalytics-target-021
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: pganalytics
+      POSTGRES_DB: postgres
+    ports:
+      - "5470:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.121
+
+  target-postgres-022:
+    image: postgres:16-bullseye
+    container_name: pganalytics-target-022
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: pganalytics
+      POSTGRES_DB: postgres
+    ports:
+      - "5471:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.122
+
+  target-postgres-023:
+    image: postgres:16-bullseye
+    container_name: pganalytics-target-023
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: pganalytics
+      POSTGRES_DB: postgres
+    ports:
+      - "5472:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.123
+
+  target-postgres-024:
+    image: postgres:16-bullseye
+    container_name: pganalytics-target-024
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: pganalytics
+      POSTGRES_DB: postgres
+    ports:
+      - "5473:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.124
+
+  target-postgres-025:
+    image: postgres:16-bullseye
+    container_name: pganalytics-target-025
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: pganalytics
+      POSTGRES_DB: postgres
+    ports:
+      - "5474:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.125
+
+  target-postgres-026:
+    image: postgres:16-bullseye
+    container_name: pganalytics-target-026
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: pganalytics
+      POSTGRES_DB: postgres
+    ports:
+      - "5475:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.126
+
+  target-postgres-027:
+    image: postgres:16-bullseye
+    container_name: pganalytics-target-027
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: pganalytics
+      POSTGRES_DB: postgres
+    ports:
+      - "5476:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.127
+
+  target-postgres-028:
+    image: postgres:16-bullseye
+    container_name: pganalytics-target-028
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: pganalytics
+      POSTGRES_DB: postgres
+    ports:
+      - "5477:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.128
+
+  target-postgres-029:
+    image: postgres:16-bullseye
+    container_name: pganalytics-target-029
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: pganalytics
+      POSTGRES_DB: postgres
+    ports:
+      - "5478:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.129
+
+  target-postgres-030:
+    image: postgres:16-bullseye
+    container_name: pganalytics-target-030
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: pganalytics
+      POSTGRES_DB: postgres
+    ports:
+      - "5479:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.130
+
+  target-postgres-031:
+    image: postgres:16-bullseye
+    container_name: pganalytics-target-031
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: pganalytics
+      POSTGRES_DB: postgres
+    ports:
+      - "5480:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.131
+
+  target-postgres-032:
+    image: postgres:16-bullseye
+    container_name: pganalytics-target-032
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: pganalytics
+      POSTGRES_DB: postgres
+    ports:
+      - "5481:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.132
+
+  target-postgres-033:
+    image: postgres:16-bullseye
+    container_name: pganalytics-target-033
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: pganalytics
+      POSTGRES_DB: postgres
+    ports:
+      - "5482:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.133
+
+  target-postgres-034:
+    image: postgres:16-bullseye
+    container_name: pganalytics-target-034
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: pganalytics
+      POSTGRES_DB: postgres
+    ports:
+      - "5483:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.134
+
+  target-postgres-035:
+    image: postgres:16-bullseye
+    container_name: pganalytics-target-035
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: pganalytics
+      POSTGRES_DB: postgres
+    ports:
+      - "5484:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.135
+
+  target-postgres-036:
+    image: postgres:16-bullseye
+    container_name: pganalytics-target-036
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: pganalytics
+      POSTGRES_DB: postgres
+    ports:
+      - "5485:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.136
+
+  target-postgres-037:
+    image: postgres:16-bullseye
+    container_name: pganalytics-target-037
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: pganalytics
+      POSTGRES_DB: postgres
+    ports:
+      - "5486:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.137
+
+  target-postgres-038:
+    image: postgres:16-bullseye
+    container_name: pganalytics-target-038
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: pganalytics
+      POSTGRES_DB: postgres
+    ports:
+      - "5487:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.138
+
+  target-postgres-039:
+    image: postgres:16-bullseye
+    container_name: pganalytics-target-039
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: pganalytics
+      POSTGRES_DB: postgres
+    ports:
+      - "5488:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.139
+
+  target-postgres-040:
+    image: postgres:16-bullseye
+    container_name: pganalytics-target-040
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: pganalytics
+      POSTGRES_DB: postgres
+    ports:
+      - "5489:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.140
+
+  # ============================================================================
+  # 40 COLLECTORS (172.20.1.201 - 172.20.1.240)
+  # ============================================================================
+
+  collector-001:
+    build:
+      context: .
+      dockerfile: collector/Dockerfile
+    container_name: pganalytics-collector-001
+    environment:
+      COLLECTOR_ID: "col_001"
+      COLLECTOR_NAME: "Collector 001"
+      BACKEND_URL: "http://backend:8080"
+      BACKEND_TLS_VERIFY: "false"
+      POSTGRES_HOST: "target-postgres-001"
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "pganalytics"
+      POSTGRES_DATABASES: "postgres"
+      COLLECTION_INTERVAL: "60"
+      LOG_LEVEL: "debug"
+      AUTO_REGISTER: "true"
+      REGISTRATION_SECRET: "${REGISTRATION_SECRET}"
+    depends_on:
+      target-postgres-001:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    volumes:
+      - ./tls:/etc/pganalytics/tls:ro
+      - collector_data_001:/var/lib/pganalytics
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.201
+
+  collector-002:
+    build:
+      context: .
+      dockerfile: collector/Dockerfile
+    container_name: pganalytics-collector-002
+    environment:
+      COLLECTOR_ID: "col_002"
+      COLLECTOR_NAME: "Collector 002"
+      BACKEND_URL: "http://backend:8080"
+      BACKEND_TLS_VERIFY: "false"
+      POSTGRES_HOST: "target-postgres-002"
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "pganalytics"
+      POSTGRES_DATABASES: "postgres"
+      COLLECTION_INTERVAL: "60"
+      LOG_LEVEL: "debug"
+      AUTO_REGISTER: "true"
+      REGISTRATION_SECRET: "${REGISTRATION_SECRET}"
+    depends_on:
+      target-postgres-002:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    volumes:
+      - ./tls:/etc/pganalytics/tls:ro
+      - collector_data_002:/var/lib/pganalytics
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.202
+
+  collector-003:
+    build:
+      context: .
+      dockerfile: collector/Dockerfile
+    container_name: pganalytics-collector-003
+    environment:
+      COLLECTOR_ID: "col_003"
+      COLLECTOR_NAME: "Collector 003"
+      BACKEND_URL: "http://backend:8080"
+      BACKEND_TLS_VERIFY: "false"
+      POSTGRES_HOST: "target-postgres-003"
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "pganalytics"
+      POSTGRES_DATABASES: "postgres"
+      COLLECTION_INTERVAL: "60"
+      LOG_LEVEL: "debug"
+      AUTO_REGISTER: "true"
+      REGISTRATION_SECRET: "${REGISTRATION_SECRET}"
+    depends_on:
+      target-postgres-003:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    volumes:
+      - ./tls:/etc/pganalytics/tls:ro
+      - collector_data_003:/var/lib/pganalytics
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.203
+
+  collector-004:
+    build:
+      context: .
+      dockerfile: collector/Dockerfile
+    container_name: pganalytics-collector-004
+    environment:
+      COLLECTOR_ID: "col_004"
+      COLLECTOR_NAME: "Collector 004"
+      BACKEND_URL: "http://backend:8080"
+      BACKEND_TLS_VERIFY: "false"
+      POSTGRES_HOST: "target-postgres-004"
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "pganalytics"
+      POSTGRES_DATABASES: "postgres"
+      COLLECTION_INTERVAL: "60"
+      LOG_LEVEL: "debug"
+      AUTO_REGISTER: "true"
+      REGISTRATION_SECRET: "${REGISTRATION_SECRET}"
+    depends_on:
+      target-postgres-004:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    volumes:
+      - ./tls:/etc/pganalytics/tls:ro
+      - collector_data_004:/var/lib/pganalytics
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.204
+
+  collector-005:
+    build:
+      context: .
+      dockerfile: collector/Dockerfile
+    container_name: pganalytics-collector-005
+    environment:
+      COLLECTOR_ID: "col_005"
+      COLLECTOR_NAME: "Collector 005"
+      BACKEND_URL: "http://backend:8080"
+      BACKEND_TLS_VERIFY: "false"
+      POSTGRES_HOST: "target-postgres-005"
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "pganalytics"
+      POSTGRES_DATABASES: "postgres"
+      COLLECTION_INTERVAL: "60"
+      LOG_LEVEL: "debug"
+      AUTO_REGISTER: "true"
+      REGISTRATION_SECRET: "${REGISTRATION_SECRET}"
+    depends_on:
+      target-postgres-005:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    volumes:
+      - ./tls:/etc/pganalytics/tls:ro
+      - collector_data_005:/var/lib/pganalytics
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.205
+
+  collector-006:
+    build:
+      context: .
+      dockerfile: collector/Dockerfile
+    container_name: pganalytics-collector-006
+    environment:
+      COLLECTOR_ID: "col_006"
+      COLLECTOR_NAME: "Collector 006"
+      BACKEND_URL: "http://backend:8080"
+      BACKEND_TLS_VERIFY: "false"
+      POSTGRES_HOST: "target-postgres-006"
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "pganalytics"
+      POSTGRES_DATABASES: "postgres"
+      COLLECTION_INTERVAL: "60"
+      LOG_LEVEL: "debug"
+      AUTO_REGISTER: "true"
+      REGISTRATION_SECRET: "${REGISTRATION_SECRET}"
+    depends_on:
+      target-postgres-006:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    volumes:
+      - ./tls:/etc/pganalytics/tls:ro
+      - collector_data_006:/var/lib/pganalytics
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.206
+
+  collector-007:
+    build:
+      context: .
+      dockerfile: collector/Dockerfile
+    container_name: pganalytics-collector-007
+    environment:
+      COLLECTOR_ID: "col_007"
+      COLLECTOR_NAME: "Collector 007"
+      BACKEND_URL: "http://backend:8080"
+      BACKEND_TLS_VERIFY: "false"
+      POSTGRES_HOST: "target-postgres-007"
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "pganalytics"
+      POSTGRES_DATABASES: "postgres"
+      COLLECTION_INTERVAL: "60"
+      LOG_LEVEL: "debug"
+      AUTO_REGISTER: "true"
+      REGISTRATION_SECRET: "${REGISTRATION_SECRET}"
+    depends_on:
+      target-postgres-007:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    volumes:
+      - ./tls:/etc/pganalytics/tls:ro
+      - collector_data_007:/var/lib/pganalytics
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.207
+
+  collector-008:
+    build:
+      context: .
+      dockerfile: collector/Dockerfile
+    container_name: pganalytics-collector-008
+    environment:
+      COLLECTOR_ID: "col_008"
+      COLLECTOR_NAME: "Collector 008"
+      BACKEND_URL: "http://backend:8080"
+      BACKEND_TLS_VERIFY: "false"
+      POSTGRES_HOST: "target-postgres-008"
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "pganalytics"
+      POSTGRES_DATABASES: "postgres"
+      COLLECTION_INTERVAL: "60"
+      LOG_LEVEL: "debug"
+      AUTO_REGISTER: "true"
+      REGISTRATION_SECRET: "${REGISTRATION_SECRET}"
+    depends_on:
+      target-postgres-008:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    volumes:
+      - ./tls:/etc/pganalytics/tls:ro
+      - collector_data_008:/var/lib/pganalytics
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.208
+
+  collector-009:
+    build:
+      context: .
+      dockerfile: collector/Dockerfile
+    container_name: pganalytics-collector-009
+    environment:
+      COLLECTOR_ID: "col_009"
+      COLLECTOR_NAME: "Collector 009"
+      BACKEND_URL: "http://backend:8080"
+      BACKEND_TLS_VERIFY: "false"
+      POSTGRES_HOST: "target-postgres-009"
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "pganalytics"
+      POSTGRES_DATABASES: "postgres"
+      COLLECTION_INTERVAL: "60"
+      LOG_LEVEL: "debug"
+      AUTO_REGISTER: "true"
+      REGISTRATION_SECRET: "${REGISTRATION_SECRET}"
+    depends_on:
+      target-postgres-009:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    volumes:
+      - ./tls:/etc/pganalytics/tls:ro
+      - collector_data_009:/var/lib/pganalytics
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.209
+
+  collector-010:
+    build:
+      context: .
+      dockerfile: collector/Dockerfile
+    container_name: pganalytics-collector-010
+    environment:
+      COLLECTOR_ID: "col_010"
+      COLLECTOR_NAME: "Collector 010"
+      BACKEND_URL: "http://backend:8080"
+      BACKEND_TLS_VERIFY: "false"
+      POSTGRES_HOST: "target-postgres-010"
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "pganalytics"
+      POSTGRES_DATABASES: "postgres"
+      COLLECTION_INTERVAL: "60"
+      LOG_LEVEL: "debug"
+      AUTO_REGISTER: "true"
+      REGISTRATION_SECRET: "${REGISTRATION_SECRET}"
+    depends_on:
+      target-postgres-010:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    volumes:
+      - ./tls:/etc/pganalytics/tls:ro
+      - collector_data_010:/var/lib/pganalytics
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.210
+
+  collector-011:
+    build:
+      context: .
+      dockerfile: collector/Dockerfile
+    container_name: pganalytics-collector-011
+    environment:
+      COLLECTOR_ID: "col_011"
+      COLLECTOR_NAME: "Collector 011"
+      BACKEND_URL: "http://backend:8080"
+      BACKEND_TLS_VERIFY: "false"
+      POSTGRES_HOST: "target-postgres-011"
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "pganalytics"
+      POSTGRES_DATABASES: "postgres"
+      COLLECTION_INTERVAL: "60"
+      LOG_LEVEL: "debug"
+      AUTO_REGISTER: "true"
+      REGISTRATION_SECRET: "${REGISTRATION_SECRET}"
+    depends_on:
+      target-postgres-011:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    volumes:
+      - ./tls:/etc/pganalytics/tls:ro
+      - collector_data_011:/var/lib/pganalytics
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.211
+
+  collector-012:
+    build:
+      context: .
+      dockerfile: collector/Dockerfile
+    container_name: pganalytics-collector-012
+    environment:
+      COLLECTOR_ID: "col_012"
+      COLLECTOR_NAME: "Collector 012"
+      BACKEND_URL: "http://backend:8080"
+      BACKEND_TLS_VERIFY: "false"
+      POSTGRES_HOST: "target-postgres-012"
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "pganalytics"
+      POSTGRES_DATABASES: "postgres"
+      COLLECTION_INTERVAL: "60"
+      LOG_LEVEL: "debug"
+      AUTO_REGISTER: "true"
+      REGISTRATION_SECRET: "${REGISTRATION_SECRET}"
+    depends_on:
+      target-postgres-012:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    volumes:
+      - ./tls:/etc/pganalytics/tls:ro
+      - collector_data_012:/var/lib/pganalytics
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.212
+
+  collector-013:
+    build:
+      context: .
+      dockerfile: collector/Dockerfile
+    container_name: pganalytics-collector-013
+    environment:
+      COLLECTOR_ID: "col_013"
+      COLLECTOR_NAME: "Collector 013"
+      BACKEND_URL: "http://backend:8080"
+      BACKEND_TLS_VERIFY: "false"
+      POSTGRES_HOST: "target-postgres-013"
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "pganalytics"
+      POSTGRES_DATABASES: "postgres"
+      COLLECTION_INTERVAL: "60"
+      LOG_LEVEL: "debug"
+      AUTO_REGISTER: "true"
+      REGISTRATION_SECRET: "${REGISTRATION_SECRET}"
+    depends_on:
+      target-postgres-013:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    volumes:
+      - ./tls:/etc/pganalytics/tls:ro
+      - collector_data_013:/var/lib/pganalytics
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.213
+
+  collector-014:
+    build:
+      context: .
+      dockerfile: collector/Dockerfile
+    container_name: pganalytics-collector-014
+    environment:
+      COLLECTOR_ID: "col_014"
+      COLLECTOR_NAME: "Collector 014"
+      BACKEND_URL: "http://backend:8080"
+      BACKEND_TLS_VERIFY: "false"
+      POSTGRES_HOST: "target-postgres-014"
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "pganalytics"
+      POSTGRES_DATABASES: "postgres"
+      COLLECTION_INTERVAL: "60"
+      LOG_LEVEL: "debug"
+      AUTO_REGISTER: "true"
+      REGISTRATION_SECRET: "${REGISTRATION_SECRET}"
+    depends_on:
+      target-postgres-014:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    volumes:
+      - ./tls:/etc/pganalytics/tls:ro
+      - collector_data_014:/var/lib/pganalytics
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.214
+
+  collector-015:
+    build:
+      context: .
+      dockerfile: collector/Dockerfile
+    container_name: pganalytics-collector-015
+    environment:
+      COLLECTOR_ID: "col_015"
+      COLLECTOR_NAME: "Collector 015"
+      BACKEND_URL: "http://backend:8080"
+      BACKEND_TLS_VERIFY: "false"
+      POSTGRES_HOST: "target-postgres-015"
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "pganalytics"
+      POSTGRES_DATABASES: "postgres"
+      COLLECTION_INTERVAL: "60"
+      LOG_LEVEL: "debug"
+      AUTO_REGISTER: "true"
+      REGISTRATION_SECRET: "${REGISTRATION_SECRET}"
+    depends_on:
+      target-postgres-015:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    volumes:
+      - ./tls:/etc/pganalytics/tls:ro
+      - collector_data_015:/var/lib/pganalytics
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.215
+
+  collector-016:
+    build:
+      context: .
+      dockerfile: collector/Dockerfile
+    container_name: pganalytics-collector-016
+    environment:
+      COLLECTOR_ID: "col_016"
+      COLLECTOR_NAME: "Collector 016"
+      BACKEND_URL: "http://backend:8080"
+      BACKEND_TLS_VERIFY: "false"
+      POSTGRES_HOST: "target-postgres-016"
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "pganalytics"
+      POSTGRES_DATABASES: "postgres"
+      COLLECTION_INTERVAL: "60"
+      LOG_LEVEL: "debug"
+      AUTO_REGISTER: "true"
+      REGISTRATION_SECRET: "${REGISTRATION_SECRET}"
+    depends_on:
+      target-postgres-016:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    volumes:
+      - ./tls:/etc/pganalytics/tls:ro
+      - collector_data_016:/var/lib/pganalytics
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.216
+
+  collector-017:
+    build:
+      context: .
+      dockerfile: collector/Dockerfile
+    container_name: pganalytics-collector-017
+    environment:
+      COLLECTOR_ID: "col_017"
+      COLLECTOR_NAME: "Collector 017"
+      BACKEND_URL: "http://backend:8080"
+      BACKEND_TLS_VERIFY: "false"
+      POSTGRES_HOST: "target-postgres-017"
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "pganalytics"
+      POSTGRES_DATABASES: "postgres"
+      COLLECTION_INTERVAL: "60"
+      LOG_LEVEL: "debug"
+      AUTO_REGISTER: "true"
+      REGISTRATION_SECRET: "${REGISTRATION_SECRET}"
+    depends_on:
+      target-postgres-017:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    volumes:
+      - ./tls:/etc/pganalytics/tls:ro
+      - collector_data_017:/var/lib/pganalytics
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.217
+
+  collector-018:
+    build:
+      context: .
+      dockerfile: collector/Dockerfile
+    container_name: pganalytics-collector-018
+    environment:
+      COLLECTOR_ID: "col_018"
+      COLLECTOR_NAME: "Collector 018"
+      BACKEND_URL: "http://backend:8080"
+      BACKEND_TLS_VERIFY: "false"
+      POSTGRES_HOST: "target-postgres-018"
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "pganalytics"
+      POSTGRES_DATABASES: "postgres"
+      COLLECTION_INTERVAL: "60"
+      LOG_LEVEL: "debug"
+      AUTO_REGISTER: "true"
+      REGISTRATION_SECRET: "${REGISTRATION_SECRET}"
+    depends_on:
+      target-postgres-018:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    volumes:
+      - ./tls:/etc/pganalytics/tls:ro
+      - collector_data_018:/var/lib/pganalytics
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.218
+
+  collector-019:
+    build:
+      context: .
+      dockerfile: collector/Dockerfile
+    container_name: pganalytics-collector-019
+    environment:
+      COLLECTOR_ID: "col_019"
+      COLLECTOR_NAME: "Collector 019"
+      BACKEND_URL: "http://backend:8080"
+      BACKEND_TLS_VERIFY: "false"
+      POSTGRES_HOST: "target-postgres-019"
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "pganalytics"
+      POSTGRES_DATABASES: "postgres"
+      COLLECTION_INTERVAL: "60"
+      LOG_LEVEL: "debug"
+      AUTO_REGISTER: "true"
+      REGISTRATION_SECRET: "${REGISTRATION_SECRET}"
+    depends_on:
+      target-postgres-019:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    volumes:
+      - ./tls:/etc/pganalytics/tls:ro
+      - collector_data_019:/var/lib/pganalytics
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.219
+
+  collector-020:
+    build:
+      context: .
+      dockerfile: collector/Dockerfile
+    container_name: pganalytics-collector-020
+    environment:
+      COLLECTOR_ID: "col_020"
+      COLLECTOR_NAME: "Collector 020"
+      BACKEND_URL: "http://backend:8080"
+      BACKEND_TLS_VERIFY: "false"
+      POSTGRES_HOST: "target-postgres-020"
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "pganalytics"
+      POSTGRES_DATABASES: "postgres"
+      COLLECTION_INTERVAL: "60"
+      LOG_LEVEL: "debug"
+      AUTO_REGISTER: "true"
+      REGISTRATION_SECRET: "${REGISTRATION_SECRET}"
+    depends_on:
+      target-postgres-020:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    volumes:
+      - ./tls:/etc/pganalytics/tls:ro
+      - collector_data_020:/var/lib/pganalytics
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.220
+
+  collector-021:
+    build:
+      context: .
+      dockerfile: collector/Dockerfile
+    container_name: pganalytics-collector-021
+    environment:
+      COLLECTOR_ID: "col_021"
+      COLLECTOR_NAME: "Collector 021"
+      BACKEND_URL: "http://backend:8080"
+      BACKEND_TLS_VERIFY: "false"
+      POSTGRES_HOST: "target-postgres-021"
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "pganalytics"
+      POSTGRES_DATABASES: "postgres"
+      COLLECTION_INTERVAL: "60"
+      LOG_LEVEL: "debug"
+      AUTO_REGISTER: "true"
+      REGISTRATION_SECRET: "${REGISTRATION_SECRET}"
+    depends_on:
+      target-postgres-021:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    volumes:
+      - ./tls:/etc/pganalytics/tls:ro
+      - collector_data_021:/var/lib/pganalytics
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.221
+
+  collector-022:
+    build:
+      context: .
+      dockerfile: collector/Dockerfile
+    container_name: pganalytics-collector-022
+    environment:
+      COLLECTOR_ID: "col_022"
+      COLLECTOR_NAME: "Collector 022"
+      BACKEND_URL: "http://backend:8080"
+      BACKEND_TLS_VERIFY: "false"
+      POSTGRES_HOST: "target-postgres-022"
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "pganalytics"
+      POSTGRES_DATABASES: "postgres"
+      COLLECTION_INTERVAL: "60"
+      LOG_LEVEL: "debug"
+      AUTO_REGISTER: "true"
+      REGISTRATION_SECRET: "${REGISTRATION_SECRET}"
+    depends_on:
+      target-postgres-022:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    volumes:
+      - ./tls:/etc/pganalytics/tls:ro
+      - collector_data_022:/var/lib/pganalytics
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.222
+
+  collector-023:
+    build:
+      context: .
+      dockerfile: collector/Dockerfile
+    container_name: pganalytics-collector-023
+    environment:
+      COLLECTOR_ID: "col_023"
+      COLLECTOR_NAME: "Collector 023"
+      BACKEND_URL: "http://backend:8080"
+      BACKEND_TLS_VERIFY: "false"
+      POSTGRES_HOST: "target-postgres-023"
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "pganalytics"
+      POSTGRES_DATABASES: "postgres"
+      COLLECTION_INTERVAL: "60"
+      LOG_LEVEL: "debug"
+      AUTO_REGISTER: "true"
+      REGISTRATION_SECRET: "${REGISTRATION_SECRET}"
+    depends_on:
+      target-postgres-023:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    volumes:
+      - ./tls:/etc/pganalytics/tls:ro
+      - collector_data_023:/var/lib/pganalytics
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.223
+
+  collector-024:
+    build:
+      context: .
+      dockerfile: collector/Dockerfile
+    container_name: pganalytics-collector-024
+    environment:
+      COLLECTOR_ID: "col_024"
+      COLLECTOR_NAME: "Collector 024"
+      BACKEND_URL: "http://backend:8080"
+      BACKEND_TLS_VERIFY: "false"
+      POSTGRES_HOST: "target-postgres-024"
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "pganalytics"
+      POSTGRES_DATABASES: "postgres"
+      COLLECTION_INTERVAL: "60"
+      LOG_LEVEL: "debug"
+      AUTO_REGISTER: "true"
+      REGISTRATION_SECRET: "${REGISTRATION_SECRET}"
+    depends_on:
+      target-postgres-024:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    volumes:
+      - ./tls:/etc/pganalytics/tls:ro
+      - collector_data_024:/var/lib/pganalytics
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.224
+
+  collector-025:
+    build:
+      context: .
+      dockerfile: collector/Dockerfile
+    container_name: pganalytics-collector-025
+    environment:
+      COLLECTOR_ID: "col_025"
+      COLLECTOR_NAME: "Collector 025"
+      BACKEND_URL: "http://backend:8080"
+      BACKEND_TLS_VERIFY: "false"
+      POSTGRES_HOST: "target-postgres-025"
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "pganalytics"
+      POSTGRES_DATABASES: "postgres"
+      COLLECTION_INTERVAL: "60"
+      LOG_LEVEL: "debug"
+      AUTO_REGISTER: "true"
+      REGISTRATION_SECRET: "${REGISTRATION_SECRET}"
+    depends_on:
+      target-postgres-025:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    volumes:
+      - ./tls:/etc/pganalytics/tls:ro
+      - collector_data_025:/var/lib/pganalytics
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.225
+
+  collector-026:
+    build:
+      context: .
+      dockerfile: collector/Dockerfile
+    container_name: pganalytics-collector-026
+    environment:
+      COLLECTOR_ID: "col_026"
+      COLLECTOR_NAME: "Collector 026"
+      BACKEND_URL: "http://backend:8080"
+      BACKEND_TLS_VERIFY: "false"
+      POSTGRES_HOST: "target-postgres-026"
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "pganalytics"
+      POSTGRES_DATABASES: "postgres"
+      COLLECTION_INTERVAL: "60"
+      LOG_LEVEL: "debug"
+      AUTO_REGISTER: "true"
+      REGISTRATION_SECRET: "${REGISTRATION_SECRET}"
+    depends_on:
+      target-postgres-026:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    volumes:
+      - ./tls:/etc/pganalytics/tls:ro
+      - collector_data_026:/var/lib/pganalytics
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.226
+
+  collector-027:
+    build:
+      context: .
+      dockerfile: collector/Dockerfile
+    container_name: pganalytics-collector-027
+    environment:
+      COLLECTOR_ID: "col_027"
+      COLLECTOR_NAME: "Collector 027"
+      BACKEND_URL: "http://backend:8080"
+      BACKEND_TLS_VERIFY: "false"
+      POSTGRES_HOST: "target-postgres-027"
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "pganalytics"
+      POSTGRES_DATABASES: "postgres"
+      COLLECTION_INTERVAL: "60"
+      LOG_LEVEL: "debug"
+      AUTO_REGISTER: "true"
+      REGISTRATION_SECRET: "${REGISTRATION_SECRET}"
+    depends_on:
+      target-postgres-027:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    volumes:
+      - ./tls:/etc/pganalytics/tls:ro
+      - collector_data_027:/var/lib/pganalytics
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.227
+
+  collector-028:
+    build:
+      context: .
+      dockerfile: collector/Dockerfile
+    container_name: pganalytics-collector-028
+    environment:
+      COLLECTOR_ID: "col_028"
+      COLLECTOR_NAME: "Collector 028"
+      BACKEND_URL: "http://backend:8080"
+      BACKEND_TLS_VERIFY: "false"
+      POSTGRES_HOST: "target-postgres-028"
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "pganalytics"
+      POSTGRES_DATABASES: "postgres"
+      COLLECTION_INTERVAL: "60"
+      LOG_LEVEL: "debug"
+      AUTO_REGISTER: "true"
+      REGISTRATION_SECRET: "${REGISTRATION_SECRET}"
+    depends_on:
+      target-postgres-028:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    volumes:
+      - ./tls:/etc/pganalytics/tls:ro
+      - collector_data_028:/var/lib/pganalytics
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.228
+
+  collector-029:
+    build:
+      context: .
+      dockerfile: collector/Dockerfile
+    container_name: pganalytics-collector-029
+    environment:
+      COLLECTOR_ID: "col_029"
+      COLLECTOR_NAME: "Collector 029"
+      BACKEND_URL: "http://backend:8080"
+      BACKEND_TLS_VERIFY: "false"
+      POSTGRES_HOST: "target-postgres-029"
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "pganalytics"
+      POSTGRES_DATABASES: "postgres"
+      COLLECTION_INTERVAL: "60"
+      LOG_LEVEL: "debug"
+      AUTO_REGISTER: "true"
+      REGISTRATION_SECRET: "${REGISTRATION_SECRET}"
+    depends_on:
+      target-postgres-029:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    volumes:
+      - ./tls:/etc/pganalytics/tls:ro
+      - collector_data_029:/var/lib/pganalytics
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.229
+
+  collector-030:
+    build:
+      context: .
+      dockerfile: collector/Dockerfile
+    container_name: pganalytics-collector-030
+    environment:
+      COLLECTOR_ID: "col_030"
+      COLLECTOR_NAME: "Collector 030"
+      BACKEND_URL: "http://backend:8080"
+      BACKEND_TLS_VERIFY: "false"
+      POSTGRES_HOST: "target-postgres-030"
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "pganalytics"
+      POSTGRES_DATABASES: "postgres"
+      COLLECTION_INTERVAL: "60"
+      LOG_LEVEL: "debug"
+      AUTO_REGISTER: "true"
+      REGISTRATION_SECRET: "${REGISTRATION_SECRET}"
+    depends_on:
+      target-postgres-030:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    volumes:
+      - ./tls:/etc/pganalytics/tls:ro
+      - collector_data_030:/var/lib/pganalytics
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.230
+
+  collector-031:
+    build:
+      context: .
+      dockerfile: collector/Dockerfile
+    container_name: pganalytics-collector-031
+    environment:
+      COLLECTOR_ID: "col_031"
+      COLLECTOR_NAME: "Collector 031"
+      BACKEND_URL: "http://backend:8080"
+      BACKEND_TLS_VERIFY: "false"
+      POSTGRES_HOST: "target-postgres-031"
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "pganalytics"
+      POSTGRES_DATABASES: "postgres"
+      COLLECTION_INTERVAL: "60"
+      LOG_LEVEL: "debug"
+      AUTO_REGISTER: "true"
+      REGISTRATION_SECRET: "${REGISTRATION_SECRET}"
+    depends_on:
+      target-postgres-031:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    volumes:
+      - ./tls:/etc/pganalytics/tls:ro
+      - collector_data_031:/var/lib/pganalytics
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.231
+
+  collector-032:
+    build:
+      context: .
+      dockerfile: collector/Dockerfile
+    container_name: pganalytics-collector-032
+    environment:
+      COLLECTOR_ID: "col_032"
+      COLLECTOR_NAME: "Collector 032"
+      BACKEND_URL: "http://backend:8080"
+      BACKEND_TLS_VERIFY: "false"
+      POSTGRES_HOST: "target-postgres-032"
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "pganalytics"
+      POSTGRES_DATABASES: "postgres"
+      COLLECTION_INTERVAL: "60"
+      LOG_LEVEL: "debug"
+      AUTO_REGISTER: "true"
+      REGISTRATION_SECRET: "${REGISTRATION_SECRET}"
+    depends_on:
+      target-postgres-032:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    volumes:
+      - ./tls:/etc/pganalytics/tls:ro
+      - collector_data_032:/var/lib/pganalytics
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.232
+
+  collector-033:
+    build:
+      context: .
+      dockerfile: collector/Dockerfile
+    container_name: pganalytics-collector-033
+    environment:
+      COLLECTOR_ID: "col_033"
+      COLLECTOR_NAME: "Collector 033"
+      BACKEND_URL: "http://backend:8080"
+      BACKEND_TLS_VERIFY: "false"
+      POSTGRES_HOST: "target-postgres-033"
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "pganalytics"
+      POSTGRES_DATABASES: "postgres"
+      COLLECTION_INTERVAL: "60"
+      LOG_LEVEL: "debug"
+      AUTO_REGISTER: "true"
+      REGISTRATION_SECRET: "${REGISTRATION_SECRET}"
+    depends_on:
+      target-postgres-033:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    volumes:
+      - ./tls:/etc/pganalytics/tls:ro
+      - collector_data_033:/var/lib/pganalytics
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.233
+
+  collector-034:
+    build:
+      context: .
+      dockerfile: collector/Dockerfile
+    container_name: pganalytics-collector-034
+    environment:
+      COLLECTOR_ID: "col_034"
+      COLLECTOR_NAME: "Collector 034"
+      BACKEND_URL: "http://backend:8080"
+      BACKEND_TLS_VERIFY: "false"
+      POSTGRES_HOST: "target-postgres-034"
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "pganalytics"
+      POSTGRES_DATABASES: "postgres"
+      COLLECTION_INTERVAL: "60"
+      LOG_LEVEL: "debug"
+      AUTO_REGISTER: "true"
+      REGISTRATION_SECRET: "${REGISTRATION_SECRET}"
+    depends_on:
+      target-postgres-034:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    volumes:
+      - ./tls:/etc/pganalytics/tls:ro
+      - collector_data_034:/var/lib/pganalytics
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.234
+
+  collector-035:
+    build:
+      context: .
+      dockerfile: collector/Dockerfile
+    container_name: pganalytics-collector-035
+    environment:
+      COLLECTOR_ID: "col_035"
+      COLLECTOR_NAME: "Collector 035"
+      BACKEND_URL: "http://backend:8080"
+      BACKEND_TLS_VERIFY: "false"
+      POSTGRES_HOST: "target-postgres-035"
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "pganalytics"
+      POSTGRES_DATABASES: "postgres"
+      COLLECTION_INTERVAL: "60"
+      LOG_LEVEL: "debug"
+      AUTO_REGISTER: "true"
+      REGISTRATION_SECRET: "${REGISTRATION_SECRET}"
+    depends_on:
+      target-postgres-035:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    volumes:
+      - ./tls:/etc/pganalytics/tls:ro
+      - collector_data_035:/var/lib/pganalytics
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.235
+
+  collector-036:
+    build:
+      context: .
+      dockerfile: collector/Dockerfile
+    container_name: pganalytics-collector-036
+    environment:
+      COLLECTOR_ID: "col_036"
+      COLLECTOR_NAME: "Collector 036"
+      BACKEND_URL: "http://backend:8080"
+      BACKEND_TLS_VERIFY: "false"
+      POSTGRES_HOST: "target-postgres-036"
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "pganalytics"
+      POSTGRES_DATABASES: "postgres"
+      COLLECTION_INTERVAL: "60"
+      LOG_LEVEL: "debug"
+      AUTO_REGISTER: "true"
+      REGISTRATION_SECRET: "${REGISTRATION_SECRET}"
+    depends_on:
+      target-postgres-036:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    volumes:
+      - ./tls:/etc/pganalytics/tls:ro
+      - collector_data_036:/var/lib/pganalytics
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.236
+
+  collector-037:
+    build:
+      context: .
+      dockerfile: collector/Dockerfile
+    container_name: pganalytics-collector-037
+    environment:
+      COLLECTOR_ID: "col_037"
+      COLLECTOR_NAME: "Collector 037"
+      BACKEND_URL: "http://backend:8080"
+      BACKEND_TLS_VERIFY: "false"
+      POSTGRES_HOST: "target-postgres-037"
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "pganalytics"
+      POSTGRES_DATABASES: "postgres"
+      COLLECTION_INTERVAL: "60"
+      LOG_LEVEL: "debug"
+      AUTO_REGISTER: "true"
+      REGISTRATION_SECRET: "${REGISTRATION_SECRET}"
+    depends_on:
+      target-postgres-037:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    volumes:
+      - ./tls:/etc/pganalytics/tls:ro
+      - collector_data_037:/var/lib/pganalytics
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.237
+
+  collector-038:
+    build:
+      context: .
+      dockerfile: collector/Dockerfile
+    container_name: pganalytics-collector-038
+    environment:
+      COLLECTOR_ID: "col_038"
+      COLLECTOR_NAME: "Collector 038"
+      BACKEND_URL: "http://backend:8080"
+      BACKEND_TLS_VERIFY: "false"
+      POSTGRES_HOST: "target-postgres-038"
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "pganalytics"
+      POSTGRES_DATABASES: "postgres"
+      COLLECTION_INTERVAL: "60"
+      LOG_LEVEL: "debug"
+      AUTO_REGISTER: "true"
+      REGISTRATION_SECRET: "${REGISTRATION_SECRET}"
+    depends_on:
+      target-postgres-038:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    volumes:
+      - ./tls:/etc/pganalytics/tls:ro
+      - collector_data_038:/var/lib/pganalytics
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.238
+
+  collector-039:
+    build:
+      context: .
+      dockerfile: collector/Dockerfile
+    container_name: pganalytics-collector-039
+    environment:
+      COLLECTOR_ID: "col_039"
+      COLLECTOR_NAME: "Collector 039"
+      BACKEND_URL: "http://backend:8080"
+      BACKEND_TLS_VERIFY: "false"
+      POSTGRES_HOST: "target-postgres-039"
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "pganalytics"
+      POSTGRES_DATABASES: "postgres"
+      COLLECTION_INTERVAL: "60"
+      LOG_LEVEL: "debug"
+      AUTO_REGISTER: "true"
+      REGISTRATION_SECRET: "${REGISTRATION_SECRET}"
+    depends_on:
+      target-postgres-039:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    volumes:
+      - ./tls:/etc/pganalytics/tls:ro
+      - collector_data_039:/var/lib/pganalytics
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.239
+
+  collector-040:
+    build:
+      context: .
+      dockerfile: collector/Dockerfile
+    container_name: pganalytics-collector-040
+    environment:
+      COLLECTOR_ID: "col_040"
+      COLLECTOR_NAME: "Collector 040"
+      BACKEND_URL: "http://backend:8080"
+      BACKEND_TLS_VERIFY: "false"
+      POSTGRES_HOST: "target-postgres-040"
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "pganalytics"
+      POSTGRES_DATABASES: "postgres"
+      COLLECTION_INTERVAL: "60"
+      LOG_LEVEL: "debug"
+      AUTO_REGISTER: "true"
+      REGISTRATION_SECRET: "${REGISTRATION_SECRET}"
+    depends_on:
+      target-postgres-040:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    volumes:
+      - ./tls:/etc/pganalytics/tls:ro
+      - collector_data_040:/var/lib/pganalytics
+    networks:
+      pganalytics:
+        ipv4_address: 172.20.1.240
+
+networks:
+  pganalytics:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+          gateway: 172.20.0.1
+
+volumes:
+  postgres_data:
+    driver: local
+  timescale_data:
+    driver: local
+  collector_data_001:
+    driver: local
+  collector_data_002:
+    driver: local
+  collector_data_003:
+    driver: local
+  collector_data_004:
+    driver: local
+  collector_data_005:
+    driver: local
+  collector_data_006:
+    driver: local
+  collector_data_007:
+    driver: local
+  collector_data_008:
+    driver: local
+  collector_data_009:
+    driver: local
+  collector_data_010:
+    driver: local
+  collector_data_011:
+    driver: local
+  collector_data_012:
+    driver: local
+  collector_data_013:
+    driver: local
+  collector_data_014:
+    driver: local
+  collector_data_015:
+    driver: local
+  collector_data_016:
+    driver: local
+  collector_data_017:
+    driver: local
+  collector_data_018:
+    driver: local
+  collector_data_019:
+    driver: local
+  collector_data_020:
+    driver: local
+  collector_data_021:
+    driver: local
+  collector_data_022:
+    driver: local
+  collector_data_023:
+    driver: local
+  collector_data_024:
+    driver: local
+  collector_data_025:
+    driver: local
+  collector_data_026:
+    driver: local
+  collector_data_027:
+    driver: local
+  collector_data_028:
+    driver: local
+  collector_data_029:
+    driver: local
+  collector_data_030:
+    driver: local
+  collector_data_031:
+    driver: local
+  collector_data_032:
+    driver: local
+  collector_data_033:
+    driver: local
+  collector_data_034:
+    driver: local
+  collector_data_035:
+    driver: local
+  collector_data_036:
+    driver: local
+  collector_data_037:
+    driver: local
+  collector_data_038:
+    driver: local
+  collector_data_039:
+    driver: local
+  collector_data_040:
+    driver: local

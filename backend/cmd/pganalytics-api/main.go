@@ -14,6 +14,7 @@ import (
 	"github.com/torresglauco/pganalytics-v3/backend/internal/cache"
 	"github.com/torresglauco/pganalytics-v3/backend/internal/config"
 	"github.com/torresglauco/pganalytics-v3/backend/internal/crypto"
+	"github.com/torresglauco/pganalytics-v3/backend/internal/jobs"
 	"github.com/torresglauco/pganalytics-v3/backend/internal/storage"
 	"github.com/torresglauco/pganalytics-v3/backend/internal/timescale"
 	"github.com/gin-gonic/gin"
@@ -163,6 +164,12 @@ func main() {
 	// Register routes
 	apiServer.RegisterRoutes(router)
 
+	// Initialize and start health check scheduler for managed instances
+	healthCheckScheduler := jobs.NewHealthCheckScheduler(postgresDB, logger)
+	if err := healthCheckScheduler.Start(); err != nil {
+		logger.Error("Failed to start health check scheduler", zap.Error(err))
+	}
+
 	// Create HTTP server
 	httpServer := &http.Server{
 		Addr:           ":" + getEnvInt("PORT", "8080"),
@@ -187,7 +194,14 @@ func main() {
 	<-sigChan
 	logger.Info("Shutdown signal received")
 
-	// Graceful shutdown
+	// Graceful shutdown - stop health check scheduler
+	if healthCheckScheduler.IsRunning() {
+		if err := healthCheckScheduler.Stop(30 * time.Second); err != nil {
+			logger.Error("Error stopping health check scheduler", zap.Error(err))
+		}
+	}
+
+	// Graceful shutdown - stop HTTP server
 	ctx, cancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
 	defer cancel()
 

@@ -713,6 +713,63 @@ func (s *Server) handleCollectorRegister(c *gin.Context) {
 	c.JSON(http.StatusOK, registerResp)
 }
 
+// @Summary Refresh Collector Token
+// @Description Refresh JWT token for a collector
+// @Tags Collectors
+// @Security Bearer
+// @Accept json
+// @Produce json
+// @Success 200 {object} map[string]interface{} "token, expires_at"
+// @Failure 401 {object} models.ErrorResponse
+// @Router /api/v1/collectors/refresh-token [post]
+func (s *Server) handleRefreshCollectorToken(c *gin.Context) {
+	// Extract collector from JWT claims (validates that token is authentic)
+	collectorIDStr := c.GetString("collector_id")
+	if collectorIDStr == "" {
+		errResp := apperrors.Unauthorized("No valid collector token", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 10*time.Second)
+	defer cancel()
+
+	// Validate collector ID format
+	_, err := uuid.Parse(collectorIDStr)
+	if err != nil {
+		errResp := apperrors.BadRequest("Invalid collector ID", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	// Get collector to ensure it still exists
+	collector, err := s.postgres.GetCollectorByID(ctx, collectorIDStr)
+	if err != nil || collector == nil {
+		errResp := apperrors.NotFound("Collector not found", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	// Generate new token for the collector
+	newToken, expiresAt, err := s.jwtManager.GenerateCollectorToken(collector)
+	if err != nil {
+		s.logger.Error("failed to generate collector token", zap.Error(err))
+		errResp := apperrors.InternalServerError("Failed to generate token", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	s.logger.Info("Collector token refreshed",
+		zap.String("collector_id", collector.ID.String()),
+		zap.String("hostname", collector.Hostname),
+	)
+
+	c.JSON(http.StatusOK, gin.H{
+		"token":      newToken,
+		"expires_at": expiresAt,
+	})
+}
+
 // @Summary List Collectors
 // @Description List all registered collectors
 // @Tags Collectors

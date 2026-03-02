@@ -135,6 +135,9 @@ func (s *Server) RegisterRoutes(router *gin.Engine) {
 			// Registration (no auth required)
 			collectors.POST("/register", s.handleCollectorRegister)
 
+			// Token refresh (collector auth required)
+			collectors.POST("/refresh-token", s.CollectorAuthMiddleware(), s.handleRefreshCollectorToken)
+
 			// Protected routes
 			collectors.GET("", s.AuthMiddleware(), s.handleListCollectors)
 			collectors.GET("/:id", s.AuthMiddleware(), s.handleGetCollector)

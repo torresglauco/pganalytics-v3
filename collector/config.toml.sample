@@ -73,6 +73,48 @@ interval = 300
 enabled = true
 interval = 60
 
+[pg_schema]
+# Schema information collector (Phase 1 - High Impact)
+# Collects table schemas, column definitions, constraints, indexes, and triggers
+# Available in PostgreSQL 8.0+
+enabled = false
+interval = 300
+
+[pg_locks]
+# Lock monitoring collector (Phase 1 - High Impact)
+# Tracks active locks, lock wait chains, and blocking queries
+# Available in PostgreSQL 8.1+
+enabled = false
+interval = 60
+
+[pg_bloat]
+# Table and index bloat analysis collector (Phase 1 - Medium Impact)
+# Analyzes dead tuples, bloat ratios, and space reclamation potential
+# Available in PostgreSQL 8.2+
+enabled = false
+interval = 300
+
+[pg_cache]
+# Cache hit ratio collector (Phase 1 - Medium Impact)
+# Analyzes buffer pool efficiency and cache performance by table/index
+# Available in PostgreSQL 8.1+
+enabled = false
+interval = 60
+
+[pg_connections]
+# Detailed connection tracking collector (Phase 1 - Medium Impact)
+# Monitors active/idle connections, long-running transactions, idle transactions
+# Available in PostgreSQL 9.0+
+enabled = false
+interval = 60
+
+[pg_extensions]
+# Extension inventory collector (Phase 1 - Low Impact)
+# Tracks installed extensions, versions, owners, and schemas
+# Available in PostgreSQL 9.1+
+enabled = false
+interval = 300
+
 # Example: Disable a collector
 # [pg_log]
 # enabled = false

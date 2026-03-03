@@ -17,6 +17,12 @@ class DiskUsageCollector;
 class PgLogCollector;
 class SysstatCollector;
 class PgReplicationCollector;
+class PgSchemaCollector;
+class PgLockCollector;
+class PgBloatCollector;
+class PgCacheHitCollector;
+class PgConnectionCollector;
+class PgExtensionCollector;
 
 /**
  * Base Collector interface

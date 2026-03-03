@@ -70,3 +70,13 @@ export function getRelativeTime(date: Date | string): string {
 
   return formatDateTime(d);
 }
+
+/**
+ * Alias for getRelativeTime
+ */
+export function formatTimeAgo(date: Date | string | number): string {
+  if (typeof date === 'number') {
+    return getRelativeTime(new Date(date));
+  }
+  return getRelativeTime(date);
+}

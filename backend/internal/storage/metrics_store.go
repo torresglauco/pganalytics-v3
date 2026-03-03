@@ -102,7 +102,7 @@ func (p *PostgresDB) StoreSchemaMetrics(ctx context.Context, tables []*models.Sc
 		}
 	}
 
-	return tx.Commit().Error
+	return tx.Commit()
 }
 
 // GetSchemaMetrics retrieves schema metrics for a collector
@@ -192,7 +192,7 @@ func (p *PostgresDB) StoreLockMetrics(ctx context.Context, locks []*models.Lock,
 		}
 	}
 
-	return tx.Commit().Error
+	return tx.Commit()
 }
 
 // GetLockMetrics retrieves lock metrics for a collector
@@ -282,7 +282,7 @@ func (p *PostgresDB) StoreBloatMetrics(ctx context.Context, tableBloat []*models
 		}
 	}
 
-	return tx.Commit().Error
+	return tx.Commit()
 }
 
 // GetBloatMetrics retrieves bloat metrics for a collector
@@ -371,7 +371,7 @@ func (p *PostgresDB) StoreCacheMetrics(ctx context.Context, tableCacheHit []*mod
 		}
 	}
 
-	return tx.Commit().Error
+	return tx.Commit()
 }
 
 // GetCacheMetrics retrieves cache metrics for a collector
@@ -479,7 +479,7 @@ func (p *PostgresDB) StoreConnectionMetrics(ctx context.Context, connSummary []*
 		}
 	}
 
-	return tx.Commit().Error
+	return tx.Commit()
 }
 
 // GetConnectionMetrics retrieves connection metrics for a collector

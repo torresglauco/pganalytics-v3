@@ -16,14 +16,19 @@
   "dependencies": {
     "@headlessui/react": "^1.7.19",
     "@hookform/resolvers": "^3.3.4",
+    "@tanstack/react-table": "^8.21.3",
     "axios": "^1.6.2",
     "clsx": "^2.1.0",
+    "date-fns": "^4.1.0",
+    "framer-motion": "^12.34.5",
     "lucide-react": "^0.308.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-hook-form": "^7.50.0",
     "react-router-dom": "^6.22.0",
-    "zod": "^3.22.4"
+    "recharts": "^3.7.0",
+    "zod": "^3.22.4",
+    "zustand": "^5.0.11"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.1.5",

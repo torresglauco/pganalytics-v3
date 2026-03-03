@@ -1,9 +1,7 @@
-import React, { useState, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import {
   AlertTriangle,
   Activity,
-  Zap,
-  Database,
   TrendingUp,
   Clock,
 } from 'lucide-react';
@@ -208,7 +206,10 @@ export const OverviewDashboard: React.FC = () => {
         <DataTable
           title="Recent Alerts"
           columns={alertColumns}
-          data={mockAlerts}
+          data={mockAlerts.map(alert => ({
+            ...alert,
+            fired_at: alert.fired_at,
+          }))}
           searchable={true}
           emptyMessage="No alerts found"
         />

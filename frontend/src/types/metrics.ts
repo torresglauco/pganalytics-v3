@@ -19,7 +19,7 @@ export interface QueryMetrics {
   total_time: number;
   mean_time: number;
   rows: number;
-  100pct_time: number;
+  pct_time_100: number;
   database: string;
 }
 

@@ -1,17 +1,17 @@
 ================================================================================
 pgAnalytics v3 - Full Regression Test Verification Report
-Generated: Mon Mar  2 19:37:35 -03 2026
+Generated: Mon Mar  2 21:30:33 -03 2026
 ================================================================================
 
 TEST SUMMARY:
-  Tests Passed: 7
-  Tests Failed: 3
+  Tests Passed: 8
+  Tests Failed: 2
   Total Tests: 10
 
 TEST CATEGORIES:
   1. Authentication: PASS
   2. Collector Registration: PASS
-  3. Managed Instances: FAIL
+  3. Managed Instances: PASS
   4. Collector Status: FAIL
   5. Metrics Collection: FAIL
   6. ID Persistence: PASS
@@ -27,7 +27,7 @@ Collector Statistics:
   Unique UUIDs:        0 /        0
 
 Managed Instances:
-  Total Managed Instances:       27 / 20
+  Total Managed Instances:       20 / 20
 
 Metrics:
   Sample Collector (col_001):  metrics

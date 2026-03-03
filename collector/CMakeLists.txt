@@ -55,6 +55,12 @@ set(COLLECTOR_SOURCES
     src/replication_plugin.cpp
     src/sysstat_plugin.cpp
     src/log_plugin.cpp
+    src/schema_plugin.cpp
+    src/lock_plugin.cpp
+    src/bloat_plugin.cpp
+    src/cache_hit_plugin.cpp
+    src/connection_plugin.cpp
+    src/extension_plugin.cpp
     src/sender.cpp
     src/auth.cpp
     src/config_manager.cpp
@@ -72,6 +78,12 @@ set(COLLECTOR_HEADERS
     include/replication_plugin.h
     include/sysstat_plugin.h
     include/log_plugin.h
+    include/schema_plugin.h
+    include/lock_plugin.h
+    include/bloat_plugin.h
+    include/cache_hit_plugin.h
+    include/connection_plugin.h
+    include/extension_plugin.h
     include/sender.h
     include/auth.h
     include/config_manager.h

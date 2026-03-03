@@ -17,6 +17,12 @@
 #include "../include/query_stats_plugin.h"
 #endif
 #include "../include/replication_plugin.h"
+#include "../include/schema_plugin.h"
+#include "../include/lock_plugin.h"
+#include "../include/bloat_plugin.h"
+#include "../include/cache_hit_plugin.h"
+#include "../include/connection_plugin.h"
+#include "../include/extension_plugin.h"
 
 // Global state (gConfig is defined in config_manager.cpp)
 volatile sig_atomic_t shouldExit = 0;
@@ -118,6 +124,91 @@ int runCronMode() {
         );
         collectorMgr.addCollector(replicationCollector);
         std::cout << "Added PgReplicationCollector" << std::endl;
+    }
+
+    // Phase 1 New Collectors (High Impact)
+    if (gConfig->isCollectorEnabled("pg_schema")) {
+        auto schemaCollector = std::make_shared<PgSchemaCollector>(
+            gConfig->getHostname(),
+            gConfig->getCollectorId(),
+            pgConfig.host,
+            pgConfig.port,
+            pgConfig.user,
+            pgConfig.password,
+            pgConfig.databases
+        );
+        collectorMgr.addCollector(schemaCollector);
+        std::cout << "Added PgSchemaCollector" << std::endl;
+    }
+
+    if (gConfig->isCollectorEnabled("pg_locks")) {
+        auto lockCollector = std::make_shared<PgLockCollector>(
+            gConfig->getHostname(),
+            gConfig->getCollectorId(),
+            pgConfig.host,
+            pgConfig.port,
+            pgConfig.user,
+            pgConfig.password,
+            pgConfig.databases
+        );
+        collectorMgr.addCollector(lockCollector);
+        std::cout << "Added PgLockCollector" << std::endl;
+    }
+
+    if (gConfig->isCollectorEnabled("pg_bloat")) {
+        auto bloatCollector = std::make_shared<PgBloatCollector>(
+            gConfig->getHostname(),
+            gConfig->getCollectorId(),
+            pgConfig.host,
+            pgConfig.port,
+            pgConfig.user,
+            pgConfig.password,
+            pgConfig.databases
+        );
+        collectorMgr.addCollector(bloatCollector);
+        std::cout << "Added PgBloatCollector" << std::endl;
+    }
+
+    if (gConfig->isCollectorEnabled("pg_cache")) {
+        auto cacheCollector = std::make_shared<PgCacheHitCollector>(
+            gConfig->getHostname(),
+            gConfig->getCollectorId(),
+            pgConfig.host,
+            pgConfig.port,
+            pgConfig.user,
+            pgConfig.password,
+            pgConfig.databases
+        );
+        collectorMgr.addCollector(cacheCollector);
+        std::cout << "Added PgCacheHitCollector" << std::endl;
+    }
+
+    if (gConfig->isCollectorEnabled("pg_connections")) {
+        auto connCollector = std::make_shared<PgConnectionCollector>(
+            gConfig->getHostname(),
+            gConfig->getCollectorId(),
+            pgConfig.host,
+            pgConfig.port,
+            pgConfig.user,
+            pgConfig.password,
+            pgConfig.databases
+        );
+        collectorMgr.addCollector(connCollector);
+        std::cout << "Added PgConnectionCollector" << std::endl;
+    }
+
+    if (gConfig->isCollectorEnabled("pg_extensions")) {
+        auto extCollector = std::make_shared<PgExtensionCollector>(
+            gConfig->getHostname(),
+            gConfig->getCollectorId(),
+            pgConfig.host,
+            pgConfig.port,
+            pgConfig.user,
+            pgConfig.password,
+            pgConfig.databases
+        );
+        collectorMgr.addCollector(extCollector);
+        std::cout << "Added PgExtensionCollector" << std::endl;
     }
 
     // Create query stats collector (will be collected separately if enabled)

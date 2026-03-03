@@ -1,1 +1,2 @@
-export { useHealthScore } from './useHealthScore';
+export { useAlerts } from './useAlerts';
+export { useCollectors } from './useCollectors';

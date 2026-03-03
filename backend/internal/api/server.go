@@ -146,6 +146,16 @@ func (s *Server) RegisterRoutes(router *gin.Engine) {
 			// Query Statistics routes
 			collectors.GET("/:id/queries/slow", s.AuthMiddleware(), s.handleGetSlowQueries)
 			collectors.GET("/:id/queries/frequent", s.AuthMiddleware(), s.handleGetFrequentQueries)
+
+			// ================================================================
+			// Metrics Collection Routes (Phase 1 & 2)
+			// ================================================================
+			collectors.GET("/:id/schema", s.AuthMiddleware(), s.handleGetSchemaMetrics)
+			collectors.GET("/:id/locks", s.AuthMiddleware(), s.handleGetLockMetrics)
+			collectors.GET("/:id/bloat", s.AuthMiddleware(), s.handleGetBloatMetrics)
+			collectors.GET("/:id/cache-hits", s.AuthMiddleware(), s.handleGetCacheMetrics)
+			collectors.GET("/:id/connections", s.AuthMiddleware(), s.handleGetConnectionMetrics)
+			collectors.GET("/:id/extensions", s.AuthMiddleware(), s.handleGetExtensionMetrics)
 		}
 
 		// Registration Secrets routes (admin only)

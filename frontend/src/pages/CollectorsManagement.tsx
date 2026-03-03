@@ -1,0 +1,471 @@
+import React, { useMemo, useState } from 'react';
+import {
+  Plus,
+  Trash2,
+  Refresh,
+  Eye,
+  EyeOff,
+  Copy,
+  Check,
+  AlertTriangle,
+} from 'lucide-react';
+import { PageWrapper } from '../components/common/PageWrapper';
+import { MetricCard } from '../components/cards/MetricCard';
+import { StatusBadge } from '../components/cards/StatusBadge';
+import { DataTable, Column } from '../components/tables/DataTable';
+import { formatTimeAgo } from '../utils/formatting';
+
+interface Collector {
+  id: string;
+  name: string;
+  host: string;
+  port: number;
+  database: string;
+  status: 'online' | 'offline' | 'error';
+  health_score: number;
+  last_heartbeat: Date;
+  metrics_collected: number;
+  collection_interval: number;
+  version: string;
+  registration_secret?: string;
+  created_at: Date;
+}
+
+// Mock data
+const mockCollectors: Collector[] = [
+  {
+    id: 'prod-db-01',
+    name: 'Production Primary',
+    host: 'prod-postgres-01.internal',
+    port: 5432,
+    database: 'maindb',
+    status: 'online',
+    health_score: 94,
+    last_heartbeat: new Date(Date.now() - 30000),
+    metrics_collected: 2847,
+    collection_interval: 60,
+    version: '1.2.3',
+    created_at: new Date(Date.now() - 90 * 24 * 3600000),
+  },
+  {
+    id: 'prod-db-02',
+    name: 'Production Replica',
+    host: 'prod-postgres-02.internal',
+    port: 5432,
+    database: 'maindb',
+    status: 'online',
+    health_score: 88,
+    last_heartbeat: new Date(Date.now() - 45000),
+    metrics_collected: 2801,
+    collection_interval: 60,
+    version: '1.2.3',
+    created_at: new Date(Date.now() - 85 * 24 * 3600000),
+  },
+  {
+    id: 'staging-db-02',
+    name: 'Staging Database',
+    host: 'staging-postgres.internal',
+    port: 5432,
+    database: 'stagedb',
+    status: 'online',
+    health_score: 91,
+    last_heartbeat: new Date(Date.now() - 20000),
+    metrics_collected: 2612,
+    collection_interval: 60,
+    version: '1.2.3',
+    created_at: new Date(Date.now() - 45 * 24 * 3600000),
+  },
+  {
+    id: 'dev-db-local',
+    name: 'Development Local',
+    host: 'localhost',
+    port: 5432,
+    database: 'devdb',
+    status: 'offline',
+    health_score: 0,
+    last_heartbeat: new Date(Date.now() - 2 * 3600000),
+    metrics_collected: 156,
+    collection_interval: 60,
+    version: '1.2.2',
+    created_at: new Date(Date.now() - 10 * 24 * 3600000),
+  },
+];
+
+interface NewCollectorForm {
+  name: string;
+  host: string;
+  port: string;
+  database: string;
+  username: string;
+  password: string;
+}
+
+export const CollectorsManagement: React.FC = () => {
+  const [showNewForm, setShowNewForm] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [visibleSecrets, setVisibleSecrets] = useState<Set<string>>(new Set());
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [formData, setFormData] = useState<NewCollectorForm>({
+    name: '',
+    host: '',
+    port: '5432',
+    database: '',
+    username: '',
+    password: '',
+  });
+
+  // Calculate stats
+  const stats = useMemo(() => {
+    return {
+      total: mockCollectors.length,
+      online: mockCollectors.filter((c) => c.status === 'online').length,
+      offline: mockCollectors.filter((c) => c.status === 'offline').length,
+      error: mockCollectors.filter((c) => c.status === 'error').length,
+      avgHealth:
+        Math.round(
+          mockCollectors.reduce((sum, c) => sum + c.health_score, 0) / mockCollectors.length
+        ) || 0,
+    };
+  }, []);
+
+  const toggleSecretVisibility = (id: string) => {
+    const newSet = new Set(visibleSecrets);
+    if (newSet.has(id)) {
+      newSet.delete(id);
+    } else {
+      newSet.add(id);
+    }
+    setVisibleSecrets(newSet);
+  };
+
+  const copyToClipboard = (text: string, id: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const handleAddCollector = (e: React.FormEvent) => {
+    e.preventDefault();
+    console.log('Adding collector:', formData);
+    setShowNewForm(false);
+    setFormData({
+      name: '',
+      host: '',
+      port: '5432',
+      database: '',
+      username: '',
+      password: '',
+    });
+  };
+
+  const columns: Column<Collector>[] = [
+    {
+      key: 'name',
+      label: 'Collector',
+      sortable: true,
+      render: (value, row) => (
+        <div className="space-y-1">
+          <div className="font-medium text-pg-dark">{String(value)}</div>
+          <div className="text-xs text-pg-slate">
+            {row.host}:{row.port}/{row.database}
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'status',
+      label: 'Status',
+      width: '100px',
+      render: (value) => {
+        const status = value === 'online' ? 'success' : value === 'error' ? 'error' : 'warning';
+        return (
+          <StatusBadge
+            status={status}
+            label={String(value).toUpperCase()}
+            size="sm"
+          />
+        );
+      },
+    },
+    {
+      key: 'health_score',
+      label: 'Health',
+      width: '70px',
+      render: (value) => {
+        const score = value as number;
+        const color =
+          score >= 80 ? 'text-pg-success' : score >= 60 ? 'text-pg-warning' : 'text-pg-danger';
+        return <span className={`font-semibold ${color}`}>{score}</span>;
+      },
+    },
+    {
+      key: 'metrics_collected',
+      label: 'Metrics',
+      width: '80px',
+      render: (value) => <span className="text-sm text-pg-slate">{String(value)}</span>,
+    },
+    {
+      key: 'last_heartbeat',
+      label: 'Last Heartbeat',
+      width: '120px',
+      render: (value) => <span className="text-sm">{formatTimeAgo(value as Date)}</span>,
+    },
+    {
+      key: 'version',
+      label: 'Version',
+      width: '80px',
+      render: (value) => <span className="text-sm text-pg-slate">v{String(value)}</span>,
+    },
+  ];
+
+  return (
+    <PageWrapper
+      title="Collectors Management"
+      description="Manage PostgreSQL database collectors and monitor their health"
+    >
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3 mb-8">
+        <MetricCard
+          title="Total"
+          value={stats.total}
+          status="info"
+        />
+        <MetricCard
+          title="Online"
+          value={stats.online}
+          status={stats.online === stats.total ? 'healthy' : 'warning'}
+          icon={<Check className="w-5 h-5" />}
+        />
+        <MetricCard
+          title="Offline"
+          value={stats.offline}
+          status={stats.offline > 0 ? 'warning' : 'healthy'}
+        />
+        <MetricCard
+          title="Errors"
+          value={stats.error}
+          status={stats.error > 0 ? 'critical' : 'healthy'}
+        />
+        <MetricCard
+          title="Avg Health"
+          value={stats.avgHealth}
+          unit="/100"
+          status={stats.avgHealth >= 80 ? 'healthy' : stats.avgHealth >= 60 ? 'warning' : 'critical'}
+        />
+      </div>
+
+      {/* Add New Collector Form */}
+      {showNewForm && (
+        <div className="bg-white rounded-lg shadow p-6 mb-6 border-l-4 border-pg-blue">
+          <h3 className="text-lg font-semibold text-pg-dark mb-4">Register New Collector</h3>
+          <form onSubmit={handleAddCollector}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div>
+                <label className="block text-sm font-medium text-pg-dark mb-2">
+                  Collector Name
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g., Production Primary"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="w-full px-3 py-2 border border-pg-slate/20 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pg-blue"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-pg-dark mb-2">Database</label>
+                <input
+                  type="text"
+                  placeholder="e.g., maindb"
+                  value={formData.database}
+                  onChange={(e) => setFormData({ ...formData, database: e.target.value })}
+                  className="w-full px-3 py-2 border border-pg-slate/20 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pg-blue"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-pg-dark mb-2">Host</label>
+                <input
+                  type="text"
+                  placeholder="e.g., localhost"
+                  value={formData.host}
+                  onChange={(e) => setFormData({ ...formData, host: e.target.value })}
+                  className="w-full px-3 py-2 border border-pg-slate/20 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pg-blue"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-pg-dark mb-2">Port</label>
+                <input
+                  type="number"
+                  placeholder="5432"
+                  value={formData.port}
+                  onChange={(e) => setFormData({ ...formData, port: e.target.value })}
+                  className="w-full px-3 py-2 border border-pg-slate/20 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pg-blue"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-pg-dark mb-2">Username</label>
+                <input
+                  type="text"
+                  placeholder="e.g., pganalytics"
+                  value={formData.username}
+                  onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                  className="w-full px-3 py-2 border border-pg-slate/20 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pg-blue"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-pg-dark mb-2">Password</label>
+                <input
+                  type="password"
+                  placeholder="••••••••"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  className="w-full px-3 py-2 border border-pg-slate/20 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pg-blue"
+                  required
+                />
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button
+                type="submit"
+                className="px-4 py-2 bg-pg-blue text-white rounded-lg hover:bg-pg-blue/90 transition-colors text-sm font-medium"
+              >
+                Register Collector
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowNewForm(false)}
+                className="px-4 py-2 border border-pg-slate/20 text-pg-dark rounded-lg hover:bg-pg-slate/5 transition-colors text-sm font-medium"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Collectors Table */}
+      <div className="bg-white rounded-lg shadow p-6 mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-pg-dark">Active Collectors</h3>
+          <button
+            onClick={() => setShowNewForm(!showNewForm)}
+            className="flex items-center gap-2 px-4 py-2 bg-pg-blue text-white rounded-lg hover:bg-pg-blue/90 transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            Add Collector
+          </button>
+        </div>
+        <DataTable
+          columns={columns}
+          data={mockCollectors}
+          searchable={true}
+          emptyMessage="No collectors found"
+        />
+      </div>
+
+      {/* Registration Secrets */}
+      <div className="bg-white rounded-lg shadow p-6 mb-6">
+        <h3 className="text-lg font-semibold text-pg-dark mb-4">Registration Secrets</h3>
+        <div className="space-y-3">
+          {mockCollectors.map((collector) => (
+            <div key={collector.id} className="flex items-center justify-between p-4 bg-pg-slate/5 rounded-lg">
+              <div>
+                <h4 className="font-medium text-pg-dark">{collector.name}</h4>
+                <p className="text-xs text-pg-slate">{collector.id}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type={visibleSecrets.has(collector.id) ? 'text' : 'password'}
+                  value={collector.registration_secret || 'sk_' + collector.id.slice(0, 16) + '...'}
+                  readOnly
+                  className="px-3 py-2 bg-white border border-pg-slate/20 rounded text-sm font-mono w-64"
+                />
+                <button
+                  onClick={() => toggleSecretVisibility(collector.id)}
+                  className="p-2 hover:bg-pg-slate/10 rounded transition-colors"
+                  title={visibleSecrets.has(collector.id) ? 'Hide' : 'Show'}
+                >
+                  {visibleSecrets.has(collector.id) ? (
+                    <EyeOff className="w-4 h-4 text-pg-slate" />
+                  ) : (
+                    <Eye className="w-4 h-4 text-pg-slate" />
+                  )}
+                </button>
+                <button
+                  onClick={() =>
+                    copyToClipboard(
+                      collector.registration_secret || 'sk_' + collector.id.slice(0, 16),
+                      collector.id
+                    )
+                  }
+                  className="p-2 hover:bg-pg-slate/10 rounded transition-colors"
+                  title="Copy to clipboard"
+                >
+                  {copiedId === collector.id ? (
+                    <Check className="w-4 h-4 text-pg-success" />
+                  ) : (
+                    <Copy className="w-4 h-4 text-pg-slate" />
+                  )}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Danger Zone */}
+      <div className="bg-pg-danger/5 rounded-lg p-6 border-l-4 border-pg-danger">
+        <h3 className="text-lg font-semibold text-pg-dark mb-4 flex items-center gap-2">
+          <AlertTriangle className="w-5 h-5 text-pg-danger" />
+          Danger Zone
+        </h3>
+        <div className="space-y-3">
+          {mockCollectors.map((collector) => (
+            <div
+              key={collector.id}
+              className="flex items-center justify-between p-4 bg-white rounded-lg border border-pg-danger/20"
+            >
+              <div>
+                <h4 className="font-medium text-pg-dark">{collector.name}</h4>
+                <p className="text-xs text-pg-slate">{collector.id}</p>
+              </div>
+              {deleteConfirm === collector.id ? (
+                <div className="flex items-center gap-2">
+                  <p className="text-sm text-pg-danger font-medium">Are you sure?</p>
+                  <button
+                    onClick={() => {
+                      console.log('Deleting:', collector.id);
+                      setDeleteConfirm(null);
+                    }}
+                    className="px-3 py-1 bg-pg-danger text-white rounded text-sm hover:bg-pg-danger/90 transition-colors"
+                  >
+                    Delete
+                  </button>
+                  <button
+                    onClick={() => setDeleteConfirm(null)}
+                    className="px-3 py-1 border border-pg-slate/20 text-pg-dark rounded text-sm hover:bg-pg-slate/5 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setDeleteConfirm(collector.id)}
+                  className="flex items-center gap-2 px-3 py-2 text-pg-danger border border-pg-danger/20 rounded-lg hover:bg-pg-danger/5 transition-colors"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Delete Collector
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </PageWrapper>
+  );
+};

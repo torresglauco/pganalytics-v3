@@ -1,0 +1,481 @@
+{
+  "alert_rules": [
+    {
+      "uid": "lock_contention_critical",
+      "title": "Lock Contention - Critical",
+      "condition": "A",
+      "data": [
+        {
+          "refId": "A",
+          "queryType": "",
+          "relativeTimeRange": {
+            "from": 600,
+            "to": 0
+          },
+          "datasourceUid": "prometheus_uid",
+          "expression": "SELECT COUNT(*) as active_locks FROM metrics_pg_locks WHERE time > NOW() - INTERVAL '5 minutes' AND granted = true",
+          "hide": false,
+          "intervalMs": 1000,
+          "maxDataPoints": 43200
+        }
+      ],
+      "noDataState": "NoData",
+      "execErrState": "Alerting",
+      "for": "5m",
+      "annotations": {
+        "description": "Active locks exceed 10. Immediate action required.",
+        "runbook_url": "/docs/runbooks/lock-contention.md",
+        "summary": "Lock contention detected on PostgreSQL"
+      },
+      "labels": {
+        "severity": "critical",
+        "team": "database",
+        "service": "postgresql",
+        "action": "page"
+      },
+      "alertRuleTags": {
+        "dashboard": "lock-monitoring",
+        "panel": "active_locks",
+        "metric": "locks"
+      }
+    },
+    {
+      "uid": "blocking_transaction_critical",
+      "title": "Blocking Transaction - Critical",
+      "condition": "A",
+      "data": [
+        {
+          "refId": "A",
+          "queryType": "",
+          "relativeTimeRange": {
+            "from": 600,
+            "to": 0
+          },
+          "datasourceUid": "prometheus_uid",
+          "expression": "SELECT MAX(wait_time_seconds) as max_wait FROM metrics_pg_lock_waits WHERE time > NOW() - INTERVAL '1 hour'",
+          "hide": false,
+          "intervalMs": 1000,
+          "maxDataPoints": 43200
+        }
+      ],
+      "noDataState": "NoData",
+      "execErrState": "Alerting",
+      "for": "5m",
+      "annotations": {
+        "description": "Transaction blocked for {{ $value }} seconds. Investigate blocking query immediately.",
+        "runbook_url": "/docs/runbooks/lock-contention.md",
+        "summary": "Long-running blocked transaction detected"
+      },
+      "labels": {
+        "severity": "critical",
+        "team": "database",
+        "service": "postgresql",
+        "action": "page"
+      },
+      "alertRuleTags": {
+        "dashboard": "lock-monitoring",
+        "panel": "blocking_chains",
+        "metric": "lock_wait_time"
+      }
+    },
+    {
+      "uid": "idle_in_transaction_warning",
+      "title": "Idle in Transaction - Warning",
+      "condition": "A",
+      "data": [
+        {
+          "refId": "A",
+          "queryType": "",
+          "relativeTimeRange": {
+            "from": 120,
+            "to": 0
+          },
+          "datasourceUid": "prometheus_uid",
+          "expression": "SELECT COUNT(*) as idle_txn_count FROM metrics_pg_connections WHERE state = 'idle in transaction' AND time > NOW() - INTERVAL '2 minutes'",
+          "hide": false,
+          "intervalMs": 1000,
+          "maxDataPoints": 43200
+        }
+      ],
+      "noDataState": "NoData",
+      "execErrState": "Alerting",
+      "for": "2m",
+      "annotations": {
+        "description": "{{ $value }} connections idle in transaction. Check for held locks.",
+        "runbook_url": "/docs/runbooks/idle-transaction.md",
+        "summary": "Idle-in-transaction connections detected"
+      },
+      "labels": {
+        "severity": "warning",
+        "team": "database",
+        "service": "postgresql",
+        "action": "notify"
+      },
+      "alertRuleTags": {
+        "dashboard": "connection-tracking",
+        "panel": "idle_in_transaction",
+        "metric": "idle_txn_count"
+      }
+    },
+    {
+      "uid": "high_table_bloat_warning",
+      "title": "High Table Bloat - Warning",
+      "condition": "A",
+      "data": [
+        {
+          "refId": "A",
+          "queryType": "",
+          "relativeTimeRange": {
+            "from": 3600,
+            "to": 0
+          },
+          "datasourceUid": "prometheus_uid",
+          "expression": "SELECT MAX(dead_ratio_percent) as max_bloat FROM metrics_pg_bloat_tables WHERE time > NOW() - INTERVAL '1 hour'",
+          "hide": false,
+          "intervalMs": 1000,
+          "maxDataPoints": 43200
+        }
+      ],
+      "noDataState": "NoData",
+      "execErrState": "Alerting",
+      "for": "10m",
+      "annotations": {
+        "description": "Table bloat at {{ $value }}%. Schedule VACUUM FULL.",
+        "runbook_url": "/docs/runbooks/high-bloat.md",
+        "summary": "High table bloat detected (>50%)"
+      },
+      "labels": {
+        "severity": "warning",
+        "team": "database",
+        "service": "postgresql",
+        "action": "ticket"
+      },
+      "alertRuleTags": {
+        "dashboard": "bloat-analysis",
+        "panel": "max_bloat",
+        "metric": "bloat_percent"
+      }
+    },
+    {
+      "uid": "low_cache_hit_ratio_warning",
+      "title": "Low Cache Hit Ratio - Warning",
+      "condition": "A",
+      "data": [
+        {
+          "refId": "A",
+          "queryType": "",
+          "relativeTimeRange": {
+            "from": 1800,
+            "to": 0
+          },
+          "datasourceUid": "prometheus_uid",
+          "expression": "SELECT AVG(cache_hit_ratio) as avg_hit_ratio FROM metrics_pg_cache_hit_ratios WHERE time > NOW() - INTERVAL '30 minutes'",
+          "hide": false,
+          "intervalMs": 1000,
+          "maxDataPoints": 43200
+        }
+      ],
+      "noDataState": "NoData",
+      "execErrState": "Alerting",
+      "for": "30m",
+      "annotations": {
+        "description": "Cache hit ratio {{ $value }}%. Consider increasing shared_buffers.",
+        "runbook_url": "/docs/runbooks/cache-hit-ratio.md",
+        "summary": "Low cache hit ratio detected (<80%)"
+      },
+      "labels": {
+        "severity": "warning",
+        "team": "database",
+        "service": "postgresql",
+        "action": "investigate"
+      },
+      "alertRuleTags": {
+        "dashboard": "cache-performance",
+        "panel": "cache_hit_ratio",
+        "metric": "cache_hit"
+      }
+    },
+    {
+      "uid": "high_connection_count_warning",
+      "title": "High Connection Count - Warning",
+      "condition": "A",
+      "data": [
+        {
+          "refId": "A",
+          "queryType": "",
+          "relativeTimeRange": {
+            "from": 600,
+            "to": 0
+          },
+          "datasourceUid": "prometheus_uid",
+          "expression": "SELECT COUNT(*) as total_connections FROM metrics_pg_connections WHERE time > NOW() - INTERVAL '10 minutes'",
+          "hide": false,
+          "intervalMs": 1000,
+          "maxDataPoints": 43200
+        }
+      ],
+      "noDataState": "NoData",
+      "execErrState": "Alerting",
+      "for": "10m",
+      "annotations": {
+        "description": "{{ $value }} active connections. Check for connection leaks.",
+        "runbook_url": "/docs/runbooks/high-bloat.md",
+        "summary": "High connection count detected (>150)"
+      },
+      "labels": {
+        "severity": "warning",
+        "team": "database",
+        "service": "postgresql",
+        "action": "investigate"
+      },
+      "alertRuleTags": {
+        "dashboard": "connection-tracking",
+        "panel": "active_connections",
+        "metric": "connection_count"
+      }
+    },
+    {
+      "uid": "schema_growth_info",
+      "title": "Schema Change Detected - Info",
+      "condition": "A",
+      "data": [
+        {
+          "refId": "A",
+          "queryType": "",
+          "relativeTimeRange": {
+            "from": 3600,
+            "to": 0
+          },
+          "datasourceUid": "prometheus_uid",
+          "expression": "SELECT COUNT(DISTINCT table_name) as table_count FROM metrics_pg_schema_tables WHERE time > NOW() - INTERVAL '1 hour'",
+          "hide": false,
+          "intervalMs": 1000,
+          "maxDataPoints": 43200
+        }
+      ],
+      "noDataState": "NoData",
+      "execErrState": "Alerting",
+      "for": "5m",
+      "annotations": {
+        "description": "Schema change detected. {{ $value }} tables in database.",
+        "runbook_url": "/docs/runbooks/schema-change.md",
+        "summary": "New table or schema structure change"
+      },
+      "labels": {
+        "severity": "info",
+        "team": "database",
+        "service": "postgresql",
+        "action": "log"
+      },
+      "alertRuleTags": {
+        "dashboard": "schema-overview",
+        "panel": "table_count",
+        "metric": "schema"
+      }
+    },
+    {
+      "uid": "unused_index_info",
+      "title": "Unused Index - Info",
+      "condition": "A",
+      "data": [
+        {
+          "refId": "A",
+          "queryType": "",
+          "relativeTimeRange": {
+            "from": 604800,
+            "to": 0
+          },
+          "datasourceUid": "prometheus_uid",
+          "expression": "SELECT COUNT(*) as unused_indexes FROM metrics_pg_bloat_indexes WHERE time > NOW() - INTERVAL '7 days' AND usage_status = 'UNUSED'",
+          "hide": false,
+          "intervalMs": 1000,
+          "maxDataPoints": 43200
+        }
+      ],
+      "noDataState": "NoData",
+      "execErrState": "Alerting",
+      "for": "1h",
+      "annotations": {
+        "description": "{{ $value }} unused indexes detected. Review for cleanup.",
+        "runbook_url": "/docs/runbooks/unused-indexes.md",
+        "summary": "Unused indexes detected (7+ days no scans)"
+      },
+      "labels": {
+        "severity": "info",
+        "team": "database",
+        "service": "postgresql",
+        "action": "log"
+      },
+      "alertRuleTags": {
+        "dashboard": "bloat-analysis",
+        "panel": "unused_indexes",
+        "metric": "index_usage"
+      }
+    },
+    {
+      "uid": "extension_installed_info",
+      "title": "Extension Installation - Info",
+      "condition": "A",
+      "data": [
+        {
+          "refId": "A",
+          "queryType": "",
+          "relativeTimeRange": {
+            "from": 3600,
+            "to": 0
+          },
+          "datasourceUid": "prometheus_uid",
+          "expression": "SELECT COUNT(DISTINCT extension_name) as new_extensions FROM metrics_pg_extensions WHERE time > NOW() - INTERVAL '1 hour'",
+          "hide": false,
+          "intervalMs": 1000,
+          "maxDataPoints": 43200
+        }
+      ],
+      "noDataState": "NoData",
+      "execErrState": "Alerting",
+      "for": "5m",
+      "annotations": {
+        "description": "New extension installed. Update allowed extensions list.",
+        "runbook_url": "/docs/runbooks/extension-security.md",
+        "summary": "PostgreSQL extension installed"
+      },
+      "labels": {
+        "severity": "info",
+        "team": "database",
+        "service": "postgresql",
+        "action": "log"
+      },
+      "alertRuleTags": {
+        "dashboard": "extensions-config",
+        "panel": "extension_inventory",
+        "metric": "extensions"
+      }
+    },
+    {
+      "uid": "metrics_collection_failure",
+      "title": "Metrics Collection Failure - Critical",
+      "condition": "A",
+      "data": [
+        {
+          "refId": "A",
+          "queryType": "",
+          "relativeTimeRange": {
+            "from": 600,
+            "to": 0
+          },
+          "datasourceUid": "prometheus_uid",
+          "expression": "SELECT COUNT(*) as last_collect FROM metrics_pg_schema_tables WHERE time > NOW() - INTERVAL '15 minutes'",
+          "hide": false,
+          "intervalMs": 1000,
+          "maxDataPoints": 43200
+        }
+      ],
+      "noDataState": "Alerting",
+      "execErrState": "Alerting",
+      "for": "10m",
+      "annotations": {
+        "description": "No metrics collected in last 15 minutes. Check collector status.",
+        "runbook_url": "/docs/runbooks/collector-failure.md",
+        "summary": "pgAnalytics metrics collection stopped"
+      },
+      "labels": {
+        "severity": "critical",
+        "team": "devops",
+        "service": "pganalytics-collector",
+        "action": "page"
+      },
+      "alertRuleTags": {
+        "dashboard": "system-overview",
+        "panel": "health_status",
+        "metric": "collection"
+      }
+    },
+    {
+      "uid": "max_lock_age_warning",
+      "title": "Maximum Lock Age Threshold - Warning",
+      "condition": "A",
+      "data": [
+        {
+          "refId": "A",
+          "queryType": "",
+          "relativeTimeRange": {
+            "from": 300,
+            "to": 0
+          },
+          "datasourceUid": "prometheus_uid",
+          "expression": "SELECT MAX(lock_age_seconds) as max_lock_age FROM metrics_pg_locks WHERE time > NOW() - INTERVAL '5 minutes' AND lock_age_seconds IS NOT NULL",
+          "hide": false,
+          "intervalMs": 1000,
+          "maxDataPoints": 43200
+        }
+      ],
+      "noDataState": "NoData",
+      "execErrState": "Alerting",
+      "for": "5m",
+      "annotations": {
+        "description": "Lock held for {{ $value }} seconds. Investigate long-held locks.",
+        "runbook_url": "/docs/runbooks/lock-contention.md",
+        "summary": "Long-held lock detected (>300s)"
+      },
+      "labels": {
+        "severity": "warning",
+        "team": "database",
+        "service": "postgresql",
+        "action": "notify"
+      },
+      "alertRuleTags": {
+        "dashboard": "lock-monitoring",
+        "panel": "max_lock_age",
+        "metric": "lock_age"
+      }
+    }
+  ],
+  "alert_groups": {
+    "critical": [
+      "lock_contention_critical",
+      "blocking_transaction_critical",
+      "metrics_collection_failure"
+    ],
+    "warning": [
+      "idle_in_transaction_warning",
+      "high_table_bloat_warning",
+      "low_cache_hit_ratio_warning",
+      "high_connection_count_warning",
+      "max_lock_age_warning"
+    ],
+    "info": [
+      "schema_growth_info",
+      "unused_index_info",
+      "extension_installed_info"
+    ]
+  },
+  "alert_thresholds": {
+    "locks": {
+      "critical": 10,
+      "warning": 5,
+      "unit": "count"
+    },
+    "lock_wait_time": {
+      "critical": 300,
+      "unit": "seconds"
+    },
+    "idle_in_transaction": {
+      "critical": 10,
+      "warning": 5,
+      "unit": "count"
+    },
+    "table_bloat": {
+      "critical": 75,
+      "warning": 50,
+      "unit": "percent"
+    },
+    "cache_hit_ratio": {
+      "warning": 80,
+      "unit": "percent"
+    },
+    "connections": {
+      "warning": 150,
+      "unit": "count"
+    }
+  }
+}

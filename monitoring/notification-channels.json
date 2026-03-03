@@ -1,0 +1,381 @@
+{
+  "notification_channels": [
+    {
+      "uid": "slack_critical",
+      "name": "Slack - Critical Alerts",
+      "type": "slack",
+      "isDefault": false,
+      "sendReminder": true,
+      "frequency": "15m",
+      "settings": {
+        "webhook_url": "${SLACK_WEBHOOK_CRITICAL}",
+        "channel": "#critical-alerts",
+        "username": "pgAnalytics Alerts",
+        "icon_emoji": ":warning:",
+        "mention_users": "@here",
+        "mention_groups": "@database-oncall"
+      },
+      "secureSettings": {
+        "webhook_url": "${SLACK_WEBHOOK_CRITICAL}"
+      },
+      "rules": {
+        "severity": ["critical"],
+        "teams": ["database", "devops"],
+        "services": ["postgresql", "pganalytics-collector"]
+      },
+      "message_template": {
+        "title": "[🔴 CRITICAL] {{ alert_name }}",
+        "text": "{{ alert_description }}\n\n*Database*: {{ database_name }}\n*Severity*: {{ severity }}\n*Time*: {{ timestamp }}\n*Value*: {{ alert_value }}\n\n<{{ dashboard_url }}|View Dashboard> | <{{ runbook_url }}|View Runbook>",
+        "color": "#FF0000"
+      }
+    },
+    {
+      "uid": "slack_warning",
+      "name": "Slack - Warning Alerts",
+      "type": "slack",
+      "isDefault": false,
+      "sendReminder": true,
+      "frequency": "1h",
+      "settings": {
+        "webhook_url": "${SLACK_WEBHOOK_WARNING}",
+        "channel": "#database-alerts",
+        "username": "pgAnalytics Alerts",
+        "icon_emoji": ":warning:",
+        "mention_users": ""
+      },
+      "secureSettings": {
+        "webhook_url": "${SLACK_WEBHOOK_WARNING}"
+      },
+      "rules": {
+        "severity": ["warning"],
+        "teams": ["database"],
+        "services": ["postgresql"]
+      },
+      "message_template": {
+        "title": "[🟠 WARNING] {{ alert_name }}",
+        "text": "{{ alert_description }}\n\n*Database*: {{ database_name }}\n*Severity*: {{ severity }}\n*Time*: {{ timestamp }}\n*Value*: {{ alert_value }}\n\n<{{ dashboard_url }}|View Dashboard> | <{{ runbook_url }}|View Runbook>",
+        "color": "#FFA500"
+      }
+    },
+    {
+      "uid": "slack_info",
+      "name": "Slack - Info Notifications",
+      "type": "slack",
+      "isDefault": false,
+      "sendReminder": false,
+      "frequency": "24h",
+      "settings": {
+        "webhook_url": "${SLACK_WEBHOOK_INFO}",
+        "channel": "#database-info",
+        "username": "pgAnalytics Info",
+        "icon_emoji": ":information_source:"
+      },
+      "secureSettings": {
+        "webhook_url": "${SLACK_WEBHOOK_INFO}"
+      },
+      "rules": {
+        "severity": ["info"],
+        "teams": ["database"]
+      },
+      "message_template": {
+        "title": "[ℹ️ INFO] {{ alert_name }}",
+        "text": "{{ alert_description }}\n\n*Database*: {{ database_name }}\n*Time*: {{ timestamp }}\n\n<{{ dashboard_url }}|View Dashboard>",
+        "color": "#0099FF"
+      }
+    },
+    {
+      "uid": "pagerduty_critical",
+      "name": "PagerDuty - Critical",
+      "type": "pagerduty",
+      "isDefault": false,
+      "sendReminder": true,
+      "frequency": "30m",
+      "settings": {
+        "integrationKey": "${PAGERDUTY_INTEGRATION_KEY}",
+        "client": "pgAnalytics",
+        "clientUrl": "${GRAFANA_URL}/d/system-overview"
+      },
+      "secureSettings": {
+        "integrationKey": "${PAGERDUTY_INTEGRATION_KEY}"
+      },
+      "rules": {
+        "severity": ["critical"],
+        "teams": ["database", "devops"],
+        "services": ["postgresql", "pganalytics-collector"]
+      },
+      "pagerduty_config": {
+        "severity_mapping": {
+          "critical": "critical",
+          "warning": "warning"
+        },
+        "event_action": "trigger",
+        "escalation_policy": "database-critical",
+        "auto_resolve": true,
+        "resolve_timeout": "15m"
+      },
+      "message_template": {
+        "title": "{{ alert_name }}",
+        "text": "{{ alert_description }}\n\nDatabase: {{ database_name }}\nValue: {{ alert_value }}\nTime: {{ timestamp }}\n\nDashboard: {{ dashboard_url }}\nRunbook: {{ runbook_url }}",
+        "urgency": "high"
+      }
+    },
+    {
+      "uid": "pagerduty_warning",
+      "name": "PagerDuty - Warning",
+      "type": "pagerduty",
+      "isDefault": false,
+      "sendReminder": false,
+      "frequency": "1h",
+      "settings": {
+        "integrationKey": "${PAGERDUTY_INTEGRATION_KEY}",
+        "client": "pgAnalytics",
+        "clientUrl": "${GRAFANA_URL}/d/system-overview"
+      },
+      "secureSettings": {
+        "integrationKey": "${PAGERDUTY_INTEGRATION_KEY}"
+      },
+      "rules": {
+        "severity": ["warning"],
+        "teams": ["database"]
+      },
+      "pagerduty_config": {
+        "severity_mapping": {
+          "warning": "warning"
+        },
+        "event_action": "trigger",
+        "escalation_policy": "database-standard",
+        "auto_resolve": true,
+        "resolve_timeout": "30m"
+      },
+      "message_template": {
+        "title": "{{ alert_name }}",
+        "text": "{{ alert_description }}\n\nDatabase: {{ database_name }}\nValue: {{ alert_value }}",
+        "urgency": "medium"
+      }
+    },
+    {
+      "uid": "email_dba_team",
+      "name": "Email - DBA Team",
+      "type": "email",
+      "isDefault": false,
+      "sendReminder": true,
+      "frequency": "1h",
+      "settings": {
+        "addresses": ["dba-team@company.com"],
+        "singleEmail": false,
+        "uploadImage": true,
+        "from_name": "pgAnalytics Alerts",
+        "from_address": "alerts@postgres.monitoring.internal"
+      },
+      "rules": {
+        "severity": ["critical", "warning"],
+        "teams": ["database"]
+      },
+      "email_template": {
+        "subject": "[{{ severity | upper }}] {{ alert_name }} - {{ database_name }}",
+        "html": "<h2>{{ alert_name }}</h2>\n<p>{{ alert_description }}</p>\n<h3>Details</h3>\n<ul>\n<li>Database: {{ database_name }}</li>\n<li>Severity: {{ severity }}</li>\n<li>Time: {{ timestamp }}</li>\n<li>Value: {{ alert_value }}</li>\n</ul>\n<h3>Actions</h3>\n<ul>\n<li><a href=\"{{ dashboard_url }}\">View Dashboard</a></li>\n<li><a href=\"{{ runbook_url }}\">View Runbook</a></li>\n</ul>",
+        "text": "{{ alert_name }}\n\n{{ alert_description }}\n\nDatabase: {{ database_name }}\nSeverity: {{ severity }}\nTime: {{ timestamp }}\nValue: {{ alert_value }}\n\nDashboard: {{ dashboard_url }}\nRunbook: {{ runbook_url }}"
+      }
+    },
+    {
+      "uid": "email_ops_team",
+      "name": "Email - Operations Team",
+      "type": "email",
+      "isDefault": false,
+      "sendReminder": false,
+      "frequency": "24h",
+      "settings": {
+        "addresses": ["ops-team@company.com"],
+        "singleEmail": true,
+        "uploadImage": false,
+        "from_name": "pgAnalytics Monitoring",
+        "from_address": "monitoring@postgres.internal"
+      },
+      "rules": {
+        "severity": ["warning", "info"],
+        "teams": ["database", "devops"]
+      },
+      "email_template": {
+        "subject": "pgAnalytics Daily Alert Summary - {{ date }}",
+        "html": "<h2>Daily Alert Summary</h2>\n<p>The following alerts were triggered in the last 24 hours:</p>\n<table>\n<tr><th>Alert</th><th>Count</th><th>Severity</th></tr>\n{{ alert_summary_table }}\n</table>",
+        "text": "Daily Alert Summary\n\n{{ alert_summary_text }}"
+      }
+    },
+    {
+      "uid": "webhook_incident_tracking",
+      "name": "Webhook - Incident Tracking",
+      "type": "webhook",
+      "isDefault": false,
+      "sendReminder": false,
+      "frequency": "0",
+      "settings": {
+        "url": "${INCIDENT_TRACKING_WEBHOOK}",
+        "method": "POST",
+        "httpMethod": "POST",
+        "headers": {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer ${INCIDENT_TRACKING_TOKEN}"
+        }
+      },
+      "secureSettings": {
+        "Authorization": "Bearer ${INCIDENT_TRACKING_TOKEN}"
+      },
+      "rules": {
+        "severity": ["critical", "warning"]
+      },
+      "webhook_template": {
+        "payload": {
+          "title": "{{ alert_name }}",
+          "description": "{{ alert_description }}",
+          "severity": "{{ severity }}",
+          "database": "{{ database_name }}",
+          "timestamp": "{{ timestamp }}",
+          "alert_value": "{{ alert_value }}",
+          "dashboard_url": "{{ dashboard_url }}",
+          "runbook_url": "{{ runbook_url }}",
+          "tags": ["postgresql", "monitoring", "{{ severity }}"]
+        }
+      }
+    },
+    {
+      "uid": "webhook_jira_tickets",
+      "name": "Webhook - JIRA Ticket Creation",
+      "type": "webhook",
+      "isDefault": false,
+      "sendReminder": false,
+      "frequency": "0",
+      "settings": {
+        "url": "${JIRA_WEBHOOK_URL}",
+        "method": "POST",
+        "httpMethod": "POST",
+        "headers": {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer ${JIRA_API_TOKEN}"
+        }
+      },
+      "secureSettings": {
+        "Authorization": "Bearer ${JIRA_API_TOKEN}"
+      },
+      "rules": {
+        "severity": ["warning"],
+        "alert_names": [
+          "high_table_bloat_warning",
+          "low_cache_hit_ratio_warning",
+          "high_connection_count_warning"
+        ]
+      },
+      "webhook_template": {
+        "payload": {
+          "fields": {
+            "project": {
+              "key": "DB"
+            },
+            "issuetype": {
+              "name": "Task"
+            },
+            "summary": "{{ alert_name }} - {{ database_name }}",
+            "description": "{{ alert_description }}\n\nValue: {{ alert_value }}\nTime: {{ timestamp }}\nDashboard: {{ dashboard_url }}\nRunbook: {{ runbook_url }}",
+            "priority": {
+              "name": "High"
+            },
+            "labels": [
+              "postgresql",
+              "monitoring",
+              "{{ severity }}"
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "notification_policy": {
+    "default_channel": "slack_warning",
+    "grouping": {
+      "enabled": true,
+      "group_by": ["alertname", "database"],
+      "group_wait": "10s",
+      "group_interval": "10s",
+      "repeat_interval": "1h"
+    },
+    "routing": [
+      {
+        "match": {
+          "severity": "critical"
+        },
+        "receiver": ["slack_critical", "pagerduty_critical"],
+        "group_wait": "0s",
+        "repeat_interval": "15m",
+        "continue": true
+      },
+      {
+        "match": {
+          "severity": "warning"
+        },
+        "receiver": ["slack_warning", "email_dba_team"],
+        "group_wait": "5m",
+        "repeat_interval": "1h",
+        "continue": true
+      },
+      {
+        "match": {
+          "severity": "info"
+        },
+        "receiver": ["slack_info"],
+        "group_wait": "1h",
+        "repeat_interval": "24h",
+        "continue": false
+      },
+      {
+        "match": {
+          "alert_name": ["high_table_bloat_warning", "low_cache_hit_ratio_warning"]
+        },
+        "receiver": ["webhook_jira_tickets"],
+        "group_wait": "5m",
+        "repeat_interval": "24h",
+        "continue": true
+      }
+    ]
+  },
+  "escalation_policies": {
+    "database_critical": {
+      "name": "Database - Critical",
+      "escalation_rules": [
+        {
+          "id": 1,
+          "escalation_delay_in_minutes": 5,
+          "target": "database-oncall",
+          "type": "user_reference"
+        },
+        {
+          "id": 2,
+          "escalation_delay_in_minutes": 15,
+          "target": "database-team-lead",
+          "type": "user_reference"
+        },
+        {
+          "id": 3,
+          "escalation_delay_in_minutes": 30,
+          "target": "database-manager",
+          "type": "user_reference"
+        }
+      ]
+    },
+    "database_standard": {
+      "name": "Database - Standard",
+      "escalation_rules": [
+        {
+          "id": 1,
+          "escalation_delay_in_minutes": 15,
+          "target": "database-oncall",
+          "type": "user_reference"
+        },
+        {
+          "id": 2,
+          "escalation_delay_in_minutes": 30,
+          "target": "database-team-lead",
+          "type": "user_reference"
+        }
+      ]
+    }
+  }
+}

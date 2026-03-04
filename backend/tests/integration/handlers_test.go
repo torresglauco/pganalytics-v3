@@ -189,8 +189,8 @@ func createTestServer(userStore auth.UserStore, collectorStore auth.CollectorSto
 		Port:        8080,
 	}
 
-	// Create API server (note: postgres and timescale are nil for this test)
-	server := api.NewServer(cfg, logger, nil, nil, authService, jwtManager)
+	// Create API server (note: postgres, timescale, and secretManager are nil for this test)
+	server := api.NewServer(cfg, logger, nil, nil, authService, jwtManager, nil)
 
 	// Create router
 	router := gin.New()

@@ -7,7 +7,6 @@ import (
 
 	"github.com/torresglauco/pganalytics-v3/backend/internal/ml"
 	"github.com/torresglauco/pganalytics-v3/backend/tests/mocks"
-	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 )
 

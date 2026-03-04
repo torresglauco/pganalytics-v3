@@ -2,8 +2,6 @@ package security
 
 import (
 	"testing"
-	"github.com/torresglauco/pganalytics-v3/backend/internal/storage"
-	"github.com/torresglauco/pganalytics-v3/backend/pkg/models"
 )
 
 // TestSQLInjectionProtection verifies that all database queries use prepared statements

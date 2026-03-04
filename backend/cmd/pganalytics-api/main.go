@@ -1,8 +1,5 @@
 package main
 
-// Test: GitHub Actions workflow verification
-// This change triggers Backend Tests, Security Scanning workflows
-
 import (
 	"context"
 	"log"

@@ -24,7 +24,9 @@ func (p *PostgresDB) StoreSchemaMetrics(ctx context.Context, tables []*models.Sc
 	if err != nil {
 		return apperrors.DatabaseError("begin transaction", err.Error())
 	}
-	defer tx.Rollback()
+	defer func() {
+		_ = tx.Rollback()
+	}()
 
 	// Insert tables
 	if len(tables) > 0 {
@@ -36,7 +38,7 @@ func (p *PostgresDB) StoreSchemaMetrics(ctx context.Context, tables []*models.Sc
 		if err != nil {
 			return apperrors.DatabaseError("prepare schema tables insert", err.Error())
 		}
-		defer stmt.Close()
+		defer func() { _ = stmt.Close() }()
 
 		for _, t := range tables {
 			if _, err := stmt.ExecContext(ctx, time.Now(), t.CollectorID, t.DatabaseName, t.SchemaName, t.TableName, t.TableType); err != nil {
@@ -55,7 +57,7 @@ func (p *PostgresDB) StoreSchemaMetrics(ctx context.Context, tables []*models.Sc
 		if err != nil {
 			return apperrors.DatabaseError("prepare schema columns insert", err.Error())
 		}
-		defer stmt.Close()
+		defer func() { _ = stmt.Close() }()
 
 		for _, c := range columns {
 			if _, err := stmt.ExecContext(ctx, time.Now(), c.CollectorID, c.DatabaseName, c.SchemaName, c.TableName, c.ColumnName, c.DataType, c.IsNullable, c.ColumnDefault, c.OrdinalPosition, c.CharacterMaxLength, c.NumericPrecision, c.NumericScale); err != nil {
@@ -74,7 +76,7 @@ func (p *PostgresDB) StoreSchemaMetrics(ctx context.Context, tables []*models.Sc
 		if err != nil {
 			return apperrors.DatabaseError("prepare constraints insert", err.Error())
 		}
-		defer stmt.Close()
+		defer func() { _ = stmt.Close() }()
 
 		for _, c := range constraints {
 			if _, err := stmt.ExecContext(ctx, time.Now(), c.CollectorID, c.DatabaseName, c.SchemaName, c.TableName, c.ConstraintName, c.ConstraintType, c.Columns); err != nil {
@@ -93,7 +95,7 @@ func (p *PostgresDB) StoreSchemaMetrics(ctx context.Context, tables []*models.Sc
 		if err != nil {
 			return apperrors.DatabaseError("prepare foreign keys insert", err.Error())
 		}
-		defer stmt.Close()
+		defer func() { _ = stmt.Close() }()
 
 		for _, fk := range fkeys {
 			if _, err := stmt.ExecContext(ctx, time.Now(), fk.CollectorID, fk.DatabaseName, fk.SourceSchema, fk.SourceTable, fk.SourceColumn, fk.TargetSchema, fk.TargetTable, fk.TargetColumn, fk.UpdateRule, fk.DeleteRule); err != nil {
@@ -125,7 +127,7 @@ func (p *PostgresDB) GetSchemaMetrics(ctx context.Context, collectorID uuid.UUID
 	if err != nil {
 		return nil, apperrors.DatabaseError("query schema tables", err.Error())
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	for rows.Next() {
 		t := &models.SchemaTable{CollectorID: collectorID}
@@ -152,7 +154,9 @@ func (p *PostgresDB) StoreLockMetrics(ctx context.Context, locks []*models.Lock,
 	if err != nil {
 		return apperrors.DatabaseError("begin transaction", err.Error())
 	}
-	defer tx.Rollback()
+	defer func() {
+		_ = tx.Rollback()
+	}()
 
 	// Insert locks
 	if len(locks) > 0 {
@@ -164,7 +168,7 @@ func (p *PostgresDB) StoreLockMetrics(ctx context.Context, locks []*models.Lock,
 		if err != nil {
 			return apperrors.DatabaseError("prepare locks insert", err.Error())
 		}
-		defer stmt.Close()
+		defer func() { _ = stmt.Close() }()
 
 		for _, l := range locks {
 			if _, err := stmt.ExecContext(ctx, time.Now(), l.CollectorID, l.DatabaseName, l.PID, l.LockType, l.Mode, l.Granted, l.RelationID, l.PageNumber, l.TupleID, l.Username, l.SessionState, l.LockAgeSeconds, l.Query); err != nil {
@@ -183,7 +187,7 @@ func (p *PostgresDB) StoreLockMetrics(ctx context.Context, locks []*models.Lock,
 		if err != nil {
 			return apperrors.DatabaseError("prepare lock waits insert", err.Error())
 		}
-		defer stmt.Close()
+		defer func() { _ = stmt.Close() }()
 
 		for _, w := range waits {
 			if _, err := stmt.ExecContext(ctx, time.Now(), w.CollectorID, w.DatabaseName, w.BlockedPID, w.BlockingPID, w.BlockedUsername, w.BlockingUsername, w.BlockedQuery, w.BlockingQuery, w.WaitTimeSeconds, w.BlockedApplication, w.BlockingApplication); err != nil {
@@ -215,7 +219,7 @@ func (p *PostgresDB) GetLockMetrics(ctx context.Context, collectorID uuid.UUID, 
 	if err != nil {
 		return nil, apperrors.DatabaseError("query locks", err.Error())
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	for rows.Next() {
 		l := &models.Lock{CollectorID: collectorID}
@@ -242,7 +246,9 @@ func (p *PostgresDB) StoreBloatMetrics(ctx context.Context, tableBloat []*models
 	if err != nil {
 		return apperrors.DatabaseError("begin transaction", err.Error())
 	}
-	defer tx.Rollback()
+	defer func() {
+		_ = tx.Rollback()
+	}()
 
 	// Insert table bloat
 	if len(tableBloat) > 0 {
@@ -254,7 +260,7 @@ func (p *PostgresDB) StoreBloatMetrics(ctx context.Context, tableBloat []*models
 		if err != nil {
 			return apperrors.DatabaseError("prepare table bloat insert", err.Error())
 		}
-		defer stmt.Close()
+		defer func() { _ = stmt.Close() }()
 
 		for _, tb := range tableBloat {
 			if _, err := stmt.ExecContext(ctx, time.Now(), tb.CollectorID, tb.DatabaseName, tb.SchemaName, tb.TableName, tb.DeadTuples, tb.LiveTuples, tb.DeadRatioPercent, tb.TableSize, tb.SpaceWastedPercent, tb.LastVacuum, tb.LastAutovacuum, tb.VacuumCount, tb.AutovacuumCount); err != nil {
@@ -273,7 +279,7 @@ func (p *PostgresDB) StoreBloatMetrics(ctx context.Context, tableBloat []*models
 		if err != nil {
 			return apperrors.DatabaseError("prepare index bloat insert", err.Error())
 		}
-		defer stmt.Close()
+		defer func() { _ = stmt.Close() }()
 
 		for _, ib := range indexBloat {
 			if _, err := stmt.ExecContext(ctx, time.Now(), ib.CollectorID, ib.DatabaseName, ib.SchemaName, ib.TableName, ib.IndexName, ib.IndexScans, ib.TuplesRead, ib.TuplesFetched, ib.IndexSize, ib.UsageStatus, ib.Recommendation); err != nil {
@@ -304,7 +310,7 @@ func (p *PostgresDB) GetBloatMetrics(ctx context.Context, collectorID uuid.UUID,
 	if err != nil {
 		return nil, apperrors.DatabaseError("query bloat", err.Error())
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	for rows.Next() {
 		tb := &models.TableBloat{CollectorID: collectorID}
@@ -331,7 +337,9 @@ func (p *PostgresDB) StoreCacheMetrics(ctx context.Context, tableCacheHit []*mod
 	if err != nil {
 		return apperrors.DatabaseError("begin transaction", err.Error())
 	}
-	defer tx.Rollback()
+	defer func() {
+		_ = tx.Rollback()
+	}()
 
 	// Insert table cache hit
 	if len(tableCacheHit) > 0 {
@@ -343,7 +351,7 @@ func (p *PostgresDB) StoreCacheMetrics(ctx context.Context, tableCacheHit []*mod
 		if err != nil {
 			return apperrors.DatabaseError("prepare table cache insert", err.Error())
 		}
-		defer stmt.Close()
+		defer func() { _ = stmt.Close() }()
 
 		for _, tch := range tableCacheHit {
 			if _, err := stmt.ExecContext(ctx, time.Now(), tch.CollectorID, tch.DatabaseName, tch.SchemaName, tch.TableName, tch.HeapBlksHit, tch.HeapBlksRead, tch.HeapCacheHitRatio, tch.IdxBlksHit, tch.IdxBlksRead, tch.IdxCacheHitRatio, tch.ToastBlksHit, tch.ToastBlksRead, tch.TidxBlksHit, tch.TidxBlksRead); err != nil {
@@ -362,7 +370,7 @@ func (p *PostgresDB) StoreCacheMetrics(ctx context.Context, tableCacheHit []*mod
 		if err != nil {
 			return apperrors.DatabaseError("prepare index cache insert", err.Error())
 		}
-		defer stmt.Close()
+		defer func() { _ = stmt.Close() }()
 
 		for _, ich := range indexCacheHit {
 			if _, err := stmt.ExecContext(ctx, time.Now(), ich.CollectorID, ich.DatabaseName, ich.SchemaName, ich.TableName, ich.IndexName, ich.BlksHit, ich.BlksRead, ich.CacheHitRatio); err != nil {
@@ -393,7 +401,7 @@ func (p *PostgresDB) GetCacheMetrics(ctx context.Context, collectorID uuid.UUID,
 	if err != nil {
 		return nil, apperrors.DatabaseError("query cache", err.Error())
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	for rows.Next() {
 		tch := &models.TableCacheHit{CollectorID: collectorID}
@@ -420,7 +428,9 @@ func (p *PostgresDB) StoreConnectionMetrics(ctx context.Context, connSummary []*
 	if err != nil {
 		return apperrors.DatabaseError("begin transaction", err.Error())
 	}
-	defer tx.Rollback()
+	defer func() {
+		_ = tx.Rollback()
+	}()
 
 	// Insert connection summary
 	if len(connSummary) > 0 {
@@ -432,7 +442,7 @@ func (p *PostgresDB) StoreConnectionMetrics(ctx context.Context, connSummary []*
 		if err != nil {
 			return apperrors.DatabaseError("prepare connection summary insert", err.Error())
 		}
-		defer stmt.Close()
+		defer func() { _ = stmt.Close() }()
 
 		for _, cs := range connSummary {
 			if _, err := stmt.ExecContext(ctx, time.Now(), cs.CollectorID, cs.DatabaseName, cs.ConnectionState, cs.ConnectionCount, cs.MaxAgeSeconds, cs.MinAgeSeconds); err != nil {
@@ -451,7 +461,7 @@ func (p *PostgresDB) StoreConnectionMetrics(ctx context.Context, connSummary []*
 		if err != nil {
 			return apperrors.DatabaseError("prepare long running insert", err.Error())
 		}
-		defer stmt.Close()
+		defer func() { _ = stmt.Close() }()
 
 		for _, lr := range longRunning {
 			if _, err := stmt.ExecContext(ctx, time.Now(), lr.CollectorID, lr.DatabaseName, lr.PID, lr.Username, lr.SessionState, lr.Query, lr.QueryStart, lr.DurationSeconds, lr.ApplicationName, lr.ClientAddress); err != nil {
@@ -470,7 +480,7 @@ func (p *PostgresDB) StoreConnectionMetrics(ctx context.Context, connSummary []*
 		if err != nil {
 			return apperrors.DatabaseError("prepare idle insert", err.Error())
 		}
-		defer stmt.Close()
+		defer func() { _ = stmt.Close() }()
 
 		for _, it := range idle {
 			if _, err := stmt.ExecContext(ctx, time.Now(), it.CollectorID, it.DatabaseName, it.PID, it.Username, it.QueryStart, it.StateChange, it.IdleTimeSeconds, it.ApplicationName, it.ClientAddress); err != nil {
@@ -501,7 +511,7 @@ func (p *PostgresDB) GetConnectionMetrics(ctx context.Context, collectorID uuid.
 	if err != nil {
 		return nil, apperrors.DatabaseError("query connections", err.Error())
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	for rows.Next() {
 		cs := &models.ConnectionSummary{CollectorID: collectorID}
@@ -532,7 +542,7 @@ func (p *PostgresDB) StoreExtensionMetrics(ctx context.Context, extensions []*mo
 	if err != nil {
 		return apperrors.DatabaseError("prepare extension insert", err.Error())
 	}
-	defer stmt.Close()
+	defer func() { _ = stmt.Close() }()
 
 	for _, ext := range extensions {
 		if _, err := stmt.ExecContext(ctx, time.Now(), ext.CollectorID, ext.DatabaseName, ext.ExtensionName, ext.ExtensionVersion, ext.ExtensionOwner, ext.ExtensionSchema, ext.IsRelocatable, ext.Description); err != nil {
@@ -562,7 +572,7 @@ func (p *PostgresDB) GetExtensionMetrics(ctx context.Context, collectorID uuid.U
 	if err != nil {
 		return nil, apperrors.DatabaseError("query extensions", err.Error())
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	for rows.Next() {
 		ext := &models.Extension{CollectorID: collectorID}

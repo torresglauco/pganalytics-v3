@@ -136,13 +136,13 @@ func (m *MockMLService) handleHealth(w http.ResponseWriter, r *http.Request) {
 
 	if shouldFail {
 		w.WriteHeader(http.StatusServiceUnavailable)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Service unavailable"})
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": "Service unavailable"})
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
-	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+	_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 }
 
 func (m *MockMLService) handleTrain(w http.ResponseWriter, r *http.Request) {
@@ -158,14 +158,14 @@ func (m *MockMLService) handleTrain(w http.ResponseWriter, r *http.Request) {
 
 	if shouldFail || statusCode >= 400 {
 		w.WriteHeader(statusCode)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Training failed"})
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": "Training failed"})
 		return
 	}
 
 	var req ml.TrainingRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Invalid request"})
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": "Invalid request"})
 		return
 	}
 
@@ -182,7 +182,7 @@ func (m *MockMLService) handleTrain(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusAccepted)
-	json.NewEncoder(w).Encode(ml.TrainingResponse{
+	_ = json.NewEncoder(w).Encode(ml.TrainingResponse{
 		JobID:     jobID,
 		Status:    "training",
 		Message:   "Model training started",
@@ -205,7 +205,7 @@ func (m *MockMLService) handleTrainingStatus(w http.ResponseWriter, r *http.Requ
 	jobID := r.URL.Path[len("/api/train/performance-model/"):]
 	if jobID == "" {
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Job ID required"})
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": "Job ID required"})
 		return
 	}
 
@@ -215,13 +215,13 @@ func (m *MockMLService) handleTrainingStatus(w http.ResponseWriter, r *http.Requ
 
 	if !exists {
 		w.WriteHeader(http.StatusNotFound)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Job not found"})
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": "Job not found"})
 		return
 	}
 
 	if shouldFail || statusCode >= 400 {
 		w.WriteHeader(statusCode)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Status check failed"})
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": "Status check failed"})
 		return
 	}
 
@@ -246,7 +246,7 @@ func (m *MockMLService) handleTrainingStatus(w http.ResponseWriter, r *http.Requ
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(ml.TrainingStatusResponse{
+	_ = json.NewEncoder(w).Encode(ml.TrainingStatusResponse{
 		JobID:             job.JobID,
 		Status:            job.Status,
 		ModelID:           job.ModelID,
@@ -273,13 +273,13 @@ func (m *MockMLService) handlePredict(w http.ResponseWriter, r *http.Request) {
 	var req ml.PredictionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Invalid request"})
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": "Invalid request"})
 		return
 	}
 
 	if shouldFail || statusCode >= 400 {
 		w.WriteHeader(statusCode)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Prediction failed"})
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": "Prediction failed"})
 		return
 	}
 
@@ -302,7 +302,7 @@ func (m *MockMLService) handlePredict(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(pred)
+	_ = json.NewEncoder(w).Encode(pred)
 }
 
 func (m *MockMLService) handleValidate(w http.ResponseWriter, r *http.Request) {
@@ -319,13 +319,13 @@ func (m *MockMLService) handleValidate(w http.ResponseWriter, r *http.Request) {
 	var req ml.ValidationRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Invalid request"})
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": "Invalid request"})
 		return
 	}
 
 	if shouldFail || statusCode >= 400 {
 		w.WriteHeader(statusCode)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Validation failed"})
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": "Validation failed"})
 		return
 	}
 
@@ -340,7 +340,7 @@ func (m *MockMLService) handleValidate(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(ml.ValidationResponse{
+	_ = json.NewEncoder(w).Encode(ml.ValidationResponse{
 		PredictionID:          req.PredictionID,
 		ErrorPercent:          errorPct,
 		AccuracyScore:         1.0 - (errorPct / 100.0),
@@ -364,13 +364,13 @@ func (m *MockMLService) handleDetectPatterns(w http.ResponseWriter, r *http.Requ
 	var req ml.PatternRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Invalid request"})
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": "Invalid request"})
 		return
 	}
 
 	if shouldFail || statusCode >= 400 {
 		w.WriteHeader(statusCode)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Pattern detection failed"})
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": "Pattern detection failed"})
 		return
 	}
 
@@ -398,7 +398,7 @@ func (m *MockMLService) handleDetectPatterns(w http.ResponseWriter, r *http.Requ
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(ml.PatternResponse{
+	_ = json.NewEncoder(w).Encode(ml.PatternResponse{
 		PatternsDetected: len(patterns),
 		Patterns:         patterns,
 		Timestamp:        time.Now().UTC(),

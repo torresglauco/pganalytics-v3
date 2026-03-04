@@ -60,7 +60,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to initialize logger: %v", err)
 	}
-	defer logger.Sync()
+	defer func() { _ = logger.Sync() }()
 
 	// Log startup
 	logger.Info("pgAnalytics v3.0 API Starting",
@@ -74,7 +74,7 @@ func main() {
 	if err != nil {
 		logger.Fatal("Failed to initialize PostgreSQL", zap.Error(err))
 	}
-	defer postgresDB.Close()
+	defer func() { _ = postgresDB.Close() }()
 
 	logger.Info("Connected to PostgreSQL")
 
@@ -83,7 +83,7 @@ func main() {
 	if err != nil {
 		logger.Fatal("Failed to initialize TimescaleDB", zap.Error(err))
 	}
-	defer timescaleDB.Close()
+	defer func() { _ = timescaleDB.Close() }()
 
 	logger.Info("Connected to TimescaleDB")
 
@@ -101,7 +101,7 @@ func main() {
 			zap.Duration("feature_ttl", cfg.FeatureCacheTTL),
 			zap.Duration("prediction_ttl", cfg.PredictionCacheTTL),
 		)
-		defer cacheManager.Close()
+		defer func() { _ = cacheManager.Close() }()
 	} else {
 		logger.Info("Cache manager disabled")
 	}

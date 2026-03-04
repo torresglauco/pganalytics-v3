@@ -6,7 +6,6 @@ import (
 	"strconv"
 	"time"
 
-	apperrors "github.com/torresglauco/pganalytics-v3/backend/pkg/errors"
 	"github.com/torresglauco/pganalytics-v3/backend/pkg/models"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -148,6 +147,7 @@ func (s *Server) handleGetExplainPlanHistory(c *gin.Context) {
 	if err != nil || limit < 1 || limit > 50 {
 		limit = 10
 	}
+	_ = limit // Used in future implementation
 
 	// Query EXPLAIN plan from database (history not yet implemented)
 	plan, err := s.postgres.GetExplainPlan(ctx, queryHash)
@@ -660,32 +660,6 @@ func (s *Server) handleGetSnapshotComparison(c *gin.Context) {
 }
 
 // ============================================================================
-// HELPER FUNCTIONS
-// ============================================================================
-
-// validateDatabaseName validates a database name
-func validateDatabaseName(name string) error {
-	if name == "" {
-		return apperrors.ValidationError("database_name", "database name is required")
-	}
-	if len(name) > 63 {
-		return apperrors.ValidationError("database_name", "database name too long (max 63 characters)")
-	}
-	return nil
-}
-
-// validateSnapshotName validates a snapshot name
-func validateSnapshotName(name string) error {
-	if name == "" {
-		return apperrors.ValidationError("name", "snapshot name is required")
-	}
-	if len(name) > 255 {
-		return apperrors.ValidationError("name", "snapshot name too long (max 255 characters)")
-	}
-	return nil
-}
-
-// ============================================================================
 // EXPLAIN PLAN STORAGE HANDLER (Internal)
 // ============================================================================
 
@@ -743,33 +717,5 @@ func (s *Server) handleStoreExplainPlan(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{
 		"query_hash": req.QueryHash,
 		"status":     "received",
-	})
-}
-
-// handleGetLatestExplainPlans returns recently captured EXPLAIN plans
-// GET /api/v1/collectors/:collector_id/explain-plans?limit=10
-func (s *Server) handleGetLatestExplainPlans(c *gin.Context) {
-	// Get collector ID from URL
-	collectorID := c.Param("collector_id")
-	if collectorID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "collector_id is required"})
-		return
-	}
-
-	// Parse query parameters
-	limitStr := c.DefaultQuery("limit", "10")
-	limit, err := strconv.Atoi(limitStr)
-	if err != nil || limit < 1 || limit > 50 {
-		limit = 10
-	}
-
-	// Query EXPLAIN plans from database (GetLatestExplainPlans not yet implemented in storage layer)
-	// For now return empty list
-	s.logger.Debug("Getting latest explain plans", zap.String("collector_id", collectorID), zap.Int("limit", limit))
-
-	c.JSON(http.StatusOK, gin.H{
-		"collector_id": collectorID,
-		"plans":        []interface{}{},
-		"count":        0,
 	})
 }

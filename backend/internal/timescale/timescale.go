@@ -165,7 +165,7 @@ func (t *TimescaleDB) QueryMetricsRange(
 	if err != nil {
 		return nil, apperrors.DatabaseError(fmt.Sprintf("query %s metrics", metricsType), err.Error())
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	// Get column names
 	columns, err := rows.Columns()
@@ -269,7 +269,7 @@ func (t *TimescaleDB) AggregateMetrics(
 	if err != nil {
 		return nil, apperrors.DatabaseError(fmt.Sprintf("aggregate %s metrics", metricsType), err.Error())
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	results := make([]map[string]interface{}, 0)
 	for rows.Next() {

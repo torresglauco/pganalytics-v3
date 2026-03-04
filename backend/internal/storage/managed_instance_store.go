@@ -176,7 +176,7 @@ func (p *PostgresDB) ListManagedInstances(ctx context.Context) ([]*models.Manage
 	if err != nil {
 		return nil, apperrors.DatabaseError("list managed instances", err.Error())
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var instances []*models.ManagedInstance
 	for rows.Next() {
@@ -347,7 +347,7 @@ func (p *PostgresDB) ListManagedInstancesForHealthCheck(ctx context.Context) ([]
 	if err != nil {
 		return nil, apperrors.DatabaseError("list managed instances", err.Error())
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var instances []*HealthCheckInstance
 	for rows.Next() {

@@ -121,7 +121,7 @@ func (s *Server) MTLSMiddleware() gin.HandlerFunc {
 				return
 			}
 			// Allow non-TLS in development
-		} else if c.Request.TLS.PeerCertificates == nil || len(c.Request.TLS.PeerCertificates) == 0 {
+		} else if len(c.Request.TLS.PeerCertificates) == 0 {
 			// No client certificate provided
 			if s.config.IsProduction() {
 				errResp := apperrors.InvalidCertificate("Client certificate required")

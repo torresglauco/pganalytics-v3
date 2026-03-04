@@ -12,7 +12,7 @@ import (
 // BenchmarkCacheGetSet benchmarks basic cache get/set operations
 func BenchmarkCacheGetSet(b *testing.B) {
 	c := cache.NewCache[int, string](10*time.Minute, 10000)
-	defer c.Close()
+	defer func() { _ = c.Close() }()
 
 	b.ResetTimer()
 
@@ -27,7 +27,7 @@ func BenchmarkCacheGetSet(b *testing.B) {
 // BenchmarkCacheConcurrentReads benchmarks concurrent cache reads
 func BenchmarkCacheConcurrentReads(b *testing.B) {
 	c := cache.NewCache[int, string](10*time.Minute, 10000)
-	defer c.Close()
+	defer func() { _ = c.Close() }()
 
 	// Populate cache
 	for i := 0; i < 1000; i++ {
@@ -47,7 +47,7 @@ func BenchmarkCacheConcurrentReads(b *testing.B) {
 // BenchmarkCacheConcurrentWrites benchmarks concurrent cache writes
 func BenchmarkCacheConcurrentWrites(b *testing.B) {
 	c := cache.NewCache[int, string](10*time.Minute, 10000)
-	defer c.Close()
+	defer func() { _ = c.Close() }()
 
 	b.ResetTimer()
 	b.RunParallel(func(pb *testing.PB) {
@@ -62,7 +62,7 @@ func BenchmarkCacheConcurrentWrites(b *testing.B) {
 // BenchmarkCacheConcurrentMixed benchmarks concurrent mixed read/write operations
 func BenchmarkCacheConcurrentMixed(b *testing.B) {
 	c := cache.NewCache[int, string](10*time.Minute, 10000)
-	defer c.Close()
+	defer func() { _ = c.Close() }()
 
 	// Populate cache
 	for i := 0; i < 500; i++ {
@@ -86,7 +86,7 @@ func BenchmarkCacheConcurrentMixed(b *testing.B) {
 // BenchmarkCacheEviction benchmarks LRU eviction performance
 func BenchmarkCacheEviction(b *testing.B) {
 	c := cache.NewCache[int, string](10*time.Minute, 100)
-	defer c.Close()
+	defer func() { _ = c.Close() }()
 
 	// Fill cache to trigger evictions
 	for i := 0; i < b.N; i++ {
@@ -97,7 +97,7 @@ func BenchmarkCacheEviction(b *testing.B) {
 // BenchmarkCacheHitRate benchmarks cache hit rate performance
 func BenchmarkCacheHitRate(b *testing.B) {
 	c := cache.NewCache[int, string](10*time.Minute, 10000)
-	defer c.Close()
+	defer func() { _ = c.Close() }()
 
 	// Populate with 100 items
 	for i := 0; i < 100; i++ {
@@ -115,7 +115,7 @@ func BenchmarkCacheHitRate(b *testing.B) {
 // BenchmarkCacheDelete benchmarks cache delete operations
 func BenchmarkCacheDelete(b *testing.B) {
 	c := cache.NewCache[int, string](10*time.Minute, 10000)
-	defer c.Close()
+	defer func() { _ = c.Close() }()
 
 	b.ResetTimer()
 
@@ -129,7 +129,7 @@ func BenchmarkCacheDelete(b *testing.B) {
 // BenchmarkCacheMetrics benchmarks cache metrics calculation
 func BenchmarkCacheMetrics(b *testing.B) {
 	c := cache.NewCache[int, string](10*time.Minute, 10000)
-	defer c.Close()
+	defer func() { _ = c.Close() }()
 
 	// Warm up cache
 	for i := 0; i < 1000; i++ {
@@ -147,7 +147,7 @@ func BenchmarkCacheMetrics(b *testing.B) {
 // TestCacheMemoryUsage tests cache memory usage under load
 func TestCacheMemoryUsage(t *testing.T) {
 	c := cache.NewCache[int, [1024]byte](10*time.Minute, 10000)
-	defer c.Close()
+	defer func() { _ = c.Close() }()
 
 	// Populate cache with 10000 items
 	for i := 0; i < 10000; i++ {
@@ -168,7 +168,7 @@ func TestCacheMemoryUsage(t *testing.T) {
 // TestCacheExpiration tests cache item expiration
 func TestCacheExpiration(t *testing.T) {
 	c := cache.NewCache[string, string](100*time.Millisecond, 100)
-	defer c.Close()
+	defer func() { _ = c.Close() }()
 
 	c.Set("key", "value")
 
@@ -187,7 +187,7 @@ func TestCacheExpiration(t *testing.T) {
 // TestCacheThreadSafety tests cache thread safety with high contention
 func TestCacheThreadSafety(t *testing.T) {
 	c := cache.NewCache[int, string](10*time.Minute, 10000)
-	defer c.Close()
+	defer func() { _ = c.Close() }()
 
 	numGoroutines := 20
 	opsPerGoroutine := 1000
@@ -230,7 +230,7 @@ func TestCachingUnderLoad(t *testing.T) {
 	}
 
 	c := cache.NewCache[int, string](10*time.Minute, 10000)
-	defer c.Close()
+	defer func() { _ = c.Close() }()
 
 	numGoroutines := 100
 	requestsPerGoroutine := 100
@@ -320,7 +320,7 @@ func BenchmarkCacheDashboard(b *testing.B) {
 // TestCachePerformanceCharacteristics documents and validates expected cache performance
 func TestCachePerformanceCharacteristics(t *testing.T) {
 	c := cache.NewCache[int, string](10*time.Minute, 10000)
-	defer c.Close()
+	defer func() { _ = c.Close() }()
 
 	// Expected performance characteristics:
 	// - Get/Set: <1 microsecond per operation

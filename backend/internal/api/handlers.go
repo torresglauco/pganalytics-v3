@@ -518,23 +518,23 @@ func generateTemporaryPassword(length int) string {
 		all       = uppercase + lowercase + digits
 	)
 
-	rand.Seed(time.Now().UnixNano())
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	password := make([]byte, length)
 
 	// Ensure at least one character from each category
 	categories := []string{uppercase, lowercase, digits}
 	for i, category := range categories {
-		password[i] = category[rand.Intn(len(category))]
+		password[i] = category[rng.Intn(len(category))]
 	}
 
 	// Fill the rest randomly
 	for i := len(categories); i < length; i++ {
-		password[i] = all[rand.Intn(len(all))]
+		password[i] = all[rng.Intn(len(all))]
 	}
 
 	// Shuffle the password
 	for i := length - 1; i > 0; i-- {
-		j := rand.Intn(i + 1)
+		j := rng.Intn(i + 1)
 		password[i], password[j] = password[j], password[i]
 	}
 
@@ -980,7 +980,7 @@ func (s *Server) handleMetricsPush(c *gin.Context) {
 		zap.String("collector_id", req.CollectorID),
 	)
 
-	if req.Metrics != nil && len(req.Metrics) > 0 {
+	if len(req.Metrics) > 0 {
 		for _, metric := range req.Metrics {
 			// Type assertion to access metric fields
 			if metricMap, ok := metric.(map[string]interface{}); ok {
@@ -1055,22 +1055,20 @@ func (s *Server) handleMetricsPush(c *gin.Context) {
 					}
 
 					// Extract and store individual query statistics
-					if databases != nil {
-						for _, db := range databases {
-							s.logger.Debug("Processing database",
-								zap.String("database", db.Database),
-								zap.Int("queries_count", len(db.Queries)),
-							)
-							for _, queryInfo := range db.Queries {
+					for _, db := range databases {
+						s.logger.Debug("Processing database",
+							zap.String("database", db.Database),
+							zap.Int("queries_count", len(db.Queries)),
+						)
+						for _, queryInfo := range db.Queries {
 								// Parse collector ID - if it's not a valid UUID, try to look it up or use a placeholder
-								collectorUUID := uuid.Nil
+								var collectorUUID uuid.UUID
 								if uid, err := uuid.Parse(req.CollectorID); err == nil {
 									collectorUUID = uid
 								} else {
 									// For collector IDs like "col_demo_001", we'll create a deterministic UUID
 									// by hashing the string
-									hash := uuid.NewSHA1(uuid.Nil, []byte(req.CollectorID))
-									collectorUUID = hash
+									collectorUUID = uuid.NewSHA1(uuid.Nil, []byte(req.CollectorID))
 								}
 
 								stat := &models.QueryStats{
@@ -1142,7 +1140,6 @@ func (s *Server) handleMetricsPush(c *gin.Context) {
 							}
 						}
 					}
-				}
 			}
 		}
 	}

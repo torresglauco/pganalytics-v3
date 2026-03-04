@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"sync"
 	"time"
 
 	"go.uber.org/zap"
@@ -20,7 +19,6 @@ type Client struct {
 	circuitBreaker *CircuitBreaker
 	httpClient     *http.Client
 	logger         *zap.Logger
-	mu             sync.RWMutex
 }
 
 // TrainingRequest represents a request to start model training
@@ -171,7 +169,7 @@ func (c *Client) TrainPerformanceModel(ctx context.Context, req *TrainingRequest
 		c.circuitBreaker.RecordFailure()
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode >= 400 {
 		c.circuitBreaker.RecordFailure()
@@ -200,7 +198,7 @@ func (c *Client) GetTrainingStatus(ctx context.Context, jobID string) (*Training
 		c.circuitBreaker.RecordFailure()
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode >= 400 {
 		c.circuitBreaker.RecordFailure()
@@ -234,7 +232,7 @@ func (c *Client) PredictQueryExecution(ctx context.Context, req *PredictionReque
 		c.circuitBreaker.RecordFailure()
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode >= 400 {
 		c.circuitBreaker.RecordFailure()
@@ -268,7 +266,7 @@ func (c *Client) ValidatePrediction(ctx context.Context, req *ValidationRequest)
 		c.circuitBreaker.RecordFailure()
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode >= 400 {
 		c.circuitBreaker.RecordFailure()
@@ -302,7 +300,7 @@ func (c *Client) DetectWorkloadPatterns(ctx context.Context, req *PatternRequest
 		c.circuitBreaker.RecordFailure()
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode >= 400 {
 		c.circuitBreaker.RecordFailure()
@@ -327,7 +325,7 @@ func (c *Client) IsHealthy(ctx context.Context) bool {
 		c.circuitBreaker.RecordFailure()
 		return false
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	healthy := resp.StatusCode == http.StatusOK
 	if healthy {
@@ -415,7 +413,7 @@ func (c *Client) doRequestWithRetry(
 
 		// Check for transient HTTP errors (5xx)
 		if resp.StatusCode >= 500 && attempt < maxRetries {
-			resp.Body.Close()
+			_ = resp.Body.Close()
 			c.logger.Warn("ML service returned 5xx error, retrying",
 				zap.Int("status_code", resp.StatusCode),
 				zap.String("path", path),

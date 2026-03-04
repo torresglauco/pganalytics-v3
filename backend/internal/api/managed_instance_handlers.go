@@ -591,7 +591,7 @@ func testRDSConnection(ctx context.Context, endpoint string, port int, username,
 		pingCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 		pingErr := db.PingContext(pingCtx)
 		cancel()
-		db.Close()
+		_ = db.Close()
 
 		if pingErr == nil {
 			return nil // Success!

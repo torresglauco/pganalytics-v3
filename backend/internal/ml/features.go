@@ -102,9 +102,10 @@ func (fe *FeatureExtractor) ExtractQueryFeatures(ctx context.Context, queryHash 
 	)
 
 	// Count scan types
-	if features.ScanType == "Sequential Scan" {
+	switch features.ScanType {
+	case "Sequential Scan":
 		features.SequentialScans = 1
-	} else if features.ScanType == "Index Scan" {
+	case "Index Scan":
 		features.IndexScans = 1
 	}
 
@@ -230,11 +231,12 @@ func (fe *FeatureExtractor) NormalizeFeatures(features *QueryFeatures, stats *No
 	normalized["scan_type_index"] = 0.0
 	normalized["scan_type_bitmap"] = 0.0
 
-	if features.ScanType == "Sequential Scan" {
+	switch features.ScanType {
+	case "Sequential Scan":
 		normalized["scan_type_sequential"] = 1.0
-	} else if features.ScanType == "Index Scan" {
+	case "Index Scan":
 		normalized["scan_type_index"] = 1.0
-	} else if features.ScanType == "Bitmap Scan" {
+	case "Bitmap Scan":
 		normalized["scan_type_bitmap"] = 1.0
 	}
 

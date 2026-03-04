@@ -100,7 +100,7 @@ func (s *PostgresDB) ListRegistrationSecrets(ctx context.Context) ([]models.Regi
 	if err != nil {
 		return nil, fmt.Errorf("failed to list registration secrets: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var secrets []models.RegistrationSecret
 	for rows.Next() {

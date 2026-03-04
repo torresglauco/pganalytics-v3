@@ -574,55 +574,6 @@ func (s *Server) handleGetOptimizationResults(c *gin.Context) {
 }
 
 // ============================================================================
-// HELPER FUNCTIONS (Internal)
-// ============================================================================
-
-// updateOptimizationResultsWithActualMetrics updates implementation with post-optimization metrics
-// This would be called after metrics are collected post-implementation
-func (s *Server) updateOptimizationResultsWithActualMetrics(
-	ctx context.Context,
-	implementationID int64,
-	postStats map[string]interface{},
-	actualImprovementPct float64,
-	actualImprovementSec float64,
-) error {
-	return s.postgres.UpdateOptimizationResults(ctx, implementationID, postStats, actualImprovementPct, actualImprovementSec)
-}
-
-// dismissOptimizationRecommendation marks a recommendation as dismissed
-func (s *Server) dismissOptimizationRecommendation(
-	ctx context.Context,
-	recommendationID int64,
-	reason string,
-) error {
-	return s.postgres.DismissOptimizationRecommendation(ctx, recommendationID, reason)
-}
-
-// getRecommendationDetails fetches full details of a recommendation
-func (s *Server) getRecommendationDetails(ctx context.Context, recommendationID int64) (*models.OptimizationRecommendation, error) {
-	return s.postgres.GetRecommendationByID(ctx, recommendationID)
-}
-
-// callMLService calls the Python ML service for advanced predictions
-// This is called from handlePredictQueryPerformance if model predictions are needed
-func (s *Server) callMLService(ctx context.Context, queryHash int64, params map[string]interface{}) (*models.PerformancePrediction, error) {
-	// Check if ML service is configured
-	if s.config.MLServiceURL == "" {
-		return nil, fmt.Errorf("ML service not configured")
-	}
-
-	// TODO: Implement HTTP call to Python ML service
-	// For now, return nil to trigger fallback behavior
-
-	return nil, nil
-}
-
-// trainPerformanceModel trains a new ML model for performance prediction
-func (s *Server) trainPerformanceModel(ctx context.Context, databaseName string, lookbackDays int) error {
-	return s.postgres.TrainPerformanceModel(ctx, databaseName, lookbackDays)
-}
-
-// ============================================================================
 // PHASE 4.5.4: ML-POWERED OPTIMIZATION WORKFLOW HANDLERS
 // ============================================================================
 

@@ -298,7 +298,7 @@ func testPostgresConnection(ctx context.Context, cfg testConnectionConfig) error
 	if err != nil {
 		return fmt.Errorf("failed to open connection: %w", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	if err := db.PingContext(ctx); err != nil {
 		return fmt.Errorf("failed to ping database: %w", err)

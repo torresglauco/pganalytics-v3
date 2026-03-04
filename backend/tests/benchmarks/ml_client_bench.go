@@ -17,7 +17,7 @@ func BenchmarkMLClientHealthCheck(b *testing.B) {
 	defer mockService.Close()
 
 	client := ml.NewClient(mockService.URL(), 5*time.Second, logger)
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	ctx := context.Background()
 
@@ -34,7 +34,7 @@ func BenchmarkMLClientPrediction(b *testing.B) {
 	defer mockService.Close()
 
 	client := ml.NewClient(mockService.URL(), 5*time.Second, logger)
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	ctx := context.Background()
 	req := &ml.PredictionRequest{
@@ -58,7 +58,7 @@ func BenchmarkMLClientTraining(b *testing.B) {
 	defer mockService.Close()
 
 	client := ml.NewClient(mockService.URL(), 5*time.Second, logger)
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	ctx := context.Background()
 	req := &ml.TrainingRequest{
@@ -80,7 +80,7 @@ func BenchmarkMLClientValidation(b *testing.B) {
 	defer mockService.Close()
 
 	client := ml.NewClient(mockService.URL(), 5*time.Second, logger)
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	ctx := context.Background()
 	req := &ml.ValidationRequest{
@@ -103,7 +103,7 @@ func BenchmarkMLClientPatternDetection(b *testing.B) {
 	defer mockService.Close()
 
 	client := ml.NewClient(mockService.URL(), 5*time.Second, logger)
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	ctx := context.Background()
 	req := &ml.PatternRequest{
@@ -124,7 +124,7 @@ func BenchmarkMLClientConcurrentRequests(b *testing.B) {
 	defer mockService.Close()
 
 	client := ml.NewClient(mockService.URL(), 5*time.Second, logger)
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	ctx := context.Background()
 	req := &ml.PredictionRequest{
@@ -147,7 +147,7 @@ func BenchmarkMLClientSequentialRequests(b *testing.B) {
 	defer mockService.Close()
 
 	client := ml.NewClient(mockService.URL(), 5*time.Second, logger)
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	ctx := context.Background()
 
@@ -169,7 +169,7 @@ func BenchmarkMLClientCircuitBreakerStateCheck(b *testing.B) {
 	defer mockService.Close()
 
 	client := ml.NewClient(mockService.URL(), 5*time.Second, logger)
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -184,7 +184,7 @@ func BenchmarkMLClientErrorRecovery(b *testing.B) {
 	defer mockService.Close()
 
 	client := ml.NewClient(mockService.URL(), 5*time.Second, logger)
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	ctx := context.Background()
 	req := &ml.PredictionRequest{
@@ -212,7 +212,7 @@ func BenchmarkMLClientWithTimeout(b *testing.B) {
 	defer mockService.Close()
 
 	client := ml.NewClient(mockService.URL(), 500*time.Millisecond, logger)
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	req := &ml.PredictionRequest{
 		QueryHash: 4001,
@@ -234,7 +234,7 @@ func BenchmarkMLClientMemoryAllocations(b *testing.B) {
 	defer mockService.Close()
 
 	client := ml.NewClient(mockService.URL(), 5*time.Second, logger)
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	ctx := context.Background()
 	req := &ml.PredictionRequest{
@@ -256,7 +256,7 @@ func BenchmarkMLClientOperationSequence(b *testing.B) {
 	defer mockService.Close()
 
 	client := ml.NewClient(mockService.URL(), 5*time.Second, logger)
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	ctx := context.Background()
 
@@ -285,7 +285,7 @@ func BenchmarkMLClientEndToEndWorkflow(b *testing.B) {
 	defer mockService.Close()
 
 	client := ml.NewClient(mockService.URL(), 5*time.Second, logger)
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	ctx := context.Background()
 
@@ -354,7 +354,7 @@ func BenchmarkMLClientDashboard(b *testing.B) {
 	for _, bm := range benchmarks {
 		b.Run(bm.name, func(b *testing.B) {
 			client := ml.NewClient(mockService.URL(), 5*time.Second, logger)
-			defer client.Close()
+			defer func() { _ = client.Close() }()
 			bm.fn(b, client)
 		})
 	}
@@ -367,7 +367,7 @@ func TestMLClientPerformanceCharacteristics(t *testing.T) {
 	defer mockService.Close()
 
 	client := ml.NewClient(mockService.URL(), 5*time.Second, logger)
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	ctx := context.Background()
 

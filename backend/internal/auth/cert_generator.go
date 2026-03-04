@@ -3,7 +3,6 @@ package auth
 import (
 	"crypto/rand"
 	"crypto/rsa"
-	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
@@ -18,7 +17,6 @@ import (
 type CertificateManager struct {
 	caKeyPath  string
 	caCertPath string
-	ca         *tls.Certificate
 }
 
 // CertificatePair contains certificate and private key

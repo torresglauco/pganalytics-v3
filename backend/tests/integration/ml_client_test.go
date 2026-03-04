@@ -17,7 +17,7 @@ func TestMLClientHealthCheck(t *testing.T) {
 	defer mockService.Close()
 
 	client := ml.NewClient(mockService.URL(), 5*time.Second, logger)
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -36,7 +36,7 @@ func TestMLClientHealthCheckUnhealthy(t *testing.T) {
 	defer mockService.Close()
 
 	client := ml.NewClient(mockService.URL(), 5*time.Second, logger)
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -54,7 +54,7 @@ func TestMLClientTrainPerformanceModel(t *testing.T) {
 	defer mockService.Close()
 
 	client := ml.NewClient(mockService.URL(), 5*time.Second, logger)
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -91,7 +91,7 @@ func TestMLClientTrainPerformanceModelFailure(t *testing.T) {
 	defer mockService.Close()
 
 	client := ml.NewClient(mockService.URL(), 5*time.Second, logger)
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -119,7 +119,7 @@ func TestMLClientGetTrainingStatus(t *testing.T) {
 	defer mockService.Close()
 
 	client := ml.NewClient(mockService.URL(), 5*time.Second, logger)
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -158,7 +158,7 @@ func TestMLClientPredictQueryExecution(t *testing.T) {
 	defer mockService.Close()
 
 	client := ml.NewClient(mockService.URL(), 5*time.Second, logger)
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -200,7 +200,7 @@ func TestMLClientValidatePrediction(t *testing.T) {
 	defer mockService.Close()
 
 	client := ml.NewClient(mockService.URL(), 5*time.Second, logger)
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -237,7 +237,7 @@ func TestMLClientDetectWorkloadPatterns(t *testing.T) {
 	defer mockService.Close()
 
 	client := ml.NewClient(mockService.URL(), 5*time.Second, logger)
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -273,7 +273,7 @@ func TestMLClientContextTimeout(t *testing.T) {
 	defer mockService.Close()
 
 	client := ml.NewClient(mockService.URL(), 100*time.Millisecond, logger)
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
@@ -296,7 +296,7 @@ func TestMLClientCircuitBreakerIntegration(t *testing.T) {
 	defer mockService.Close()
 
 	client := ml.NewClient(mockService.URL(), 5*time.Second, logger)
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -332,7 +332,7 @@ func TestMLClientMultipleRequests(t *testing.T) {
 	defer mockService.Close()
 
 	client := ml.NewClient(mockService.URL(), 5*time.Second, logger)
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()

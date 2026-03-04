@@ -170,7 +170,7 @@ func (p *PostgresDB) ListUsers(ctx context.Context) ([]*models.User, error) {
 	if err != nil {
 		return nil, apperrors.DatabaseError("list users", err.Error())
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var users []*models.User
 	for rows.Next() {
@@ -392,7 +392,7 @@ func (p *PostgresDB) ListCollectors(ctx context.Context, offset, limit int) ([]*
 	if err != nil {
 		return nil, apperrors.DatabaseError("list collectors", err.Error())
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var collectors []*models.Collector
 	for rows.Next() {
@@ -668,7 +668,7 @@ func (p *PostgresDB) ListServers(ctx context.Context, offset, limit int) ([]*mod
 	if err != nil {
 		return nil, apperrors.DatabaseError("list servers", err.Error())
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var servers []*models.Server
 	for rows.Next() {
@@ -711,13 +711,15 @@ func (p *PostgresDB) InsertQueryStats(ctx context.Context, collectorID string, s
 	if err != nil {
 		return apperrors.DatabaseError("begin transaction", err.Error())
 	}
-	defer tx.Rollback()
+	defer func() {
+		_ = tx.Rollback()
+	}()
 
 	stmt, err := tx.PrepareContext(ctx, query)
 	if err != nil {
 		return apperrors.DatabaseError("prepare statement", err.Error())
 	}
-	defer stmt.Close()
+	defer func() { _ = stmt.Close() }()
 
 	for _, stat := range stats {
 		if _, err := stmt.ExecContext(ctx,
@@ -758,7 +760,7 @@ func (p *PostgresDB) GetTopSlowQueries(ctx context.Context, collectorID string, 
 	if err != nil {
 		return nil, apperrors.DatabaseError("query top slow queries", err.Error())
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var queries []*models.QueryStats
 	for rows.Next() {
@@ -798,7 +800,7 @@ func (p *PostgresDB) GetTopFrequentQueries(ctx context.Context, collectorID stri
 	if err != nil {
 		return nil, apperrors.DatabaseError("query top frequent queries", err.Error())
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var queries []*models.QueryStats
 	for rows.Next() {
@@ -837,7 +839,7 @@ func (p *PostgresDB) GetQueryTimeline(ctx context.Context, queryHash int64, sinc
 	if err != nil {
 		return nil, apperrors.DatabaseError("query timeline", err.Error())
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var queries []*models.QueryStats
 	for rows.Next() {
@@ -893,7 +895,7 @@ func (p *PostgresDB) GetQueryFingerprints(ctx context.Context, limit int) ([]*mo
 	if err != nil {
 		return nil, apperrors.DatabaseError("query fingerprints", err.Error())
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var fingerprints []*models.QueryFingerprintResponse
 	for rows.Next() {
@@ -945,7 +947,7 @@ func (p *PostgresDB) GetQueriesByFingerprint(ctx context.Context, fingerprintHas
 	if err != nil {
 		return nil, apperrors.DatabaseError("query by fingerprint", err.Error())
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var queries []*models.QueryStats
 	for rows.Next() {
@@ -1028,7 +1030,7 @@ func (p *PostgresDB) GetQueryAnomalies(ctx context.Context, queryHash int64, day
 	if err != nil {
 		return nil, apperrors.DatabaseError("get query anomalies", err.Error())
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var anomalies []*models.QueryAnomaly
 	for rows.Next() {
@@ -1089,7 +1091,7 @@ func (p *PostgresDB) GetPerformanceSnapshots(ctx context.Context, limit int) ([]
 	if err != nil {
 		return nil, apperrors.DatabaseError("get snapshots", err.Error())
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var snapshots []*models.PerformanceSnapshot
 	for rows.Next() {
@@ -1131,7 +1133,7 @@ func (p *PostgresDB) CompareSnapshots(ctx context.Context, beforeSnapshotID int6
 	if err != nil {
 		return nil, apperrors.DatabaseError("compare snapshots", err.Error())
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var comparisons []*models.SnapshotComparison
 	for rows.Next() {
@@ -1185,7 +1187,7 @@ func (p *PostgresDB) GetIndexRecommendations(ctx context.Context, databaseName s
 	if err != nil {
 		return nil, apperrors.DatabaseError("get index recommendations", err.Error())
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var recommendations []*models.IndexRecommendation
 	for rows.Next() {
@@ -1421,7 +1423,7 @@ func (p *PostgresDB) GetAnomaliesBySeverity(ctx context.Context, severity string
 	if err != nil {
 		return nil, apperrors.DatabaseError("get anomalies by severity", err.Error())
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var anomalies []*models.QueryAnomaly
 	for rows.Next() {
@@ -1463,13 +1465,15 @@ func (p *PostgresDB) StoreAnomalies(ctx context.Context, anomalies []*models.Que
 	if err != nil {
 		return apperrors.DatabaseError("begin transaction", err.Error())
 	}
-	defer tx.Rollback()
+	defer func() {
+		_ = tx.Rollback()
+	}()
 
 	stmt, err := tx.PrepareContext(ctx, query)
 	if err != nil {
 		return apperrors.DatabaseError("prepare statement", err.Error())
 	}
-	defer stmt.Close()
+	defer func() { _ = stmt.Close() }()
 
 	for _, anomaly := range anomalies {
 		_, err := stmt.ExecContext(ctx,
@@ -1552,7 +1556,7 @@ func (p *PostgresDB) GetQueryBaselines(ctx context.Context, queryHash int64) ([]
 	if err != nil {
 		return nil, apperrors.DatabaseError("get query baselines", err.Error())
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var baselines []*models.QueryBaseline
 	for rows.Next() {
@@ -1671,7 +1675,7 @@ func (p *PostgresDB) GetWorkloadPatterns(ctx context.Context, databaseName, patt
 	if err != nil {
 		return nil, apperrors.DatabaseError("get workload patterns", err.Error())
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var patterns []models.WorkloadPattern
 	for rows.Next() {
@@ -1747,7 +1751,7 @@ func (p *PostgresDB) GetRewriteSuggestions(ctx context.Context, queryHash int64,
 	if err != nil {
 		return nil, apperrors.DatabaseError("get rewrite suggestions", err.Error())
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var suggestions []models.QueryRewriteSuggestion
 	for rows.Next() {
@@ -1798,7 +1802,7 @@ func (p *PostgresDB) OptimizeParameters(ctx context.Context, queryHash int64) ([
 	if err != nil {
 		return nil, apperrors.DatabaseError("get parameter suggestions", err.Error())
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var suggestions []models.ParameterTuningSuggestion
 	for rows.Next() {
@@ -1839,7 +1843,7 @@ func (p *PostgresDB) GetParameterOptimizationSuggestions(ctx context.Context, qu
 	if err != nil {
 		return nil, apperrors.DatabaseError("get parameter suggestions", err.Error())
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var suggestions []models.ParameterTuningSuggestion
 	for rows.Next() {
@@ -1937,7 +1941,7 @@ func (p *PostgresDB) GetOptimizationResults(ctx context.Context, recommendationI
 	if err != nil {
 		return nil, apperrors.DatabaseError("get optimization results", err.Error())
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var results []models.OptimizationResult
 	for rows.Next() {
@@ -2034,7 +2038,7 @@ func (p *PostgresDB) AggregateRecommendationsForQuery(ctx context.Context, query
 	if err != nil {
 		return 0, nil, apperrors.DatabaseError("aggregate recommendations", err.Error())
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var count int
 	var sourceTypes pq.StringArray
@@ -2090,7 +2094,7 @@ func (p *PostgresDB) GetOptimizationRecommendations(
 	if err != nil {
 		return nil, apperrors.DatabaseError("get recommendations", err.Error())
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var recommendations []models.OptimizationRecommendation
 	for rows.Next() {

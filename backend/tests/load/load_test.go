@@ -39,7 +39,7 @@ func TestMLClientLoadPredictions(t *testing.T) {
 	defer mockService.Close()
 
 	client := ml.NewClient(mockService.URL(), 5*time.Second, logger)
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	// Load test parameters
 	numGoroutines := 10
@@ -215,7 +215,7 @@ func TestConcurrentTrainingRequests(t *testing.T) {
 	defer mockService.Close()
 
 	client := ml.NewClient(mockService.URL(), 5*time.Second, logger)
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	numGoroutines := 5
 	trainingRequestsPerGoroutine := 20
@@ -337,7 +337,7 @@ func TestSustainedLoad(t *testing.T) {
 	defer mockService.Close()
 
 	client := ml.NewClient(mockService.URL(), 5*time.Second, logger)
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	// Run load for 5 seconds
 	duration := 5 * time.Second

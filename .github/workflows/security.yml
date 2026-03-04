@@ -1,0 +1,205 @@
+name: Security Scanning
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    - cron: '0 0 * * 0'  # Weekly scan on Sunday
+
+jobs:
+  npm-audit:
+    name: npm Dependency Audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Run npm audit
+        working-directory: frontend
+        continue-on-error: true
+        run: |
+          npm audit --audit-level=moderate || true
+          npm audit --json > npm-audit-report.json || true
+
+      - name: Check for vulnerabilities
+        working-directory: frontend
+        run: |
+          if npm audit | grep -q "found.*vulnerabilities"; then
+            echo "⚠️  Vulnerabilities found in npm dependencies"
+            npm audit fix --dry-run
+            exit 1
+          else
+            echo "✅ No vulnerabilities found"
+          fi
+
+      - name: Upload audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-audit-report
+          path: frontend/npm-audit-report.json
+          retention-days: 30
+
+  snyk-scan:
+    name: Snyk Vulnerability Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Snyk scan
+        uses: snyk/actions/node@master
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high --file=frontend/package.json
+
+  gosec-scan:
+    name: Go Security Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Gosec scan
+        uses: securego/gosec@master
+        with:
+          args: -no-fail -fmt json -out gosec-report.json ./backend
+
+      - name: Upload Gosec report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gosec-report
+          path: gosec-report.json
+          retention-days: 30
+
+  dependency-check:
+    name: Dependency License Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Check licenses
+        working-directory: frontend
+        continue-on-error: true
+        run: |
+          npm install -g license-checker
+          license-checker \
+            --onlyunknown \
+            --exclude MIT,Apache-2.0,ISC,BSD-3-Clause,BSD-2-Clause
+
+      - name: Generate license report
+        working-directory: frontend
+        run: |
+          license-checker --json > license-report.json
+          license-checker --csv > license-report.csv
+
+      - name: Upload license reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: license-reports
+          path: frontend/license-report.*
+          retention-days: 30
+
+  container-scan:
+    name: Container Image Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build Docker image for frontend
+        run: docker build -t pganalytics-frontend:latest frontend/
+
+      - name: Scan image with Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: pganalytics-frontend:latest
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: trivy-results.sarif
+          category: container-scan
+
+  secrets-scan:
+    name: Secrets Detection
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: TruffleHog Secret Scan
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+          extra_args: --debug
+
+  summary:
+    name: Security Summary
+    runs-on: ubuntu-latest
+    needs: [npm-audit, gosec-scan, dependency-check, container-scan, secrets-scan]
+    if: always()
+
+    steps:
+      - name: Check security scans
+        run: |
+          echo "Security Scanning Summary"
+          echo "========================="
+          echo "npm Audit: ${{ needs.npm-audit.result }}"
+          echo "Gosec: ${{ needs.gosec-scan.result }}"
+          echo "Dependencies: ${{ needs.dependency-check.result }}"
+          echo "Container: ${{ needs.container-scan.result }}"
+          echo "Secrets: ${{ needs.secrets-scan.result }}"
+
+          FAILED=0
+          [ "${{ needs.npm-audit.result }}" != "success" ] && [ "${{ needs.npm-audit.result }}" != "skipped" ] && FAILED=1
+          [ "${{ needs.gosec-scan.result }}" != "success" ] && [ "${{ needs.gosec-scan.result }}" != "skipped" ] && FAILED=1
+
+          if [ $FAILED -eq 1 ]; then
+            echo "⚠️  Some security scans detected issues"
+          else
+            echo "✅ Security scanning complete"
+          fi

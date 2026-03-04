@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/torresglauco/pganalytics-v3/backend/internal/ml"
-	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 )
 

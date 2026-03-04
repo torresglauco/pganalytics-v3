@@ -4,6 +4,9 @@ import { AuthPage } from './pages/AuthPage'
 import { apiClient } from './services/api'
 import './styles/index.css'
 
+// Test: GitHub Actions workflow verification
+// This change triggers E2E Tests, Frontend Quality, and Security Scanning workflows
+
 function App() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)

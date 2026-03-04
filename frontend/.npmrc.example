@@ -1,0 +1,27 @@
+# npm Configuration for pgAnalytics Frontend
+# Copy to .npmrc and customize as needed
+
+# Security
+audit-level=moderate
+fund=false
+
+# Logging
+loglevel=warn
+
+# Performance
+fetch-retry-mintimeout=20000
+fetch-retry-maxtimeout=120000
+fetch-timeout=60000
+
+# Scripts
+scripts-prepend-node-path=true
+
+# Legacy
+legacy-peer-deps=false
+
+# NPM Registry (uncomment if using private registry)
+# registry=https://registry.npmjs.org/
+# @your-scope:registry=https://your-registry.npmjs.org/
+
+# Authentication (use GitHub Secrets instead of hardcoding)
+# //registry.npmjs.org/:_authToken=${NPM_TOKEN}

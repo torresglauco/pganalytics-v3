@@ -44,7 +44,7 @@ jobs:
 
       - name: Start backend service
         run: |
-          docker-compose up -d api postgres timescaledb
+          docker compose up -d api postgres timescaledb
           # Wait for backend to be ready
           sleep 10
           for i in {1..30}; do
@@ -120,7 +120,7 @@ jobs:
 
       - name: Stop services
         if: always()
-        run: docker-compose down
+        run: docker compose down
 
   test-summary:
     name: E2E Test Summary

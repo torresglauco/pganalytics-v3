@@ -4,6 +4,13 @@ A modern, scalable PostgreSQL monitoring and analytics platform with machine lea
 
 **Status**: ✅ Production Ready | v3.2.0 | Ready for Deployment This Week
 
+## CI/CD Status
+
+[![E2E Tests](https://github.com/torresglauco/pganalytics-v3/actions/workflows/e2e-tests.yml/badge.svg)](https://github.com/torresglauco/pganalytics-v3/actions/workflows/e2e-tests.yml)
+[![Frontend Code Quality](https://github.com/torresglauco/pganalytics-v3/actions/workflows/frontend-quality.yml/badge.svg)](https://github.com/torresglauco/pganalytics-v3/actions/workflows/frontend-quality.yml)
+[![Backend Tests](https://github.com/torresglauco/pganalytics-v3/actions/workflows/backend-tests.yml/badge.svg)](https://github.com/torresglauco/pganalytics-v3/actions/workflows/backend-tests.yml)
+[![Security Scanning](https://github.com/torresglauco/pganalytics-v3/actions/workflows/security.yml/badge.svg)](https://github.com/torresglauco/pganalytics-v3/actions/workflows/security.yml)
+
 ## Key Highlights
 
 - **🚀 High-Performance Backend**: Go REST API with Swagger docs (400+ lines)

@@ -339,12 +339,7 @@ func TestClaims_GetTokenExpiresIn(t *testing.T) {
 	futureTime := now.Add(1 * time.Hour)
 
 	claims := &Claims{
-		RegisteredClaims: struct {
-			ExpiresAt *jwt.NumericDate
-			IssuedAt  *jwt.NumericDate
-			NotBefore *jwt.NumericDate
-			Subject   string
-		}{
+		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(futureTime),
 		},
 	}
@@ -360,12 +355,7 @@ func TestClaims_ExpiredToken(t *testing.T) {
 	pastTime := time.Now().Add(-1 * time.Hour)
 
 	claims := &Claims{
-		RegisteredClaims: struct {
-			ExpiresAt *jwt.NumericDate
-			IssuedAt  *jwt.NumericDate
-			NotBefore *jwt.NumericDate
-			Subject   string
-		}{
+		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(pastTime),
 		},
 	}

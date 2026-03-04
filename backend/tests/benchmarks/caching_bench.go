@@ -7,8 +7,6 @@ import (
 	"time"
 
 	"github.com/torresglauco/pganalytics-v3/backend/internal/cache"
-	"github.com/torresglauco/pganalytics-v3/backend/pkg/models"
-	"go.uber.org/zap/zaptest"
 )
 
 // BenchmarkCacheGetSet benchmarks basic cache get/set operations
@@ -222,52 +220,6 @@ func TestCacheThreadSafety(t *testing.T) {
 	metrics := c.GetMetrics()
 	if metrics.Hits == 0 {
 		t.Error("Expected cache hits > 0")
-	}
-}
-
-// BenchmarkFeatureExtractorWithCache simulates feature extraction with caching
-func BenchmarkFeatureExtractorWithCache(b *testing.B) {
-	c := cache.NewCache[string, *models.QueryFeatures](15*time.Minute, 10000)
-	defer c.Close()
-
-	// Simulate features
-	features := &models.QueryFeatures{
-		QueryHash: 12345,
-	}
-
-	b.ResetTimer()
-
-	for i := 0; i < b.N; i++ {
-		// Simulate cache hit/miss pattern (80% hit rate)
-		key := "feature:" + string(rune((i % 100)))
-
-		if i%5 == 0 { // 20% miss
-			c.Set(key, features)
-		} else { // 80% hit
-			_, _ = c.Get(key)
-		}
-	}
-}
-
-// BenchmarkPredictionCaching simulates ML prediction caching
-func BenchmarkPredictionCaching(b *testing.B) {
-	c := cache.NewCache[string, *models.PredictionCacheEntry](5*time.Minute, 10000)
-	defer c.Close()
-
-	prediction := &models.PredictionCacheEntry{
-		Time: time.Now(),
-	}
-
-	b.ResetTimer()
-
-	for i := 0; i < b.N; i++ {
-		key := "pred:" + string(rune((i % 100)))
-
-		if i%3 == 0 { // 33% miss
-			c.Set(key, prediction)
-		} else { // 67% hit
-			_, _ = c.Get(key)
-		}
 	}
 }
 

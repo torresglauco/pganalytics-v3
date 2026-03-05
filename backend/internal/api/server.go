@@ -1,6 +1,7 @@
 package api
 
 import (
+	"github.com/torresglauco/pganalytics-v3/backend/internal/audit"
 	"github.com/torresglauco/pganalytics-v3/backend/internal/auth"
 	"github.com/torresglauco/pganalytics-v3/backend/internal/cache"
 	"github.com/torresglauco/pganalytics-v3/backend/internal/config"
@@ -28,6 +29,7 @@ type Server struct {
 	secretManager    *crypto.SecretManager
 	sessionManager   *session.SessionManager
 	mfaManager       *auth.MFAManager
+	auditLogger      *audit.AuditLogger
 }
 
 // NewServer creates a new API server

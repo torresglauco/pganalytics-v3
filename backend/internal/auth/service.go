@@ -270,3 +270,24 @@ func (as *AuthService) ValidateUserToken(token string) (*models.User, error) {
 
 	return user, nil
 }
+
+// GenerateUserTokens generates access and refresh tokens for a user
+func (as *AuthService) GenerateUserTokens(user *models.User) (accessToken, refreshToken string, err error) {
+	if user == nil {
+		return "", "", apperrors.BadRequest("User cannot be nil", "")
+	}
+
+	// Generate access token
+	access, _, err := as.JWTManager.GenerateUserToken(user)
+	if err != nil {
+		return "", "", err
+	}
+
+	// Generate refresh token
+	refresh, _, err := as.JWTManager.GenerateUserRefreshToken(user)
+	if err != nil {
+		return "", "", err
+	}
+
+	return access, refresh, nil
+}

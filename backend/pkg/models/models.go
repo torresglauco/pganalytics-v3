@@ -477,8 +477,11 @@ type CreateUserRequest struct {
 // LoginResponse represents a successful login response
 type LoginResponse struct {
 	Token        string    `json:"token"`
+	AccessToken  string    `json:"access_token"`
 	RefreshToken string    `json:"refresh_token"`
+	SessionToken string    `json:"session_token,omitempty"`
 	ExpiresAt    time.Time `json:"expires_at"`
+	ExpiresIn    int       `json:"expires_in"`
 	User         *User     `json:"user"`
 }
 

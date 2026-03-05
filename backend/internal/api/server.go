@@ -6,6 +6,7 @@ import (
 	"github.com/torresglauco/pganalytics-v3/backend/internal/config"
 	"github.com/torresglauco/pganalytics-v3/backend/internal/crypto"
 	"github.com/torresglauco/pganalytics-v3/backend/internal/ml"
+	"github.com/torresglauco/pganalytics-v3/backend/internal/session"
 	"github.com/torresglauco/pganalytics-v3/backend/internal/storage"
 	"github.com/torresglauco/pganalytics-v3/backend/internal/timescale"
 	"github.com/gin-gonic/gin"
@@ -25,6 +26,8 @@ type Server struct {
 	cacheManager     *cache.Manager
 	rateLimiter      *RateLimiter
 	secretManager    *crypto.SecretManager
+	sessionManager   *session.SessionManager
+	mfaManager       *auth.MFAManager
 }
 
 // NewServer creates a new API server

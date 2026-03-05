@@ -35,27 +35,45 @@ func NewPostgresDB(connString string) (*PostgresDB, error) {
 		return nil, apperrors.DatabaseError("ping database", err.Error())
 	}
 
-	// Configure connection pool (Phase 4 scalability - increased for 500+ collectors)
-	// GetMaxDatabaseConns from config or use default
-	maxConns := 50 // Default, should be overridden by config
-	maxIdle := 15  // Default, should be overridden by config
+	// Configure connection pool (Phase 4 scalability - optimized for 500+ collectors)
+	// Reading from environment variables set by Helm/config
 
-	// Check environment variables for scaling (from config)
+	// Max open connections (from config, default: 100 for 500+ collectors)
+	maxConns := 100
 	if maxConnsEnv := os.Getenv("MAX_DATABASE_CONNS"); maxConnsEnv != "" {
 		if m, err := strconv.Atoi(maxConnsEnv); err == nil && m > 0 {
 			maxConns = m
 		}
 	}
+
+	// Max idle connections (from config, default: 20 for better resource usage)
+	maxIdle := 20
 	if maxIdleEnv := os.Getenv("MAX_IDLE_DATABASE_CONNS"); maxIdleEnv != "" {
 		if m, err := strconv.Atoi(maxIdleEnv); err == nil && m > 0 {
 			maxIdle = m
 		}
 	}
 
+	// Connection max lifetime (from config, default: 15 minutes to prevent stale connections)
+	connMaxLifetime := 15 * time.Minute
+	if lifeTimeEnv := os.Getenv("DATABASE_CONN_MAX_LIFETIME"); lifeTimeEnv != "" {
+		if d, err := time.ParseDuration(lifeTimeEnv); err == nil && d > 0 {
+			connMaxLifetime = d
+		}
+	}
+
+	// Connection max idle time (from config, default: 10 minutes)
+	connMaxIdleTime := 10 * time.Minute
+	if idleTimeEnv := os.Getenv("DATABASE_CONN_MAX_IDLE_TIME"); idleTimeEnv != "" {
+		if d, err := time.ParseDuration(idleTimeEnv); err == nil && d > 0 {
+			connMaxIdleTime = d
+		}
+	}
+
 	db.SetMaxOpenConns(maxConns)
 	db.SetMaxIdleConns(maxIdle)
-	db.SetConnMaxLifetime(5 * time.Minute)
-	db.SetConnMaxIdleTime(10 * time.Minute)
+	db.SetConnMaxLifetime(connMaxLifetime)
+	db.SetConnMaxIdleTime(connMaxIdleTime)
 
 	// Set search_path to include pganalytics schema
 	if _, err := db.ExecContext(ctx, "SET search_path TO pganalytics, public"); err != nil {

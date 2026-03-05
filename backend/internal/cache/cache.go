@@ -21,13 +21,13 @@ type cacheItem[V any] struct {
 
 // Cache is a generic thread-safe in-memory cache with TTL support and LRU eviction
 type Cache[K comparable, V any] struct {
-	items    map[K]*cacheItem[V]
-	mu       sync.RWMutex
-	ttl      time.Duration
-	maxSize  int
-	metrics  *CacheMetrics
-	stopCh   chan struct{}
-	wg       sync.WaitGroup
+	items   map[K]*cacheItem[V]
+	mu      sync.RWMutex
+	ttl     time.Duration
+	maxSize int
+	metrics *CacheMetrics
+	stopCh  chan struct{}
+	wg      sync.WaitGroup
 }
 
 // NewCache creates a new cache with the specified TTL and max size

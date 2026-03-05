@@ -9,16 +9,16 @@ import (
 type RateLimiter struct {
 	mu       sync.RWMutex
 	buckets  map[string]*TokenBucket
-	capacity int       // tokens per minute
-	refill   int       // tokens added per second
+	capacity int // tokens per minute
+	refill   int // tokens added per second
 	interval time.Duration
 }
 
 // TokenBucket represents a single rate limit bucket for a client
 type TokenBucket struct {
-	tokens    float64
+	tokens     float64
 	lastRefill time.Time
-	capacity  int
+	capacity   int
 }
 
 // NewRateLimiter creates a new rate limiter
@@ -41,9 +41,9 @@ func (rl *RateLimiter) Allow(clientID string) bool {
 	bucket, exists := rl.buckets[clientID]
 	if !exists {
 		bucket = &TokenBucket{
-			tokens:    float64(rl.capacity),
+			tokens:     float64(rl.capacity),
 			lastRefill: time.Now(),
-			capacity:  rl.capacity,
+			capacity:   rl.capacity,
 		}
 		rl.buckets[clientID] = bucket
 	}

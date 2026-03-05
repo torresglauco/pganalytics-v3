@@ -8,14 +8,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/torresglauco/pganalytics-v3/backend/internal/api"
-	"github.com/torresglauco/pganalytics-v3/backend/internal/auth"
-	"github.com/torresglauco/pganalytics-v3/backend/internal/config"
-	"github.com/torresglauco/pganalytics-v3/backend/pkg/models"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/torresglauco/pganalytics-v3/backend/internal/api"
+	"github.com/torresglauco/pganalytics-v3/backend/internal/auth"
+	"github.com/torresglauco/pganalytics-v3/backend/internal/config"
+	"github.com/torresglauco/pganalytics-v3/backend/pkg/models"
 	"go.uber.org/zap"
 )
 

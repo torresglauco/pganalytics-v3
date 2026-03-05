@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/lib/pq"
 	apperrors "github.com/torresglauco/pganalytics-v3/backend/pkg/errors"
 	"github.com/torresglauco/pganalytics-v3/backend/pkg/models"
-	"github.com/lib/pq"
 )
 
 // PostgresDB wraps a PostgreSQL database connection
@@ -37,8 +37,8 @@ func NewPostgresDB(connString string) (*PostgresDB, error) {
 
 	// Configure connection pool (Phase 4 scalability - increased for 500+ collectors)
 	// GetMaxDatabaseConns from config or use default
-	maxConns := 50   // Default, should be overridden by config
-	maxIdle := 15    // Default, should be overridden by config
+	maxConns := 50 // Default, should be overridden by config
+	maxIdle := 15  // Default, should be overridden by config
 
 	// Check environment variables for scaling (from config)
 	if maxConnsEnv := os.Getenv("MAX_DATABASE_CONNS"); maxConnsEnv != "" {
@@ -2046,7 +2046,6 @@ func (p *PostgresDB) AggregateRecommendationsForQuery(ctx context.Context, query
 		return 0, nil, apperrors.BadRequest("query_hash", "Must be a positive integer")
 	}
 
-
 	// Call SQL function to aggregate recommendations
 	rows, err := p.db.QueryContext(
 		ctx,
@@ -2107,7 +2106,6 @@ func (p *PostgresDB) GetOptimizationRecommendations(
 	query += fmt.Sprintf(` ORDER BY roi_score DESC, confidence_score DESC LIMIT $%d`, argNum)
 	args = append(args, limit)
 
-
 	rows, err := p.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, apperrors.DatabaseError("get recommendations", err.Error())
@@ -2152,7 +2150,6 @@ func (p *PostgresDB) ImplementRecommendation(
 		return nil, apperrors.BadRequest("query_hash", "Must be a positive integer")
 	}
 
-
 	// Call SQL function to record implementation
 	var implID int64
 	var status string
@@ -2170,15 +2167,14 @@ func (p *PostgresDB) ImplementRecommendation(
 		return nil, apperrors.DatabaseError("record implementation", err.Error())
 	}
 
-
 	t := time.Now().UTC()
 	return &models.OptimizationImplementation{
-		ID:                       implID,
-		RecommendationID:         recommendationID,
-		QueryHash:                queryHash,
-		Status:                   status,
-		ImplementationNotes:      &notes,
-		ImplementationTimestamp:  t,
+		ID:                      implID,
+		RecommendationID:        recommendationID,
+		QueryHash:               queryHash,
+		Status:                  status,
+		ImplementationNotes:     &notes,
+		ImplementationTimestamp: t,
 	}, nil
 }
 
@@ -2191,7 +2187,6 @@ func (p *PostgresDB) MeasureImplementationResults(
 	if implementationID <= 0 {
 		return nil, apperrors.BadRequest("implementation_id", "Must be a positive integer")
 	}
-
 
 	// Call SQL function to measure results
 	var implID int64

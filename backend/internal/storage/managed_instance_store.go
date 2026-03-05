@@ -73,34 +73,34 @@ func (p *PostgresDB) CreateManagedInstance(ctx context.Context, instance *models
 	}
 
 	result := &models.ManagedInstance{
-		ID:                      id,
-		Name:                    instance.Name,
-		Description:             ptrString(instance.Description),
-		AWSRegion:               instance.AWSRegion,
-		Endpoint:             instance.Endpoint,
-		Port:                    instance.Port,
-		EngineVersion:           ptrString(instance.EngineVersion),
-		DBInstanceClass:         ptrString(instance.DBInstanceClass),
-		AllocatedStorageGB:      ptrInt(instance.AllocatedStorageGB),
-		Environment:             instance.Environment,
-		MasterUsername:          instance.MasterUsername,
-		SecretID:                secretID,
-		EnableEnhancedMonitoring: instance.EnableEnhancedMonitoring,
-		MonitoringInterval:      instance.MonitoringInterval,
-		SSLEnabled:              instance.SSLEnabled,
-		SSLMode:                 instance.SSLMode,
-		ConnectionTimeout:       instance.ConnectionTimeout,
-		IsActive:                true,
-		Status:                  "registered",
-		MultiAZ:                 instance.MultiAZ,
-		BackupRetentionDays:     ptrInt(instance.BackupRetentionDays),
-		PreferredBackupWindow:   ptrString(instance.PreferredBackupWindow),
+		ID:                         id,
+		Name:                       instance.Name,
+		Description:                ptrString(instance.Description),
+		AWSRegion:                  instance.AWSRegion,
+		Endpoint:                   instance.Endpoint,
+		Port:                       instance.Port,
+		EngineVersion:              ptrString(instance.EngineVersion),
+		DBInstanceClass:            ptrString(instance.DBInstanceClass),
+		AllocatedStorageGB:         ptrInt(instance.AllocatedStorageGB),
+		Environment:                instance.Environment,
+		MasterUsername:             instance.MasterUsername,
+		SecretID:                   secretID,
+		EnableEnhancedMonitoring:   instance.EnableEnhancedMonitoring,
+		MonitoringInterval:         instance.MonitoringInterval,
+		SSLEnabled:                 instance.SSLEnabled,
+		SSLMode:                    instance.SSLMode,
+		ConnectionTimeout:          instance.ConnectionTimeout,
+		IsActive:                   true,
+		Status:                     "registered",
+		MultiAZ:                    instance.MultiAZ,
+		BackupRetentionDays:        ptrInt(instance.BackupRetentionDays),
+		PreferredBackupWindow:      ptrString(instance.PreferredBackupWindow),
 		PreferredMaintenanceWindow: ptrString(instance.PreferredMaintenanceWindow),
-		Tags:                    instance.Tags,
-		CreatedAt:               createdAt.Time,
-		UpdatedAt:               updatedAt.Time,
-		CreatedBy:               &userID,
-		UpdatedBy:               &userID,
+		Tags:                       instance.Tags,
+		CreatedAt:                  createdAt.Time,
+		UpdatedAt:                  updatedAt.Time,
+		CreatedBy:                  &userID,
+		UpdatedBy:                  &userID,
 	}
 
 	return result, nil
@@ -369,6 +369,7 @@ func (p *PostgresDB) ListManagedInstancesForHealthCheck(ctx context.Context) ([]
 
 	return instances, nil
 }
+
 // Helper functions for pointer conversion
 func ptrString(s string) *string {
 	if s == "" {

@@ -6,14 +6,14 @@ import (
 
 // CacheMetricsSnapshot represents a snapshot of cache performance metrics
 type CacheMetricsSnapshot struct {
-	FeatureCacheMetrics    CacheDetailedMetrics `json:"feature_cache"`
-	PredictionCacheMetrics CacheDetailedMetrics `json:"prediction_cache"`
+	FeatureCacheMetrics     CacheDetailedMetrics `json:"feature_cache"`
+	PredictionCacheMetrics  CacheDetailedMetrics `json:"prediction_cache"`
 	FingerprintCacheMetrics CacheDetailedMetrics `json:"fingerprint_cache"`
 	ExplainPlanCacheMetrics CacheDetailedMetrics `json:"explain_plan_cache"`
-	AnomalyCacheMetrics    CacheDetailedMetrics `json:"anomaly_cache"`
-	TotalCacheHits         int64                `json:"total_cache_hits"`
-	TotalCacheMisses       int64                `json:"total_cache_misses"`
-	OverallHitRate         float64              `json:"overall_hit_rate"`
+	AnomalyCacheMetrics     CacheDetailedMetrics `json:"anomaly_cache"`
+	TotalCacheHits          int64                `json:"total_cache_hits"`
+	TotalCacheMisses        int64                `json:"total_cache_misses"`
+	OverallHitRate          float64              `json:"overall_hit_rate"`
 }
 
 // CacheDetailedMetrics represents detailed metrics for a single cache
@@ -49,14 +49,14 @@ func CalculateMetricsSnapshot(manager *cache.Manager) *CacheMetricsSnapshot {
 	}
 
 	return &CacheMetricsSnapshot{
-		FeatureCacheMetrics:    featureMetrics,
-		PredictionCacheMetrics: predictionMetrics,
+		FeatureCacheMetrics:     featureMetrics,
+		PredictionCacheMetrics:  predictionMetrics,
 		FingerprintCacheMetrics: fingerprintMetrics,
 		ExplainPlanCacheMetrics: explainPlanMetrics,
-		AnomalyCacheMetrics:    anomalyMetrics,
-		TotalCacheHits:         totalHits,
-		TotalCacheMisses:       totalMisses,
-		OverallHitRate:         overallHitRate,
+		AnomalyCacheMetrics:     anomalyMetrics,
+		TotalCacheHits:          totalHits,
+		TotalCacheMisses:        totalMisses,
+		OverallHitRate:          overallHitRate,
 	}
 }
 
@@ -77,8 +77,8 @@ func calculateDetailedMetrics(m cache.CacheMetrics) CacheDetailedMetrics {
 
 // CacheStatusResponse is the response for cache status endpoint
 type CacheStatusResponse struct {
-	Enabled    bool                  `json:"enabled"`
-	MaxSize    int                   `json:"max_size"`
-	Metrics    *CacheMetricsSnapshot `json:"metrics"`
-	Message    string                `json:"message"`
+	Enabled bool                  `json:"enabled"`
+	MaxSize int                   `json:"max_size"`
+	Metrics *CacheMetricsSnapshot `json:"metrics"`
+	Message string                `json:"message"`
 }

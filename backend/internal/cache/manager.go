@@ -8,12 +8,12 @@ import (
 
 // Manager coordinates all caches for the application
 type Manager struct {
-	featureCache    *Cache[string, interface{}]
-	predictionCache *Cache[string, interface{}]
+	featureCache     *Cache[string, interface{}]
+	predictionCache  *Cache[string, interface{}]
 	fingerprintCache *Cache[string, interface{}]
 	explainPlanCache *Cache[string, interface{}]
-	anomalyCache    *Cache[string, interface{}]
-	logger          *zap.Logger
+	anomalyCache     *Cache[string, interface{}]
+	logger           *zap.Logger
 }
 
 // NewManager creates a new cache manager with configured TTLs
@@ -24,12 +24,12 @@ func NewManager(
 	logger *zap.Logger,
 ) *Manager {
 	return &Manager{
-		featureCache:    NewCache[string, interface{}](featureCacheTTL, maxSize),
-		predictionCache: NewCache[string, interface{}](predictionCacheTTL, maxSize),
-		fingerprintCache: NewCache[string, interface{}](10 * time.Minute, maxSize),
-		explainPlanCache: NewCache[string, interface{}](30 * time.Minute, maxSize),
-		anomalyCache:    NewCache[string, interface{}](5 * time.Minute, maxSize),
-		logger:          logger,
+		featureCache:     NewCache[string, interface{}](featureCacheTTL, maxSize),
+		predictionCache:  NewCache[string, interface{}](predictionCacheTTL, maxSize),
+		fingerprintCache: NewCache[string, interface{}](10*time.Minute, maxSize),
+		explainPlanCache: NewCache[string, interface{}](30*time.Minute, maxSize),
+		anomalyCache:     NewCache[string, interface{}](5*time.Minute, maxSize),
+		logger:           logger,
 	}
 }
 
@@ -110,21 +110,21 @@ func (m *Manager) ClearAnomalies(key string) {
 
 // GetMetrics returns combined cache metrics
 type ManagerMetrics struct {
-	FeatureCacheMetrics    CacheMetrics
-	PredictionCacheMetrics CacheMetrics
+	FeatureCacheMetrics     CacheMetrics
+	PredictionCacheMetrics  CacheMetrics
 	FingerprintCacheMetrics CacheMetrics
 	ExplainPlanCacheMetrics CacheMetrics
-	AnomalyCacheMetrics    CacheMetrics
+	AnomalyCacheMetrics     CacheMetrics
 }
 
 // GetMetrics returns metrics for all caches
 func (m *Manager) GetMetrics() ManagerMetrics {
 	return ManagerMetrics{
-		FeatureCacheMetrics:    m.featureCache.GetMetrics(),
-		PredictionCacheMetrics: m.predictionCache.GetMetrics(),
+		FeatureCacheMetrics:     m.featureCache.GetMetrics(),
+		PredictionCacheMetrics:  m.predictionCache.GetMetrics(),
 		FingerprintCacheMetrics: m.fingerprintCache.GetMetrics(),
 		ExplainPlanCacheMetrics: m.explainPlanCache.GetMetrics(),
-		AnomalyCacheMetrics:    m.anomalyCache.GetMetrics(),
+		AnomalyCacheMetrics:     m.anomalyCache.GetMetrics(),
 	}
 }
 

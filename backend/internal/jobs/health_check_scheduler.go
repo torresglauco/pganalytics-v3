@@ -16,18 +16,18 @@ import (
 
 // HealthCheckScheduler manages periodic health checks for managed instances
 type HealthCheckScheduler struct {
-	db              *storage.PostgresDB
-	secretManager   *crypto.SecretManager
-	logger          *zap.Logger
-	ctx             context.Context
-	cancel          context.CancelFunc
-	wg              sync.WaitGroup
-	mu              sync.RWMutex
-	isRunning       bool
-	tickInterval    time.Duration
-	jitterFactor    float64
-	maxConcurrency  int
-	activeTasks     int
+	db             *storage.PostgresDB
+	secretManager  *crypto.SecretManager
+	logger         *zap.Logger
+	ctx            context.Context
+	cancel         context.CancelFunc
+	wg             sync.WaitGroup
+	mu             sync.RWMutex
+	isRunning      bool
+	tickInterval   time.Duration
+	jitterFactor   float64
+	maxConcurrency int
+	activeTasks    int
 }
 
 // NewHealthCheckScheduler creates a new health check scheduler

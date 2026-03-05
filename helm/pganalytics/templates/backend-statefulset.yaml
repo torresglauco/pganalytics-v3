@@ -34,7 +34,16 @@ spec:
       initContainers:
         - name: wait-for-postgresql
           image: busybox:1.35
-          command: ['sh', '-c', 'until nc -z {{ .Values.postgresql.service.host | default "postgresql" }} {{ .Values.postgresql.service.port | default 5432 }}; do echo waiting for postgresql; sleep 2; done']
+          command:
+            - 'sh'
+            - '-c'
+            - |
+              # Wait for PostgreSQL failover service
+              until nc -z {{ include "pganalytics.fullname" . }}-postgresql-readwrite.{{ include "pganalytics.namespace" . }}.svc.cluster.local {{ .Values.postgresql.service.port | default 5432 }}; do
+                echo "waiting for postgresql primary..."
+                sleep 2
+              done
+              echo "PostgreSQL is ready"
         - name: migrate-database
           image: "{{ .Values.global.imageRegistry }}/{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}"
           imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
@@ -62,6 +71,43 @@ spec:
             {{- toYaml .Values.backend.resources | nindent 12 }}
           env:
             {{- toYaml .Values.backend.env | nindent 12 }}
+            # Database connection pooling for HA
+            - name: DATABASE_URL
+              value: "postgresql://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@{{ include "pganalytics.fullname" . }}-postgresql-readwrite.{{ include "pganalytics.namespace" . }}.svc.cluster.local:5432/pganalytics"
+            - name: MAX_DATABASE_CONNS
+              value: "{{ .Values.postgresql.connectionPool.maxOpenConns | default 100 }}"
+            - name: MAX_IDLE_DATABASE_CONNS
+              value: "{{ .Values.postgresql.connectionPool.maxIdleConns | default 20 }}"
+            - name: DATABASE_CONN_MAX_LIFETIME
+              value: "{{ .Values.postgresql.connectionPool.connMaxLifetime | default "15m" }}"
+            # Redis session store with failover
+            - name: REDIS_URL
+              value: "redis://{{ include "pganalytics.fullname" . }}-redis-master.{{ include "pganalytics.namespace" . }}.svc.cluster.local:6379/0"
+            - name: REDIS_SENTINEL_ADDRS
+              value: "{{ include "pganalytics.fullname" . }}-redis-sentinel-client.{{ include "pganalytics.namespace" . }}.svc.cluster.local:26379"
+            - name: REDIS_SENTINEL_MASTER_NAME
+              value: "{{ include "pganalytics.fullname" . }}-redis-master"
+            - name: SESSION_STORE_TYPE
+              value: "redis"
+            - name: SESSION_TTL_SECONDS
+              value: "{{ .Values.redis.sessionStore.ttl | default 86400 }}"
+          # Graceful shutdown lifecycle
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                  - /bin/sh
+                  - -c
+                  - |
+                    # Signal readiness probe to fail (stop accepting new requests)
+                    touch /tmp/graceful-shutdown
+                    echo "Starting graceful shutdown (30s timeout)..."
+                    # Wait for existing requests to complete
+                    sleep 25
+                    # Close connections
+                    kill -TERM 1 || true
+                    # Final wait for process termination
+                    sleep 5
           volumeMounts:
             {{- toYaml .Values.backend.volumeMounts | nindent 12 }}
             - name: tmp
@@ -76,6 +122,10 @@ spec:
             defaultMode: 0400
         - name: tmp
           emptyDir: {}
+
+      # Graceful shutdown timeout (must be >= preStop duration)
+      terminationGracePeriodSeconds: 40
+
       {{- with .Values.affinity }}
       affinity:
         {{- toYaml . | nindent 8 }}

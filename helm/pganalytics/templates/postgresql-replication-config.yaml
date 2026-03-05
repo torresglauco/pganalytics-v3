@@ -1,0 +1,148 @@
+{{- if and .Values.postgresql.enabled .Values.postgresql.replication.enabled }}
+---
+# PostgreSQL Primary Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "pganalytics.fullname" . }}-postgresql-primary-config
+  namespace: {{ include "pganalytics.namespace" . }}
+  labels:
+    {{- include "pganalytics.labels" . | nindent 4 }}
+    app.kubernetes.io/component: postgresql-primary
+data:
+  postgresql.conf: |
+    # PostgreSQL Replication Configuration (Primary)
+    # Listen on all interfaces for replica connections
+    listen_addresses = '*'
+
+    # WAL (Write-Ahead Log) Settings
+    wal_level = replica
+    max_wal_senders = {{ .Values.postgresql.replication.maxWalSenders | default 5 }}
+    max_replication_slots = {{ .Values.postgresql.replication.maxReplicationSlots | default 3 }}
+    wal_keep_size = {{ .Values.postgresql.replication.walKeepSize | default "1GB" }}
+
+    # Replication timeout settings
+    wal_sender_timeout = {{ .Values.postgresql.replication.walSenderTimeout | default "60s" }}
+    wal_retrieve_retry_interval = 5s
+
+    # Checkpoint settings (optimize for replication)
+    checkpoint_timeout = 15min
+    checkpoint_completion_target = 0.9
+    max_wal_size = 4GB
+    min_wal_size = 1GB
+
+    # Hot standby feedback (replica sends feedback to primary)
+    hot_standby_feedback = on
+
+    # Enable logical replication if needed for CDC
+    logical_decoding_work_mem = 64MB
+
+    # Performance tuning for replication
+    shared_buffers = 256MB
+    effective_cache_size = 2GB
+    maintenance_work_mem = 64MB
+    work_mem = 4MB
+
+    # Logging
+    log_replication_commands = on
+    log_connections = on
+    log_disconnections = on
+    log_duration = off
+    log_min_duration_statement = 1000
+
+  pg_hba.conf: |
+    # PostgreSQL HBA (Host Based Authentication) Configuration
+    local   all             all                                     trust
+    host    all             all             127.0.0.1/32            trust
+    host    all             all             ::1/128                 trust
+    host    replication     replication     0.0.0.0/0              md5
+    host    replication     replication     ::/0                    md5
+    host    all             all             0.0.0.0/0              md5
+    host    all             all             ::/0                    md5
+
+---
+# PostgreSQL Replica Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "pganalytics.fullname" . }}-postgresql-replica-config
+  namespace: {{ include "pganalytics.namespace" . }}
+  labels:
+    {{- include "pganalytics.labels" . | nindent 4 }}
+    app.kubernetes.io/component: postgresql-replica
+data:
+  postgresql.conf: |
+    # PostgreSQL Replication Configuration (Replica/Standby)
+    listen_addresses = '*'
+
+    # Standby mode
+    wal_level = replica
+
+    # Hot standby (allow queries on standby)
+    hot_standby = on
+    hot_standby_feedback = on
+
+    # Recovery settings
+    recovery_target_timeline = 'latest'
+
+    # Performance tuning
+    shared_buffers = 256MB
+    effective_cache_size = 2GB
+    maintenance_work_mem = 64MB
+    work_mem = 4MB
+
+    # Logging
+    log_connections = on
+    log_disconnections = on
+    log_replication_commands = on
+
+  pg_hba.conf: |
+    # PostgreSQL HBA (Host Based Authentication) Configuration for Replica
+    local   all             all                                     trust
+    host    all             all             127.0.0.1/32            trust
+    host    all             all             ::1/128                 trust
+    host    replication     replication     0.0.0.0/0              md5
+    host    replication     replication     ::/0                    md5
+    host    all             all             0.0.0.0/0              md5
+    host    all             all             ::/0                    md5
+
+---
+# PostgreSQL Recovery Configuration for Replicas
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "pganalytics.fullname" . }}-postgresql-recovery-config
+  namespace: {{ include "pganalytics.namespace" . }}
+  labels:
+    {{- include "pganalytics.labels" . | nindent 4 }}
+    app.kubernetes.io/component: postgresql-replica
+data:
+  recovery.conf: |
+    # Recovery configuration for standby PostgreSQL
+    standby_mode = 'on'
+    primary_conninfo = 'host={{ include "pganalytics.fullname" . }}-postgresql-primary.{{ include "pganalytics.namespace" . }}.svc.cluster.local port=5432 user=replication password=<REPLICATION_PASSWORD> application_name=pganalytics-replica'
+
+    # Streaming replication settings
+    restore_command = ''  # Not used with streaming replication
+
+    # Trigger file for promoting replica to primary
+    trigger_file = '/tmp/promote_to_primary'
+
+    # Recovery target settings
+    recovery_target_timeline = 'latest'
+
+---
+# PostgreSQL Replication Secrets
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ include "pganalytics.fullname" . }}-postgresql-replication
+  namespace: {{ include "pganalytics.namespace" . }}
+  labels:
+    {{- include "pganalytics.labels" . | nindent 4 }}
+type: Opaque
+data:
+  # These should be overridden in production with external secret management
+  username: {{ .Values.postgresql.replication.username | b64enc | default (b64enc "replication") }}
+  password: {{ .Values.postgresql.replication.password | b64enc | default (b64enc "replication_secure_password_change_me") }}
+{{- end }}

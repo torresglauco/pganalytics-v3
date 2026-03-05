@@ -78,6 +78,24 @@ postgresql:
       cpu: 2000m
       memory: 2Gi
 
+  # High Availability Replication Settings
+  replication:
+    enabled: true
+    replicas: 1  # Number of standby replicas (increase for more HA)
+    maxWalSenders: 5
+    maxReplicationSlots: 3
+    walKeepSize: "1GB"
+    walSenderTimeout: "60s"
+    # Replication credentials (override in production with external secrets)
+    username: replication
+    password: "replication_secure_password_change_me"
+
+  # Connection pooling for scalability
+  connectionPool:
+    maxOpenConns: 100
+    maxIdleConns: 20
+    connMaxLifetime: "15m"
+
 redis:
   persistence:
     enabled: true
@@ -91,6 +109,24 @@ redis:
     requests:
       cpu: 500m
       memory: 256Mi
+
+  # Redis Sentinel for automatic failover
+  sentinel:
+    enabled: true
+    replicas: 3  # Number of Sentinel instances
+    quorum: 2    # Number of Sentinels needed to agree on failover
+    downTimeout: 5000      # Time in ms to mark master as down
+    failoverTimeout: 30000 # Time in ms for failover operation
+
+  # Redis replication settings
+  replication:
+    enabled: true
+    replicas: 2  # Number of read replicas
+
+  # Session storage settings
+  sessionStore:
+    ttl: 86400  # Session TTL in seconds (24 hours)
+    prefix: "session:"
 
 grafana:
   persistence:

@@ -1,0 +1,158 @@
+{{- if and .Values.redis.enabled .Values.redis.sentinel.enabled }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "pganalytics.fullname" . }}-redis-sentinel
+  namespace: {{ include "pganalytics.namespace" . }}
+  labels:
+    {{- include "pganalytics.labels" . | nindent 4 }}
+    app.kubernetes.io/component: redis-sentinel
+spec:
+  serviceName: {{ include "pganalytics.fullname" . }}-redis-sentinel
+  replicas: {{ .Values.redis.sentinel.replicas | default 3 }}
+  selector:
+    matchLabels:
+      {{- include "pganalytics.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: redis-sentinel
+  template:
+    metadata:
+      labels:
+        {{- include "pganalytics.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: redis-sentinel
+    spec:
+      securityContext:
+        fsGroup: 999
+        runAsUser: 999
+        runAsNonRoot: true
+
+      serviceAccountName: {{ include "pganalytics.serviceAccountName" . }}
+
+      containers:
+        - name: redis-sentinel
+          image: redis:7-alpine
+          imagePullPolicy: IfNotPresent
+
+          command:
+            - redis-sentinel
+            - /etc/redis/sentinel.conf
+            - "--port"
+            - "26379"
+
+          ports:
+            - name: sentinel
+              containerPort: 26379
+              protocol: TCP
+
+          env:
+            - name: REDIS_MASTER_HOST
+              value: {{ include "pganalytics.fullname" . }}-redis-master
+            - name: REDIS_MASTER_PORT
+              value: "6379"
+            - name: REDIS_SENTINEL_PORT
+              value: "26379"
+            - name: REDIS_QUORUM
+              value: {{ .Values.redis.sentinel.quorum | default "2" | quote }}
+            - name: REDIS_FAILOVER_TIMEOUT
+              value: {{ .Values.redis.sentinel.failoverTimeout | default "30000" | quote }}
+            - name: REDIS_DOWN_TIMEOUT
+              value: {{ .Values.redis.sentinel.downTimeout | default "5000" | quote }}
+
+          # Readiness probe
+          readinessProbe:
+            exec:
+              command:
+                - redis-cli
+                - -p
+                - "26379"
+                - "ping"
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 2
+
+          # Liveness probe
+          livenessProbe:
+            exec:
+              command:
+                - redis-cli
+                - -p
+                - "26379"
+                - "ping"
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+
+          volumeMounts:
+            - name: config
+              mountPath: /etc/redis
+            - name: data
+              mountPath: /data
+
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "pganalytics.fullname" . }}-redis-sentinel-config
+            defaultMode: 0755
+
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: [ "ReadWriteOnce" ]
+        storageClassName: {{ .Values.redis.persistence.storageClass | default "standard" }}
+        resources:
+          requests:
+            storage: 1Gi
+
+---
+# Redis Sentinel Service (headless for discovery)
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "pganalytics.fullname" . }}-redis-sentinel
+  namespace: {{ include "pganalytics.namespace" . }}
+  labels:
+    {{- include "pganalytics.labels" . | nindent 4 }}
+    app.kubernetes.io/component: redis-sentinel
+spec:
+  type: ClusterIP
+  clusterIP: None
+  selector:
+    {{- include "pganalytics.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: redis-sentinel
+  ports:
+    - name: sentinel
+      port: 26379
+      targetPort: sentinel
+      protocol: TCP
+
+---
+# Redis Sentinel Client Service (for external access)
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "pganalytics.fullname" . }}-redis-sentinel-client
+  namespace: {{ include "pganalytics.namespace" . }}
+  labels:
+    {{- include "pganalytics.labels" . | nindent 4 }}
+    app.kubernetes.io/component: redis-sentinel
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "pganalytics.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: redis-sentinel
+  ports:
+    - name: sentinel
+      port: 26379
+      targetPort: sentinel
+      protocol: TCP
+{{- end }}

@@ -1,0 +1,152 @@
+{{- if and .Values.postgresql.enabled .Values.postgresql.replication.enabled }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "pganalytics.fullname" . }}-postgresql-replica
+  namespace: {{ include "pganalytics.namespace" . }}
+  labels:
+    {{- include "pganalytics.labels" . | nindent 4 }}
+    app.kubernetes.io/component: postgresql-replica
+spec:
+  serviceName: {{ include "pganalytics.fullname" . }}-postgresql-replica
+  replicas: {{ .Values.postgresql.replication.replicas | default 1 }}
+  selector:
+    matchLabels:
+      {{- include "pganalytics.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: postgresql-replica
+  template:
+    metadata:
+      labels:
+        {{- include "pganalytics.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: postgresql-replica
+    spec:
+      securityContext:
+        fsGroup: 999
+      serviceAccountName: {{ include "pganalytics.serviceAccountName" . }}
+
+      initContainers:
+        # Wait for primary PostgreSQL to be ready before starting replica
+        - name: wait-for-primary
+          image: busybox:1.35
+          command:
+            - 'sh'
+            - '-c'
+            - |
+              until nc -z {{ include "pganalytics.fullname" . }}-postgresql-primary.{{ include "pganalytics.namespace" . }}.svc.cluster.local {{ .Values.postgresql.service.port | default 5432 }}; do
+                echo "Waiting for primary PostgreSQL..."
+                sleep 2
+              done
+              echo "Primary PostgreSQL is ready"
+
+        # Clone base backup from primary if this is first replica
+        - name: clone-base-backup
+          image: "{{ .Values.global.imageRegistry }}/{{ .Values.postgresql.image.repository }}:{{ .Values.postgresql.image.tag }}"
+          imagePullPolicy: {{ .Values.postgresql.image.pullPolicy }}
+          env:
+            - name: PGUSER
+              value: replication
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "pganalytics.fullname" . }}-postgresql-replication
+                  key: password
+            - name: PRIMARY_HOST
+              value: {{ include "pganalytics.fullname" . }}-postgresql-primary.{{ include "pganalytics.namespace" . }}.svc.cluster.local
+          command:
+            - 'sh'
+            - '-c'
+            - |
+              # Check if data directory has files (skip backup if already cloned)
+              if [ -z "$(ls -A /var/lib/postgresql/data)" ]; then
+                echo "Performing base backup from primary..."
+                pg_basebackup -h $PRIMARY_HOST -D /var/lib/postgresql/data -U replication -v -P -W
+                echo "Base backup completed"
+              else
+                echo "Data directory already populated, skipping backup"
+              fi
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+
+      containers:
+        - name: postgresql-replica
+          image: "{{ .Values.global.imageRegistry }}/{{ .Values.postgresql.image.repository }}:{{ .Values.postgresql.image.tag }}"
+          imagePullPolicy: {{ .Values.postgresql.image.pullPolicy }}
+          ports:
+            - name: postgresql
+              containerPort: 5432
+              protocol: TCP
+
+          env:
+            # Replica-specific environment
+            - name: POSTGRES_REPLICATION_MODE
+              value: "replica"
+            - name: PGUSER
+              value: postgres
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "pganalytics.fullname" . }}-postgresql
+                  key: password
+            {{- range $key, $value := .Values.postgresql.env }}
+            {{- if and $value (not (hasPrefix "POSTGRES_REPLICATION" $key)) }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+            {{- end }}
+
+          # TCP liveness probe (replica must accept connections)
+          livenessProbe:
+            tcpSocket:
+              port: postgresql
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+
+          # Readiness probe checks replication status
+          readinessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  pg_isready -U postgres -d postgres || exit 1
+                  # Optional: check replication is active
+                  # psql -U postgres -d postgres -c "SELECT slot_name FROM pg_replication_slots;" | grep -q "."
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 2
+
+          resources:
+            {{- toYaml .Values.postgresql.resources | nindent 12 }}
+
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+            - name: config
+              mountPath: /etc/postgresql
+            - name: recovery-config
+              mountPath: /var/lib/postgresql/recovery
+
+      terminationGracePeriodSeconds: 30
+
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "pganalytics.fullname" . }}-postgresql-replica-config
+        - name: recovery-config
+          configMap:
+            name: {{ include "pganalytics.fullname" . }}-postgresql-recovery-config
+
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: [ "ReadWriteOnce" ]
+        storageClassName: {{ .Values.postgresql.persistence.storageClass }}
+        resources:
+          requests:
+            storage: {{ .Values.postgresql.persistence.size }}
+{{- end }}

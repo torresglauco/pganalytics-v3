@@ -1,0 +1,211 @@
+{{- if and .Values.redis.enabled .Values.redis.sentinel.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "pganalytics.fullname" . }}-redis-sentinel-config
+  namespace: {{ include "pganalytics.namespace" . }}
+  labels:
+    {{- include "pganalytics.labels" . | nindent 4 }}
+    app.kubernetes.io/component: redis-sentinel
+data:
+  sentinel.conf: |
+    # Redis Sentinel Configuration
+    # Monitors Redis master and performs automatic failover
+
+    # Port that Sentinel listens on
+    port 26379
+
+    # Accept external connections
+    bind 0.0.0.0
+
+    # Disable protected mode (use network policies for security)
+    protected-mode no
+
+    # Log file
+    logfile ""  # Log to stdout for Kubernetes
+
+    # Working directory for persistent data
+    dir /data
+
+    # Monitor the master Redis instance
+    # Syntax: sentinel monitor <master-name> <master-host> <master-port> <quorum>
+    # Quorum = number of sentinels that must agree on failover
+    sentinel monitor {{ include "pganalytics.fullname" . }}-redis-master {{ include "pganalytics.fullname" . }}-redis-master.{{ include "pganalytics.namespace" . }}.svc.cluster.local 6379 {{ .Values.redis.sentinel.quorum | default 2 }}
+
+    # Timeout for marking master as down (milliseconds)
+    sentinel down-after-milliseconds {{ include "pganalytics.fullname" . }}-redis-master {{ .Values.redis.sentinel.downTimeout | default 5000 }}
+
+    # Timeout for failover operation (milliseconds)
+    sentinel failover-timeout {{ include "pganalytics.fullname" . }}-redis-master {{ .Values.redis.sentinel.failoverTimeout | default 30000 }}
+
+    # Number of replicas to reconfigure in parallel during failover
+    sentinel parallel-syncs {{ include "pganalytics.fullname" . }}-redis-master 1
+
+    # Configuration persistence (Sentinel updates this file with new master info)
+    sentinel config-epoch {{ include "pganalytics.fullname" . }}-redis-master 0
+
+    # Notification script (optional - called during events)
+    # sentinel notification-script <master-name> <script-path>
+
+    # Client reconfig script (optional - called during failover)
+    # sentinel client-reconfig-script <master-name> <script-path>
+
+    # Deny by default
+    # sentinel deny-scripts-reconfig yes
+
+    # Enable daemonize (disable for container)
+    daemonize no
+
+    # Logging
+    loglevel notice
+
+    # Database file name
+    dbfilename sentinel.rdb
+
+  redis-master-init.sh: |
+    #!/bin/sh
+    # Script to initialize Redis master with replication settings
+
+    set -e
+
+    REDIS_MASTER="{{ include "pganalytics.fullname" . }}-redis-master"
+    REDIS_MASTER_PORT="6379"
+    REDIS_NAMESPACE="{{ include "pganalytics.namespace" . }}"
+
+    echo "Initializing Redis Master with replication support..."
+
+    # Get Redis CLI from image
+    REDIS_CLI="redis-cli -h $REDIS_MASTER -p $REDIS_MASTER_PORT"
+
+    # Check if Redis is up
+    until $REDIS_CLI ping | grep -q PONG; do
+      echo "Waiting for Redis to be ready..."
+      sleep 1
+    done
+
+    echo "Redis is ready"
+
+    # Enable persistence (RDB snapshots)
+    $REDIS_CLI CONFIG SET save "900 1 300 10 60 10000"
+
+    # Enable AOF (Append-Only File) for durability
+    $REDIS_CLI CONFIG SET appendonly yes
+    $REDIS_CLI CONFIG SET appendfsync everysec
+
+    # Set replication timeout
+    $REDIS_CLI CONFIG SET repl-timeout 60
+
+    # Set replication disable TCP_NODELAY
+    $REDIS_CLI CONFIG SET repl-disable-tcp-nodelay no
+
+    # Set backlog size for replication
+    $REDIS_CLI CONFIG SET repl-backlog-size 1048576
+
+    # Set role
+    $REDIS_CLI ROLE
+
+    echo "Redis Master initialization completed"
+
+  redis-replica-init.sh: |
+    #!/bin/sh
+    # Script to initialize Redis replica
+
+    set -e
+
+    REDIS_MASTER="{{ include "pganalytics.fullname" . }}-redis-master"
+    REDIS_MASTER_PORT="6379"
+    REDIS_NAMESPACE="{{ include "pganalytics.namespace" . }}"
+    REPLICA_NAME="${HOSTNAME}"
+
+    REDIS_REPLICA_CLI="redis-cli"
+
+    echo "Initializing Redis Replica..."
+
+    # Wait for local Redis to be ready
+    until $REDIS_REPLICA_CLI ping | grep -q PONG; do
+      echo "Waiting for local Redis to be ready..."
+      sleep 1
+    done
+
+    echo "Local Redis is ready"
+
+    # Configure replication
+    $REDIS_REPLICA_CLI CONFIG SET repl-timeout 60
+    $REDIS_REPLICA_CLI CONFIG SET repl-disable-tcp-nodelay no
+
+    # Set as replica (slaveof) of master
+    $REDIS_REPLICA_CLI SLAVEOF $REDIS_MASTER $REDIS_MASTER_PORT
+
+    # Check replication status
+    sleep 2
+    $REDIS_REPLICA_CLI INFO replication
+
+    echo "Redis Replica initialization completed"
+
+---
+# Redis Master Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "pganalytics.fullname" . }}-redis-master-config
+  namespace: {{ include "pganalytics.namespace" . }}
+  labels:
+    {{- include "pganalytics.labels" . | nindent 4 }}
+    app.kubernetes.io/component: redis-master
+data:
+  redis.conf: |
+    # Redis Master Configuration
+    # Primary Redis instance for session storage
+
+    # Server
+    port 6379
+    bind 0.0.0.0
+    protected-mode no
+    timeout 0
+
+    # Database
+    databases 16
+    dbfilename dump.rdb
+    dir /data
+
+    # Persistence (RDB)
+    save 900 1
+    save 300 10
+    save 60 10000
+    rdbcompression yes
+    rdbchecksum yes
+    stop-writes-on-bgsave-error yes
+
+    # AOF (Append-Only File) for durability
+    appendonly yes
+    appendfilename "appendonly.aof"
+    appendfsync everysec
+    no-appendfsync-on-rewrite no
+
+    # Replication
+    role master
+    repl-diskless-sync no
+    repl-diskless-sync-delay 5
+    repl-disable-tcp-nodelay no
+    repl-timeout 60
+    repl-backlog-size 1mb
+    repl-backlog-ttl 3600
+    min-replicas-to-write 0
+    min-replicas-max-lag 10
+
+    # Memory
+    maxmemory {{ .Values.redis.maxmemory | default "512mb" }}
+    maxmemory-policy {{ .Values.redis.maxmemoryPolicy | default "allkeys-lru" }}
+
+    # Logging
+    loglevel notice
+    logfile ""
+
+    # Clients
+    maxclients 10000
+
+    # Slow log
+    slowlog-log-slower-than 10000
+    slowlog-max-len 128
+
+{{- end }}

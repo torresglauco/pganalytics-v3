@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"time"
 
-	apperrors "github.com/torresglauco/pganalytics-v3/backend/pkg/errors"
 	_ "github.com/lib/pq"
+	apperrors "github.com/torresglauco/pganalytics-v3/backend/pkg/errors"
 )
 
 // TimescaleDB wraps a TimescaleDB connection for time-series metrics

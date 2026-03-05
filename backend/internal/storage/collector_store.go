@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/torresglauco/pganalytics-v3/backend/pkg/models"
 	"github.com/google/uuid"
+	"github.com/torresglauco/pganalytics-v3/backend/pkg/models"
 )
 
 // CollectorStoreImpl implements collector data access using PostgresDB methods

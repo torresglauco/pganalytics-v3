@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	apperrors "github.com/torresglauco/pganalytics-v3/backend/pkg/errors"
 	"github.com/torresglauco/pganalytics-v3/backend/pkg/models"
-	"github.com/golang-jwt/jwt/v5"
 )
 
 // TokenType represents the type of JWT token

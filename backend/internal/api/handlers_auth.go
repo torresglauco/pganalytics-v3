@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/gin-gonic/gin"
 	"github.com/torresglauco/pganalytics-v3/backend/internal/auth"
 	apperrors "github.com/torresglauco/pganalytics-v3/backend/pkg/errors"
 	"github.com/torresglauco/pganalytics-v3/backend/pkg/models"
-	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
 
@@ -469,8 +469,8 @@ type MFASetupRequest struct {
 // MFASetupResponse responds with MFA setup information
 type MFASetupResponse struct {
 	Type              string `json:"type"`
-	Secret            string `json:"secret,omitempty"`       // For TOTP
-	QRCode            string `json:"qr_code,omitempty"`      // Base64 encoded QR code
+	Secret            string `json:"secret,omitempty"`  // For TOTP
+	QRCode            string `json:"qr_code,omitempty"` // Base64 encoded QR code
 	PhoneNumberNeeded bool   `json:"phone_number_needed,omitempty"`
 }
 

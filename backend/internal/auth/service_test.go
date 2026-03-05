@@ -4,10 +4,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/torresglauco/pganalytics-v3/backend/pkg/models"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/torresglauco/pganalytics-v3/backend/pkg/models"
 )
 
 // MockUserStore implements UserStore for testing
@@ -152,6 +152,16 @@ func TestAuthService_LoginUser_Success(t *testing.T) {
 	tokenStore := NewMockTokenStore()
 
 	authService := NewAuthService(jm, pm, cm, userStore, collectorStore, tokenStore)
+
+	// Setup: hash a password for the test user
+	hashedPassword, err := pm.HashPassword("password123")
+	require.NoError(t, err)
+
+	// Get the test user and set password hash
+	user, err := userStore.GetUserByUsername("testuser")
+	require.NoError(t, err)
+	require.NotNil(t, user)
+	user.PasswordHash = hashedPassword
 
 	// Test successful login
 	resp, err := authService.LoginUser("testuser", "password123")

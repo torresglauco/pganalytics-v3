@@ -1,6 +1,7 @@
 package api
 
 import (
+	"github.com/gin-gonic/gin"
 	"github.com/torresglauco/pganalytics-v3/backend/internal/audit"
 	"github.com/torresglauco/pganalytics-v3/backend/internal/auth"
 	"github.com/torresglauco/pganalytics-v3/backend/internal/cache"
@@ -10,7 +11,6 @@ import (
 	"github.com/torresglauco/pganalytics-v3/backend/internal/session"
 	"github.com/torresglauco/pganalytics-v3/backend/internal/storage"
 	"github.com/torresglauco/pganalytics-v3/backend/internal/timescale"
-	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
 

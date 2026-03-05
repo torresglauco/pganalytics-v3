@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/torresglauco/pganalytics-v3/backend/pkg/models"
 	"github.com/gin-gonic/gin"
+	"github.com/torresglauco/pganalytics-v3/backend/pkg/models"
 	"go.uber.org/zap"
 )
 

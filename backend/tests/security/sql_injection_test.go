@@ -93,12 +93,12 @@ func TestPreparedStatements(t *testing.T) {
 	// Actual queries in codebase should follow these patterns
 
 	queryPatterns := map[string]bool{
-		"SELECT id FROM users WHERE email = $1":                    true, // Correct
-		"SELECT id FROM users WHERE email = ?":                     true, // Also acceptable
-		"SELECT id FROM users WHERE email = '" + "input" + "'":     false, // Dangerous
-		"INSERT INTO collectors (hostname) VALUES ($1)":            true, // Correct
-		"UPDATE config SET value = $1 WHERE key = $2":              true, // Correct
-		"DELETE FROM logs WHERE created_at < $1":                   true, // Correct
+		"SELECT id FROM users WHERE email = $1":                true,  // Correct
+		"SELECT id FROM users WHERE email = ?":                 true,  // Also acceptable
+		"SELECT id FROM users WHERE email = '" + "input" + "'": false, // Dangerous
+		"INSERT INTO collectors (hostname) VALUES ($1)":        true,  // Correct
+		"UPDATE config SET value = $1 WHERE key = $2":          true,  // Correct
+		"DELETE FROM logs WHERE created_at < $1":               true,  // Correct
 	}
 
 	for query, isSecure := range queryPatterns {

@@ -13,14 +13,14 @@ import (
 
 // MockMLService provides a mock ML service for testing
 type MockMLService struct {
-	server           *httptest.Server
-	mu               sync.RWMutex
-	trainingJobs     map[string]*TrainingJob
-	predictions      map[string]*ml.PredictionResponse
-	shouldFail       bool
-	failureCount     int
-	responseDelay    time.Duration
-	httpStatusCode   int
+	server         *httptest.Server
+	mu             sync.RWMutex
+	trainingJobs   map[string]*TrainingJob
+	predictions    map[string]*ml.PredictionResponse
+	shouldFail     bool
+	failureCount   int
+	responseDelay  time.Duration
+	httpStatusCode int
 }
 
 // TrainingJob represents a mock training job

@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/torresglauco/pganalytics-v3/backend/internal/api"
 	"github.com/torresglauco/pganalytics-v3/backend/internal/auth"
 	"github.com/torresglauco/pganalytics-v3/backend/internal/cache"
@@ -17,7 +18,6 @@ import (
 	"github.com/torresglauco/pganalytics-v3/backend/internal/jobs"
 	"github.com/torresglauco/pganalytics-v3/backend/internal/storage"
 	"github.com/torresglauco/pganalytics-v3/backend/internal/timescale"
-	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
 

@@ -7,11 +7,11 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/gin-gonic/gin"
+	_ "github.com/lib/pq"
 	apperrors "github.com/torresglauco/pganalytics-v3/backend/pkg/errors"
 	"github.com/torresglauco/pganalytics-v3/backend/pkg/models"
-	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
-	_ "github.com/lib/pq"
 )
 
 // ============================================================================

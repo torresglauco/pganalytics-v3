@@ -8,22 +8,22 @@ import (
 	"testing"
 	"time"
 
-	"github.com/torresglauco/pganalytics-v3/backend/pkg/models"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/torresglauco/pganalytics-v3/backend/pkg/models"
 )
 
 // MockPostgresDB for metrics testing
 type MockMetricsPostgresDB struct {
-	schemaMetrics       *models.SchemaMetricsResponse
-	lockMetrics         *models.LockMetricsResponse
-	bloatMetrics        *models.BloatMetricsResponse
-	cacheMetrics        *models.CacheMetricsResponse
-	connectionMetrics   *models.ConnectionMetricsResponse
-	extensionMetrics    *models.ExtensionMetricsResponse
-	shouldReturnError   bool
-	errorMessage        string
+	schemaMetrics     *models.SchemaMetricsResponse
+	lockMetrics       *models.LockMetricsResponse
+	bloatMetrics      *models.BloatMetricsResponse
+	cacheMetrics      *models.CacheMetricsResponse
+	connectionMetrics *models.ConnectionMetricsResponse
+	extensionMetrics  *models.ExtensionMetricsResponse
+	shouldReturnError bool
+	errorMessage      string
 }
 
 func (m *MockMetricsPostgresDB) GetSchemaMetrics(ctx context.Context, collectorID uuid.UUID, database *string, limit int, offset int) (*models.SchemaMetricsResponse, error) {
@@ -228,14 +228,14 @@ func TestGetLockMetrics_Success(t *testing.T) {
 		lockMetrics: &models.LockMetricsResponse{
 			ActiveLocks: []*models.Lock{
 				{
-					CollectorID:   collectorID,
-					DatabaseName:  "testdb",
-					PID:           12345,
-					LockType:      "relation",
-					Mode:          "AccessExclusiveLock",
-					Granted:       true,
-					Username:      &username,
-					SessionState:  &sessionState,
+					CollectorID:    collectorID,
+					DatabaseName:   "testdb",
+					PID:            12345,
+					LockType:       "relation",
+					Mode:           "AccessExclusiveLock",
+					Granted:        true,
+					Username:       &username,
+					SessionState:   &sessionState,
 					LockAgeSeconds: &lockAge,
 				},
 			},
@@ -358,12 +358,12 @@ func TestGetExtensionMetrics_Success(t *testing.T) {
 		extensionMetrics: &models.ExtensionMetricsResponse{
 			Extensions: []*models.Extension{
 				{
-					CollectorID:     collectorID,
-					DatabaseName:    "testdb",
-					ExtensionName:   "plpgsql",
+					CollectorID:      collectorID,
+					DatabaseName:     "testdb",
+					ExtensionName:    "plpgsql",
 					ExtensionVersion: "1.0",
-					ExtensionOwner:  &owner,
-					ExtensionSchema: "pg_catalog",
+					ExtensionOwner:   &owner,
+					ExtensionSchema:  "pg_catalog",
 				},
 			},
 		},
@@ -385,12 +385,12 @@ func TestMetricsEndpoints_InvalidCollectorID(t *testing.T) {
 	validUUID := uuid.New()
 
 	mockDB := &MockMetricsPostgresDB{
-		schemaMetrics:      &models.SchemaMetricsResponse{},
-		lockMetrics:        &models.LockMetricsResponse{},
-		bloatMetrics:       &models.BloatMetricsResponse{},
-		cacheMetrics:       &models.CacheMetricsResponse{},
-		connectionMetrics:  &models.ConnectionMetricsResponse{},
-		extensionMetrics:   &models.ExtensionMetricsResponse{},
+		schemaMetrics:     &models.SchemaMetricsResponse{},
+		lockMetrics:       &models.LockMetricsResponse{},
+		bloatMetrics:      &models.BloatMetricsResponse{},
+		cacheMetrics:      &models.CacheMetricsResponse{},
+		connectionMetrics: &models.ConnectionMetricsResponse{},
+		extensionMetrics:  &models.ExtensionMetricsResponse{},
 	}
 
 	router := createTestMetricsServer(mockDB)
@@ -454,8 +454,8 @@ func TestMetricsEndpoints_EmptyResults(t *testing.T) {
 			name: "schema with empty tables",
 			mockDB: &MockMetricsPostgresDB{
 				schemaMetrics: &models.SchemaMetricsResponse{
-					Tables:   []*models.SchemaTable{},
-					Columns:  []*models.SchemaColumn{},
+					Tables:  []*models.SchemaTable{},
+					Columns: []*models.SchemaColumn{},
 				},
 			},
 			endpoint:  "/api/v1/collectors/%s/schema",
@@ -475,8 +475,8 @@ func TestMetricsEndpoints_EmptyResults(t *testing.T) {
 			name: "bloat with empty results",
 			mockDB: &MockMetricsPostgresDB{
 				bloatMetrics: &models.BloatMetricsResponse{
-					TableBloat:  []*models.TableBloat{},
-					IndexBloat:  []*models.IndexBloat{},
+					TableBloat: []*models.TableBloat{},
+					IndexBloat: []*models.IndexBloat{},
 				},
 			},
 			endpoint:  "/api/v1/collectors/%s/bloat",

@@ -5,10 +5,10 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/torresglauco/pganalytics-v3/backend/pkg/models"
-	apperrors "github.com/torresglauco/pganalytics-v3/backend/pkg/errors"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	apperrors "github.com/torresglauco/pganalytics-v3/backend/pkg/errors"
+	"github.com/torresglauco/pganalytics-v3/backend/pkg/models"
 )
 
 // ============================================================================

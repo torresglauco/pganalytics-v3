@@ -64,7 +64,7 @@ func TestMLClientLoadPredictions(t *testing.T) {
 			defer wg.Done()
 
 			for i := 0; i < requestsPerGoroutine; i++ {
-				queryHash := int64(4000 + (goroutineID*requestsPerGoroutine + i)%100)
+				queryHash := int64(4000 + (goroutineID*requestsPerGoroutine+i)%100)
 				req := &ml.PredictionRequest{
 					QueryHash: queryHash,
 					Features: map[string]interface{}{
@@ -295,7 +295,7 @@ func TestHighContention(t *testing.T) {
 
 			for i := 0; i < operationsPerGoroutine; i++ {
 				// Simulate failures periodically
-				if (goroutineID*operationsPerGoroutine + i) % failurePattern == 0 {
+				if (goroutineID*operationsPerGoroutine+i)%failurePattern == 0 {
 					cb.RecordFailure()
 					atomic.AddInt64(&failureCount, 1)
 				} else {

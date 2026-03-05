@@ -8,10 +8,10 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/torresglauco/pganalytics-v3/backend/internal/audit"
 	apperrors "github.com/torresglauco/pganalytics-v3/backend/pkg/errors"
 	"github.com/torresglauco/pganalytics-v3/backend/pkg/models"
-	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
 
@@ -218,12 +218,12 @@ func (s *Server) handleAuditLogDetail(c *gin.Context) {
 
 // AuditStatsResponse represents audit log statistics
 type AuditStatsResponse struct {
-	TotalLogs     int64                  `json:"total_logs"`
-	LogsByAction  map[string]int64       `json:"logs_by_action"`
-	LogsByUser    map[int]int64          `json:"logs_by_user"`
-	LogsByResource map[string]int64      `json:"logs_by_resource"`
-	LatestLogTime time.Time              `json:"latest_log_time"`
-	OldestLogTime time.Time              `json:"oldest_log_time"`
+	TotalLogs      int64            `json:"total_logs"`
+	LogsByAction   map[string]int64 `json:"logs_by_action"`
+	LogsByUser     map[int]int64    `json:"logs_by_user"`
+	LogsByResource map[string]int64 `json:"logs_by_resource"`
+	LatestLogTime  time.Time        `json:"latest_log_time"`
+	OldestLogTime  time.Time        `json:"oldest_log_time"`
 }
 
 // @Summary Get Audit Log Statistics
@@ -265,10 +265,10 @@ func (s *Server) handleAuditStats(c *gin.Context) {
 
 // ExportAuditLogsRequest represents request to export audit logs
 type ExportAuditLogsRequest struct {
-	StartDate    string `json:"start_date"` // ISO8601 format
-	EndDate      string `json:"end_date"`   // ISO8601 format
-	Format       string `json:"format"`     // json, csv
-	IncludeData  bool   `json:"include_data"`
+	StartDate   string `json:"start_date"` // ISO8601 format
+	EndDate     string `json:"end_date"`   // ISO8601 format
+	Format      string `json:"format"`     // json, csv
+	IncludeData bool   `json:"include_data"`
 }
 
 // @Summary Export Audit Logs
@@ -315,12 +315,12 @@ func (s *Server) handleExportAuditLogs(c *gin.Context) {
 	// Parse dates
 	if req.StartDate != "" {
 		if t, err := time.Parse(time.RFC3339, req.StartDate); err == nil {
-			filter.StartTime = &t
+			filter.DateFrom = &t
 		}
 	}
 	if req.EndDate != "" {
 		if t, err := time.Parse(time.RFC3339, req.EndDate); err == nil {
-			filter.EndTime = &t
+			filter.DateTo = &t
 		}
 	}
 

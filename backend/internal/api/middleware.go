@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/gin-gonic/gin"
 	"github.com/torresglauco/pganalytics-v3/backend/internal/auth"
 	apperrors "github.com/torresglauco/pganalytics-v3/backend/pkg/errors"
-	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
 
@@ -47,7 +47,6 @@ func (s *Server) AuthMiddleware() gin.HandlerFunc {
 			c.Abort()
 			return
 		}
-
 
 		// Store user info in context for handlers to use
 		c.Set("user_id", claims.UserID)

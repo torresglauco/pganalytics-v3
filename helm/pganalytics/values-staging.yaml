@@ -1,0 +1,521 @@
+# pgAnalytics Helm Chart - Staging Environment Values
+# Phase 5 (v3.5.0) Extended Load Test Deployment
+# Date: March 5, 2026
+
+global:
+  environment: staging
+  domain: pganalytics-staging.internal
+  tls:
+    enabled: true
+    issuer: letsencrypt-staging
+
+  # Phase 5 features enabled for staging validation
+  features:
+    anomalyDetection: true
+    alertRules: true
+    notifications: true
+    enterpriseAuth: true
+    encryption: true
+
+# ============================================================================
+# Backend API Configuration
+# ============================================================================
+backend:
+  replicaCount: 3  # HA setup for staging
+
+  image:
+    repository: pganalytics/api
+    tag: "3.5.0-staging"
+    pullPolicy: Always
+
+  service:
+    type: LoadBalancer
+    port: 8080
+    targetPort: 8080
+    annotations:
+      service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    annotations:
+      cert-manager.io/cluster-issuer: "letsencrypt-staging"
+      nginx.ingress.kubernetes.io/rate-limit: "10000"
+    hosts:
+      - host: api-staging.pganalytics.io
+        paths:
+          - path: /api
+            pathType: Prefix
+          - path: /health
+            pathType: Prefix
+    tls:
+      - secretName: pganalytics-api-tls
+        hosts:
+          - api-staging.pganalytics.io
+
+  # Resources for load testing (higher than dev)
+  resources:
+    limits:
+      cpu: 2000m
+      memory: 2Gi
+    requests:
+      cpu: 1000m
+      memory: 1Gi
+
+  # Autoscaling for load test
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+
+  # Pod disruption budget for HA
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 2
+
+  # Health checks
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: 8080
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+  readinessProbe:
+    httpGet:
+      path: /health
+      port: 8080
+    initialDelaySeconds: 10
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 2
+
+  # Environment variables for Phase 5
+  env:
+    - name: LOG_LEVEL
+      value: "info"
+    - name: API_BIND_ADDR
+      value: "0.0.0.0:8080"
+    - name: ENVIRONMENT
+      value: "staging"
+
+    # Phase 5: Anomaly Detection Configuration
+    - name: ANOMALY_DETECTION_ENABLED
+      value: "true"
+    - name: ANOMALY_CHECK_INTERVAL_MINUTES
+      value: "5"
+    - name: ANOMALY_BASELINE_WINDOW_HOURS
+      value: "168"
+    - name: ANOMALY_ZSCORE_THRESHOLD
+      value: "2.5"
+
+    # Phase 5: Alert Rules Configuration
+    - name: ALERT_RULES_ENABLED
+      value: "true"
+    - name: ALERT_RULES_CHECK_INTERVAL_SECONDS
+      value: "300"
+    - name: ALERT_RULES_MAX_CONCURRENT
+      value: "10"
+
+    # Phase 5: Notifications Configuration
+    - name: NOTIFICATIONS_ENABLED
+      value: "true"
+    - name: NOTIFICATIONS_MAX_RETRIES
+      value: "5"
+    - name: NOTIFICATIONS_RETRY_BACKOFF
+      value: "1,2,4,8,16"
+
+    # Phase 4: Rate Limiting Configuration
+    - name: RATE_LIMIT_ENABLED
+      value: "true"
+    - name: RATE_LIMIT_METRICS_PUSH
+      value: "10000"
+    - name: RATE_LIMIT_CONFIG_REFRESH
+      value: "500"
+
+    # Phase 4: Cache Configuration
+    - name: CONFIG_CACHE_ENABLED
+      value: "true"
+    - name: CONFIG_CACHE_MAX_SIZE
+      value: "1000"
+    - name: CONFIG_CACHE_TTL_SECONDS
+      value: "300"
+
+    # Database Configuration
+    - name: MAX_DATABASE_CONNS
+      value: "100"
+    - name: MAX_IDLE_DATABASE_CONNS
+      value: "20"
+    - name: DATABASE_CONN_MAX_LIFETIME
+      value: "15m"
+
+# ============================================================================
+# Collector Configuration
+# ============================================================================
+collector:
+  replicaCount: 1
+
+  image:
+    repository: pganalytics/collector
+    tag: "3.5.0-staging"
+    pullPolicy: Always
+
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 250m
+      memory: 256Mi
+
+  autoscaling:
+    enabled: false  # Collectors are DaemonSet
+
+# ============================================================================
+# PostgreSQL Configuration (Primary + Replica for HA)
+# ============================================================================
+postgresql:
+  # Primary instance
+  primary:
+    replicaCount: 1
+    persistence:
+      enabled: true
+      size: 50Gi  # Increased for load test data
+      storageClass: gp3
+
+    resources:
+      limits:
+        cpu: 2000m
+        memory: 2Gi
+      requests:
+        cpu: 1000m
+        memory: 1Gi
+
+    env:
+      - name: POSTGRES_DB
+        value: "pganalytics"
+      - name: POSTGRES_INITDB_ARGS
+        value: "-c max_connections=500 -c shared_buffers=512MB -c effective_cache_size=2GB"
+
+  # Replica instance for HA
+  replica:
+    enabled: true
+    replicaCount: 1
+    persistence:
+      enabled: true
+      size: 50Gi
+      storageClass: gp3
+
+    resources:
+      limits:
+        cpu: 2000m
+        memory: 2Gi
+      requests:
+        cpu: 1000m
+        memory: 1Gi
+
+  # Replication configuration
+  replication:
+    enabled: true
+    username: replicator
+    slotName: replica_slot
+    synchronousCommit: "off"  # Async for performance
+
+  # Backup configuration
+  backup:
+    enabled: true
+    schedule: "0 2 * * *"  # Daily at 2 AM
+    retention: 7  # 7 days
+    storageClass: gp3
+    size: 100Gi
+
+# ============================================================================
+# Redis Configuration (Session Management + Caching)
+# ============================================================================
+redis:
+  replicaCount: 1
+
+  image:
+    repository: redis
+    tag: "7-alpine"
+    pullPolicy: IfNotPresent
+
+  persistence:
+    enabled: true
+    size: 10Gi
+    storageClass: gp3
+
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 250m
+      memory: 256Mi
+
+  env:
+    - name: REDIS_MAXMEMORY
+      value: "500m"
+    - name: REDIS_MAXMEMORY_POLICY
+      value: "allkeys-lru"
+
+# ============================================================================
+# Redis Sentinel Configuration (HA for Redis)
+# ============================================================================
+redisSentinel:
+  enabled: true
+  replicaCount: 3
+
+  image:
+    repository: redis
+    tag: "7-alpine"
+    pullPolicy: IfNotPresent
+
+  resources:
+    limits:
+      cpu: 200m
+      memory: 128Mi
+    requests:
+      cpu: 100m
+      memory: 64Mi
+
+# ============================================================================
+# Grafana Configuration
+# ============================================================================
+grafana:
+  enabled: true
+  replicaCount: 1
+
+  image:
+    repository: grafana/grafana
+    tag: "latest"
+    pullPolicy: IfNotPresent
+
+  persistence:
+    enabled: true
+    size: 10Gi
+    storageClass: gp3
+
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 250m
+      memory: 256Mi
+
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    hosts:
+      - host: grafana-staging.pganalytics.io
+        paths:
+          - path: /
+            pathType: Prefix
+    tls:
+      - secretName: grafana-staging-tls
+        hosts:
+          - grafana-staging.pganalytics.io
+
+  # Default admin credentials (CHANGE IN PRODUCTION)
+  adminPassword: "staging-admin-password"
+
+# ============================================================================
+# Feature Flags for Phase 5
+# ============================================================================
+features:
+  anomalyDetection: true      # ✅ Phase 5
+  alertRules: true            # ✅ Phase 5
+  notifications: true         # ✅ Phase 5
+  enterpriseAuth: true        # ✅ Phase 3
+  encryption: true            # ✅ Phase 3
+  rateLimit: true             # ✅ Phase 4
+  configCache: true           # ✅ Phase 4
+  collectorCleanup: true      # ✅ Phase 4
+  tokenBlacklist: true        # ✅ Phase 3
+  auditLogging: true          # ✅ Phase 3
+  corsWhitelisting: true      # Standard
+  mlService: false            # Future: Phase 5.1
+
+# ============================================================================
+# Monitoring and Observability
+# ============================================================================
+monitoring:
+  enabled: true
+
+  prometheus:
+    enabled: true
+    retention: 30d
+    scrapeInterval: 15s
+
+  alerting:
+    enabled: true
+    rules:
+      - alert: HighLatency
+        expr: 'histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 0.5'
+        for: 5m
+
+      - alert: HighErrorRate
+        expr: 'rate(http_requests_total{status=~"5.."}[5m]) > 0.001'
+        for: 5m
+
+      - alert: AnomalyDetectionFailure
+        expr: 'anomaly_detector_errors_total > 10'
+        for: 10m
+
+      - alert: NotificationDeliveryFailure
+        expr: 'notification_delivery_failed_total > 50'
+        for: 10m
+
+# ============================================================================
+# Load Test Configuration
+# ============================================================================
+loadTest:
+  enabled: true
+
+  # Extended load test parameters
+  scenarios:
+    - name: "Baseline"
+      collectors: 100
+      metricsPerPush: 10
+      pushInterval: 5
+      duration: 5
+      description: "Baseline test with 100 collectors"
+
+    - name: "Medium Load"
+      collectors: 300
+      metricsPerPush: 10
+      pushInterval: 5
+      duration: 10
+      description: "Medium load test with 300 collectors"
+
+    - name: "Full Scale"
+      collectors: 500
+      metricsPerPush: 10
+      pushInterval: 5
+      duration: 30
+      description: "Full scale test with 500 collectors for 30 minutes"
+
+    - name: "Sustained"
+      collectors: 500
+      metricsPerPush: 10
+      pushInterval: 5
+      duration: 60
+      description: "Sustained load test with 500 collectors for 60 minutes"
+
+# ============================================================================
+# Secrets Management
+# ============================================================================
+secrets:
+  # JWT Configuration
+  jwtSecret: "staging-jwt-secret-change-before-production"
+  jwtExpiration: "24h"
+
+  # Database Credentials
+  dbPassword: "staging-postgres-password"
+  dbUsername: "pganalytics"
+
+  # Redis Credentials
+  redisPassword: "staging-redis-password"
+
+  # Root Database Password
+  postgresRootPassword: "staging-postgres-root"
+
+  # Grafana Credentials
+  grafanaPassword: "staging-grafana-password"
+
+  # Encryption Keys
+  encryptionKeyBackend: "local"  # Use KMS in production
+  encryptionMasterKey: "staging-encryption-key"
+
+  # Notification Channels (Staging - Test Accounts)
+  slackWebhookUrl: "https://hooks.slack.com/services/staging-test-webhook"
+  pagerdutyIntegrationKey: "staging-pagerduty-key"
+  jiraUrl: "https://jira-staging.example.com"
+  jiraToken: "staging-jira-token"
+
+# ============================================================================
+# Logging Configuration
+# ============================================================================
+logging:
+  level: info
+  format: json
+  outputs:
+    - stdout
+    - cloudwatch  # For AWS deployments
+
+  # Per-component log levels
+  componentLevels:
+    anomalyDetection: info
+    alertRules: info
+    notifications: debug
+    rateLimit: debug
+    cache: info
+
+# ============================================================================
+# Security Configuration
+# ============================================================================
+security:
+  rbac:
+    enabled: true
+
+  networkPolicy:
+    enabled: true
+    policyTypes:
+      - Ingress
+      - Egress
+
+  podSecurityPolicy:
+    enabled: true
+    level: restricted
+
+  tls:
+    enabled: true
+    minVersion: "1.2"
+
+# ============================================================================
+# Backup and Disaster Recovery
+# ============================================================================
+backup:
+  enabled: true
+  schedule: "0 2 * * *"  # Daily at 2 AM
+  retention: 7  # Keep 7 days
+  destination: "s3://pganalytics-staging-backups"
+
+  # Automated restore testing
+  restoreTest:
+    enabled: true
+    schedule: "0 3 * * 0"  # Weekly on Sunday at 3 AM
+
+# ============================================================================
+# Performance Tuning
+# ============================================================================
+performance:
+  # Connection pooling
+  maxDatabaseConnections: 100
+  maxIdleDatabaseConnections: 20
+
+  # Caching
+  enableConfigCache: true
+  configCacheMaxSize: 1000
+  configCacheTTL: 300
+
+  # Rate limiting
+  enableRateLimit: true
+  defaultRateLimit: 10000
+
+  # Anomaly detection
+  anomalyDetectionInterval: 5  # minutes
+  anomalyBaselineWindow: 168  # hours (7 days)
+
+  # Alert rules
+  alertRulesEvaluationInterval: 300  # seconds (5 minutes)
+  alertRulesMaxConcurrent: 10
+
+# ============================================================================
+# End of Staging Configuration
+# ============================================================================

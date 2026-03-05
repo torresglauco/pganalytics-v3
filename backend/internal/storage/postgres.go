@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -33,9 +35,25 @@ func NewPostgresDB(connString string) (*PostgresDB, error) {
 		return nil, apperrors.DatabaseError("ping database", err.Error())
 	}
 
-	// Configure connection pool
-	db.SetMaxOpenConns(50)
-	db.SetMaxIdleConns(15)
+	// Configure connection pool (Phase 4 scalability - increased for 500+ collectors)
+	// GetMaxDatabaseConns from config or use default
+	maxConns := 50   // Default, should be overridden by config
+	maxIdle := 15    // Default, should be overridden by config
+
+	// Check environment variables for scaling (from config)
+	if maxConnsEnv := os.Getenv("MAX_DATABASE_CONNS"); maxConnsEnv != "" {
+		if m, err := strconv.Atoi(maxConnsEnv); err == nil && m > 0 {
+			maxConns = m
+		}
+	}
+	if maxIdleEnv := os.Getenv("MAX_IDLE_DATABASE_CONNS"); maxIdleEnv != "" {
+		if m, err := strconv.Atoi(maxIdleEnv); err == nil && m > 0 {
+			maxIdle = m
+		}
+	}
+
+	db.SetMaxOpenConns(maxConns)
+	db.SetMaxIdleConns(maxIdle)
 	db.SetConnMaxLifetime(5 * time.Minute)
 	db.SetConnMaxIdleTime(10 * time.Minute)
 

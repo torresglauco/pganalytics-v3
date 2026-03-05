@@ -1,0 +1,94 @@
+{{- if .Values.postgresql.enabled }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "pganalytics.fullname" . }}-postgresql-primary
+  namespace: {{ include "pganalytics.namespace" . }}
+  labels:
+    {{- include "pganalytics.labels" . | nindent 4 }}
+    app.kubernetes.io/component: postgresql-primary
+spec:
+  serviceName: {{ include "pganalytics.fullname" . }}-postgresql-primary
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "pganalytics.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: postgresql-primary
+  template:
+    metadata:
+      labels:
+        {{- include "pganalytics.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: postgresql-primary
+    spec:
+      securityContext:
+        fsGroup: 999
+      serviceAccountName: {{ include "pganalytics.serviceAccountName" . }}
+
+      containers:
+        - name: postgresql-primary
+          image: "{{ .Values.global.imageRegistry }}/{{ .Values.postgresql.image.repository }}:{{ .Values.postgresql.image.tag }}"
+          imagePullPolicy: {{ .Values.postgresql.image.pullPolicy }}
+          ports:
+            - name: postgresql
+              containerPort: 5432
+              protocol: TCP
+
+          env:
+            # Primary-specific replication settings
+            - name: POSTGRES_REPLICATION_MODE
+              value: "primary"
+            {{- toYaml .Values.postgresql.env | nindent 12 }}
+
+          # Liveness probe
+          livenessProbe:
+            {{- toYaml .Values.postgresql.livenessProbe | nindent 12 }}
+
+          # Readiness probe
+          readinessProbe:
+            {{- toYaml .Values.postgresql.readinessProbe | nindent 12 }}
+
+          resources:
+            {{- toYaml .Values.postgresql.resources | nindent 12 }}
+
+          volumeMounts:
+            - name: data
+              mountPath: {{ .Values.postgresql.persistence.mountPath }}
+            - name: config
+              mountPath: /etc/postgresql
+            - name: replication-config
+              mountPath: /var/lib/postgresql/replication
+
+          # Lifecycle hooks for graceful shutdown and startup
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                  - /bin/sh
+                  - -c
+                  - |
+                    # Disconnect replicas gracefully during planned maintenance
+                    echo "Preparing for shutdown..."
+                    psql -U postgres -d postgres -c "SELECT pg_wal_replay_pause();" || true
+                    sleep 5
+
+      terminationGracePeriodSeconds: 60
+
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "pganalytics.fullname" . }}-postgresql-primary-config
+        - name: replication-config
+          secret:
+            secretName: {{ include "pganalytics.fullname" . }}-postgresql-replication
+            defaultMode: 0600
+
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: [ "ReadWriteOnce" ]
+        storageClassName: {{ .Values.postgresql.persistence.storageClass }}
+        resources:
+          requests:
+            storage: {{ .Values.postgresql.persistence.size }}
+{{- end }}

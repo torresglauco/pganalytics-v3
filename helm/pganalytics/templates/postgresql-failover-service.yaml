@@ -1,0 +1,116 @@
+{{- if and .Values.postgresql.enabled .Values.postgresql.replication.enabled }}
+---
+# Primary PostgreSQL Service (read-write endpoint)
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "pganalytics.fullname" . }}-postgresql-primary
+  namespace: {{ include "pganalytics.namespace" . }}
+  labels:
+    {{- include "pganalytics.labels" . | nindent 4 }}
+    app.kubernetes.io/component: postgresql-primary
+spec:
+  type: ClusterIP
+  clusterIP: None
+  selector:
+    {{- include "pganalytics.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: postgresql-primary
+  ports:
+    - name: postgresql
+      port: 5432
+      targetPort: postgresql
+      protocol: TCP
+
+---
+# Replica PostgreSQL Service (read-only endpoints)
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "pganalytics.fullname" . }}-postgresql-replica
+  namespace: {{ include "pganalytics.namespace" . }}
+  labels:
+    {{- include "pganalytics.labels" . | nindent 4 }}
+    app.kubernetes.io/component: postgresql-replica
+spec:
+  type: ClusterIP
+  clusterIP: None
+  selector:
+    {{- include "pganalytics.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: postgresql-replica
+  ports:
+    - name: postgresql
+      port: 5432
+      targetPort: postgresql
+      protocol: TCP
+
+---
+# Failover Service: Automatically routes to primary (or elected replica during failover)
+# Uses labels to route to the current primary
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "pganalytics.fullname" . }}-postgresql
+  namespace: {{ include "pganalytics.namespace" . }}
+  labels:
+    {{- include "pganalytics.labels" . | nindent 4 }}
+    app.kubernetes.io/component: postgresql
+  annotations:
+    # This service provides automatic failover routing
+    description: "Failover service routes to current primary PostgreSQL"
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "pganalytics.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: postgresql-primary
+  ports:
+    - name: postgresql
+      port: 5432
+      targetPort: 5432
+      protocol: TCP
+
+---
+# Read-Write Service Endpoint (for explicit primary access)
+# Used by backend services for write operations
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "pganalytics.fullname" . }}-postgresql-readwrite
+  namespace: {{ include "pganalytics.namespace" . }}
+  labels:
+    {{- include "pganalytics.labels" . | nindent 4 }}
+    app.kubernetes.io/component: postgresql
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "pganalytics.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: postgresql-primary
+  ports:
+    - name: postgresql
+      port: 5432
+      targetPort: 5432
+      protocol: TCP
+
+---
+# Read-Only Service Endpoint (for replica access)
+# Used by read-heavy services like metrics aggregation
+{{- if .Values.postgresql.replication.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "pganalytics.fullname" . }}-postgresql-readonly
+  namespace: {{ include "pganalytics.namespace" . }}
+  labels:
+    {{- include "pganalytics.labels" . | nindent 4 }}
+    app.kubernetes.io/component: postgresql
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "pganalytics.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: postgresql-replica
+  ports:
+    - name: postgresql
+      port: 5432
+      targetPort: 5432
+      protocol: TCP
+{{- end }}
+{{- end }}

@@ -33,7 +33,7 @@ export const SlackChannelForm: React.FC<SlackChannelFormProps> = ({
               webhook_url: e.target.value,
             })
           }
-          placeholder="https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX"
+          placeholder="https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
         />
         <p className="text-xs text-gray-600 mt-1">

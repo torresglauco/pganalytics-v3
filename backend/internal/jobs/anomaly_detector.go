@@ -9,9 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/torresglauco/pganalytics-v3/backend/pkg/models"
-	"github.com/torresglauco/pganalytics-v3/backend/internal/storage"
 )
 
 // ============================================================================

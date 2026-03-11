@@ -8,8 +8,6 @@ import (
 	"log"
 	"sync"
 	"time"
-
-	"github.com/torresglauco/pganalytics-v3/backend/pkg/models"
 )
 
 // ============================================================================

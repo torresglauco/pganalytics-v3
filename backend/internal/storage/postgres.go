@@ -96,6 +96,11 @@ func (p *PostgresDB) Health(ctx context.Context) bool {
 	return p.db.PingContext(ctx) == nil
 }
 
+// ExecContext executes a SQL statement and returns the result
+func (p *PostgresDB) ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
+	return p.db.ExecContext(ctx, query, args...)
+}
+
 // ============================================================================
 // USER OPERATIONS
 // ============================================================================

@@ -195,7 +195,7 @@ func (ccj *CollectorCleanupJob) markOfflineCollectors(ctx context.Context) (int,
 		AND last_heartbeat IS NOT NULL
 	`
 
-	result, err := ccj.db.db.ExecContext(
+	result, err := ccj.db.ExecContext(
 		ctx,
 		query,
 		int(ccj.offlineTimeout.Seconds()),
@@ -219,7 +219,7 @@ func (ccj *CollectorCleanupJob) deleteOldOfflineCollectors(
 		AND updated_at < NOW() - INTERVAL '1 second' * $1
 	`
 
-	result, err := ccj.db.db.ExecContext(
+	result, err := ccj.db.ExecContext(
 		ctx,
 		query,
 		int(duration.Seconds()),
@@ -241,7 +241,7 @@ func (ccj *CollectorCleanupJob) cleanupOrphanMetrics(ctx context.Context) (int, 
 		AND created_at < NOW() - INTERVAL '7 days'
 	`
 
-	result, err := ccj.db.db.ExecContext(ctx, query)
+	result, err := ccj.db.ExecContext(ctx, query)
 	if err != nil {
 		// If table doesn't exist, just log and continue
 		return 0, nil

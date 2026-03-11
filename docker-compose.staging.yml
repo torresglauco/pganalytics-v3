@@ -42,7 +42,9 @@ services:
 
   # TimescaleDB for time-series metrics
   timescale-staging:
-    image: postgres:16-bullseye
+    build:
+      context: .
+      dockerfile: Dockerfile.timescaledb
     container_name: pganalytics-staging-timescale
     environment:
       POSTGRES_USER: postgres

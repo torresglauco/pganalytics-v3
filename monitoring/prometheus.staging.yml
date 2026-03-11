@@ -1,0 +1,66 @@
+# pgAnalytics v3.3.0 - Prometheus Configuration (Staging)
+# Local sandbox environment for development and testing
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'pganalytics-staging'
+    environment: 'staging'
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+
+# Load rules once and periodically evaluate them
+rule_files: []
+  # - "alert_rules.yml"
+
+# Scrape configurations for different services
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # pgAnalytics API backend metrics
+  - job_name: 'pganalytics-api'
+    static_configs:
+      - targets: ['backend-staging:8080']
+    metrics_path: '/api/v1/metrics/prometheus'
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    basic_auth:
+      username: 'prometheus'
+      password: 'prometheus'
+
+  # PostgreSQL main database metrics
+  - job_name: 'postgres-staging'
+    static_configs:
+      - targets: ['postgres-staging:5432']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'postgres-staging'
+
+  # TimescaleDB metrics
+  - job_name: 'timescale-staging'
+    static_configs:
+      - targets: ['timescale-staging:5432']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'timescale-staging'
+
+  # Node exporter metrics (if running)
+  # - job_name: 'node'
+  #   static_configs:
+  #     - targets: ['localhost:9100']
+
+  # Docker metrics (if using cAdvisor)
+  # - job_name: 'cadvisor'
+  #   static_configs:
+  #     - targets: ['localhost:8080']
+  #   metrics_path: '/metrics'

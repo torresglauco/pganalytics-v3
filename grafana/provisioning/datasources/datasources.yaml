@@ -1,15 +1,38 @@
 apiVersion: 1
 
 datasources:
-  - name: pganalytics
+  # PostgreSQL main database (staging)
+  - name: PostgreSQL Staging
     type: postgres
     access: proxy
-    url: postgres:5432
-    database: pganalytics
+    url: postgres-staging:5432
+    database: pganalytics_staging
     user: postgres
     secureJsonData:
-      password: pganalytics
+      password: staging_password
     jsonData:
       sslmode: disable
     isDefault: true
+    editable: true
+
+  # TimescaleDB metrics database (staging)
+  - name: TimescaleDB Staging
+    type: postgres
+    access: proxy
+    url: timescale-staging:5432
+    database: metrics_staging
+    user: postgres
+    secureJsonData:
+      password: staging_password
+    jsonData:
+      sslmode: disable
+    editable: true
+
+  # Prometheus metrics
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus-staging:9090
+    jsonData:
+      timeInterval: 15s
     editable: true

@@ -961,3 +961,49 @@ type CreateRegistrationSecretResponse struct {
 	CreatedAt   time.Time `json:"created_at"`
 	Message     string    `json:"message"`
 }
+
+// ============================================================================
+// POSTGRESQL LOGS MODELS
+// ============================================================================
+
+// PostgreSQLLog represents a PostgreSQL database log entry
+type PostgreSQLLog struct {
+	ID              int64      `db:"id" json:"id"`
+	CollectorID     uuid.UUID  `db:"collector_id" json:"collector_id"`
+	InstanceID      int        `db:"instance_id" json:"instance_id"`
+	DatabaseID      *int       `db:"database_id" json:"database_id,omitempty"`
+	LogTimestamp    time.Time  `db:"log_timestamp" json:"log_timestamp"`
+	LogLevel        string     `db:"log_level" json:"log_level"` // DEBUG, INFO, NOTICE, WARNING, ERROR, FATAL, PANIC
+	LogMessage      string     `db:"log_message" json:"log_message"`
+	SourceLocation  *string    `db:"source_location" json:"source_location,omitempty"`
+	ProcessID       *int       `db:"process_id" json:"process_id,omitempty"`
+	QueryText       *string    `db:"query_text" json:"query_text,omitempty"`
+	QueryHash       *int64     `db:"query_hash" json:"query_hash,omitempty"`
+	ErrorCode       *string    `db:"error_code" json:"error_code,omitempty"`
+	ErrorDetail     *string    `db:"error_detail" json:"error_detail,omitempty"`
+	ErrorHint       *string    `db:"error_hint" json:"error_hint,omitempty"`
+	ErrorContext    *string    `db:"error_context" json:"error_context,omitempty"`
+	UserName        *string    `db:"user_name" json:"user_name,omitempty"`
+	ConnectionFrom  *string    `db:"connection_from" json:"connection_from,omitempty"`
+	SessionID       *string    `db:"session_id" json:"session_id,omitempty"`
+	CreatedAt       time.Time  `db:"created_at" json:"created_at"`
+	UpdatedAt       time.Time  `db:"updated_at" json:"updated_at"`
+}
+
+// LogEventHourly represents hourly aggregated log events
+type LogEventHourly struct {
+	ID              int64      `db:"id" json:"id"`
+	HourBucket      time.Time  `db:"hour_bucket" json:"hour_bucket"`
+	CollectorID     uuid.UUID  `db:"collector_id" json:"collector_id"`
+	InstanceID      int        `db:"instance_id" json:"instance_id"`
+	DatabaseID      *int       `db:"database_id" json:"database_id,omitempty"`
+	LogLevel        string     `db:"log_level" json:"log_level"`
+	EventCount      int        `db:"event_count" json:"event_count"`
+	UniqueUsers     int        `db:"unique_users" json:"unique_users"`
+	UniqueSessions  int        `db:"unique_sessions" json:"unique_sessions"`
+	ErrorCount      int        `db:"error_count" json:"error_count"`
+	WarningCount    int        `db:"warning_count" json:"warning_count"`
+	FatalCount      int        `db:"fatal_count" json:"fatal_count"`
+	CreatedAt       time.Time  `db:"created_at" json:"created_at"`
+	UpdatedAt       time.Time  `db:"updated_at" json:"updated_at"`
+}

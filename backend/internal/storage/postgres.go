@@ -122,6 +122,16 @@ func (p *PostgresDB) ExecContext(ctx context.Context, query string, args ...inte
 	return p.db.ExecContext(ctx, query, args...)
 }
 
+// QueryRowContext executes a query that returns a single row
+func (p *PostgresDB) QueryRowContext(ctx context.Context, query string, args ...interface{}) *sql.Row {
+	return p.db.QueryRowContext(ctx, query, args...)
+}
+
+// QueryContext executes a query that returns rows
+func (p *PostgresDB) QueryContext(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error) {
+	return p.db.QueryContext(ctx, query, args...)
+}
+
 // ============================================================================
 // USER OPERATIONS
 // ============================================================================
@@ -2288,4 +2298,201 @@ func (p *PostgresDB) TrainPerformanceModel(ctx context.Context, databaseName str
 	// TODO: Implement model training logic
 	// This will be called from Python ML service or Go backend
 	return nil
+}
+
+// ============================================================================
+// POSTGRESQL LOGS OPERATIONS
+// ============================================================================
+
+// InsertPostgresqlLog inserts a single PostgreSQL log entry
+func (p *PostgresDB) InsertPostgresqlLog(ctx context.Context, log *models.PostgreSQLLog) (*models.PostgreSQLLog, error) {
+	result := &models.PostgreSQLLog{}
+
+	err := p.db.QueryRowContext(
+		ctx,
+		`INSERT INTO pganalytics.postgresql_logs (
+			collector_id, instance_id, database_id, log_timestamp, log_level, log_message,
+			source_location, process_id, query_text, query_hash, error_code, error_detail,
+			error_hint, error_context, user_name, connection_from, session_id
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+		RETURNING id, collector_id, instance_id, database_id, log_timestamp, log_level, log_message,
+			source_location, process_id, query_text, query_hash, error_code, error_detail,
+			error_hint, error_context, user_name, connection_from, session_id, created_at, updated_at`,
+		log.CollectorID, log.InstanceID, log.DatabaseID, log.LogTimestamp, log.LogLevel, log.LogMessage,
+		log.SourceLocation, log.ProcessID, log.QueryText, log.QueryHash, log.ErrorCode, log.ErrorDetail,
+		log.ErrorHint, log.ErrorContext, log.UserName, log.ConnectionFrom, log.SessionID,
+	).Scan(
+		&result.ID, &result.CollectorID, &result.InstanceID, &result.DatabaseID, &result.LogTimestamp,
+		&result.LogLevel, &result.LogMessage, &result.SourceLocation, &result.ProcessID, &result.QueryText,
+		&result.QueryHash, &result.ErrorCode, &result.ErrorDetail, &result.ErrorHint, &result.ErrorContext,
+		&result.UserName, &result.ConnectionFrom, &result.SessionID, &result.CreatedAt, &result.UpdatedAt,
+	)
+
+	if err != nil {
+		return nil, apperrors.DatabaseError("insert postgresql log", err.Error())
+	}
+
+	return result, nil
+}
+
+// GetPostgresqlLogs retrieves PostgreSQL logs with optional filtering
+func (p *PostgresDB) GetPostgresqlLogs(ctx context.Context, instanceID int, limit int, offset int) ([]*models.PostgreSQLLog, error) {
+	rows, err := p.db.QueryContext(
+		ctx,
+		`SELECT id, collector_id, instance_id, database_id, log_timestamp, log_level, log_message,
+			source_location, process_id, query_text, query_hash, error_code, error_detail,
+			error_hint, error_context, user_name, connection_from, session_id, created_at, updated_at
+		 FROM pganalytics.postgresql_logs
+		 WHERE instance_id = $1
+		 ORDER BY log_timestamp DESC
+		 LIMIT $2 OFFSET $3`,
+		instanceID, limit, offset,
+	)
+
+	if err != nil {
+		return nil, apperrors.DatabaseError("get postgresql logs", err.Error())
+	}
+	defer func() { _ = rows.Close() }()
+
+	var logs []*models.PostgreSQLLog
+	for rows.Next() {
+		log := &models.PostgreSQLLog{}
+		err := rows.Scan(
+			&log.ID, &log.CollectorID, &log.InstanceID, &log.DatabaseID, &log.LogTimestamp,
+			&log.LogLevel, &log.LogMessage, &log.SourceLocation, &log.ProcessID, &log.QueryText,
+			&log.QueryHash, &log.ErrorCode, &log.ErrorDetail, &log.ErrorHint, &log.ErrorContext,
+			&log.UserName, &log.ConnectionFrom, &log.SessionID, &log.CreatedAt, &log.UpdatedAt,
+		)
+		if err != nil {
+			return nil, apperrors.DatabaseError("scan postgresql log", err.Error())
+		}
+		logs = append(logs, log)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, apperrors.DatabaseError("get postgresql logs", err.Error())
+	}
+
+	return logs, nil
+}
+
+// GetPostgresqlLogsByLevel retrieves PostgreSQL logs filtered by log level
+func (p *PostgresDB) GetPostgresqlLogsByLevel(ctx context.Context, instanceID int, logLevel string, limit int, offset int) ([]*models.PostgreSQLLog, error) {
+	rows, err := p.db.QueryContext(
+		ctx,
+		`SELECT id, collector_id, instance_id, database_id, log_timestamp, log_level, log_message,
+			source_location, process_id, query_text, query_hash, error_code, error_detail,
+			error_hint, error_context, user_name, connection_from, session_id, created_at, updated_at
+		 FROM pganalytics.postgresql_logs
+		 WHERE instance_id = $1 AND log_level = $2
+		 ORDER BY log_timestamp DESC
+		 LIMIT $3 OFFSET $4`,
+		instanceID, logLevel, limit, offset,
+	)
+
+	if err != nil {
+		return nil, apperrors.DatabaseError("get postgresql logs by level", err.Error())
+	}
+	defer func() { _ = rows.Close() }()
+
+	var logs []*models.PostgreSQLLog
+	for rows.Next() {
+		log := &models.PostgreSQLLog{}
+		err := rows.Scan(
+			&log.ID, &log.CollectorID, &log.InstanceID, &log.DatabaseID, &log.LogTimestamp,
+			&log.LogLevel, &log.LogMessage, &log.SourceLocation, &log.ProcessID, &log.QueryText,
+			&log.QueryHash, &log.ErrorCode, &log.ErrorDetail, &log.ErrorHint, &log.ErrorContext,
+			&log.UserName, &log.ConnectionFrom, &log.SessionID, &log.CreatedAt, &log.UpdatedAt,
+		)
+		if err != nil {
+			return nil, apperrors.DatabaseError("scan postgresql log", err.Error())
+		}
+		logs = append(logs, log)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, apperrors.DatabaseError("get postgresql logs by level", err.Error())
+	}
+
+	return logs, nil
+}
+
+// GetErrorLogs retrieves ERROR, FATAL, and PANIC level logs
+func (p *PostgresDB) GetErrorLogs(ctx context.Context, instanceID int, limit int, offset int) ([]*models.PostgreSQLLog, error) {
+	rows, err := p.db.QueryContext(
+		ctx,
+		`SELECT id, collector_id, instance_id, database_id, log_timestamp, log_level, log_message,
+			source_location, process_id, query_text, query_hash, error_code, error_detail,
+			error_hint, error_context, user_name, connection_from, session_id, created_at, updated_at
+		 FROM pganalytics.postgresql_logs
+		 WHERE instance_id = $1 AND log_level IN ('ERROR', 'FATAL', 'PANIC')
+		 ORDER BY log_timestamp DESC
+		 LIMIT $2 OFFSET $3`,
+		instanceID, limit, offset,
+	)
+
+	if err != nil {
+		return nil, apperrors.DatabaseError("get error logs", err.Error())
+	}
+	defer func() { _ = rows.Close() }()
+
+	var logs []*models.PostgreSQLLog
+	for rows.Next() {
+		log := &models.PostgreSQLLog{}
+		err := rows.Scan(
+			&log.ID, &log.CollectorID, &log.InstanceID, &log.DatabaseID, &log.LogTimestamp,
+			&log.LogLevel, &log.LogMessage, &log.SourceLocation, &log.ProcessID, &log.QueryText,
+			&log.QueryHash, &log.ErrorCode, &log.ErrorDetail, &log.ErrorHint, &log.ErrorContext,
+			&log.UserName, &log.ConnectionFrom, &log.SessionID, &log.CreatedAt, &log.UpdatedAt,
+		)
+		if err != nil {
+			return nil, apperrors.DatabaseError("scan error log", err.Error())
+		}
+		logs = append(logs, log)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, apperrors.DatabaseError("get error logs", err.Error())
+	}
+
+	return logs, nil
+}
+
+// GetLogStatisticsHourly retrieves hourly aggregated log statistics for a time range
+func (p *PostgresDB) GetLogStatisticsHourly(ctx context.Context, instanceID int, hoursBack int) ([]*models.LogEventHourly, error) {
+	rows, err := p.db.QueryContext(
+		ctx,
+		`SELECT id, hour_bucket, collector_id, instance_id, database_id, log_level,
+			event_count, unique_users, unique_sessions, error_count, warning_count, fatal_count,
+			created_at, updated_at
+		 FROM pganalytics.log_events_hourly
+		 WHERE instance_id = $1 AND hour_bucket > CURRENT_TIMESTAMP - INTERVAL '1 hour' * $2
+		 ORDER BY hour_bucket DESC`,
+		instanceID, hoursBack,
+	)
+
+	if err != nil {
+		return nil, apperrors.DatabaseError("get log statistics hourly", err.Error())
+	}
+	defer func() { _ = rows.Close() }()
+
+	var stats []*models.LogEventHourly
+	for rows.Next() {
+		stat := &models.LogEventHourly{}
+		err := rows.Scan(
+			&stat.ID, &stat.HourBucket, &stat.CollectorID, &stat.InstanceID, &stat.DatabaseID, &stat.LogLevel,
+			&stat.EventCount, &stat.UniqueUsers, &stat.UniqueSessions, &stat.ErrorCount, &stat.WarningCount,
+			&stat.FatalCount, &stat.CreatedAt, &stat.UpdatedAt,
+		)
+		if err != nil {
+			return nil, apperrors.DatabaseError("scan log statistics", err.Error())
+		}
+		stats = append(stats, stat)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, apperrors.DatabaseError("get log statistics hourly", err.Error())
+	}
+
+	return stats, nil
 }

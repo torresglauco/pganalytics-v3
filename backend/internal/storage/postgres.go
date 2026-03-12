@@ -13,6 +13,7 @@ import (
 	"github.com/lib/pq"
 	apperrors "github.com/torresglauco/pganalytics-v3/backend/pkg/errors"
 	"github.com/torresglauco/pganalytics-v3/backend/pkg/models"
+	"go.uber.org/zap"
 )
 
 // PostgresDB wraps a PostgreSQL database connection
@@ -80,7 +81,27 @@ func NewPostgresDB(connString string) (*PostgresDB, error) {
 		return nil, apperrors.DatabaseError("set search_path", err.Error())
 	}
 
+	// Run database migrations (non-blocking with logger preference)
+	// We use a logger created here for migrations only
+	if err := runMigrations(ctx, db); err != nil {
+		// Log migration errors but don't fail - migrations may have permission issues in some environments
+		fmt.Fprintf(os.Stderr, "Warning: Migration execution encountered error (may be non-critical): %v\n", err)
+	}
+
 	return &PostgresDB{db: db}, nil
+}
+
+// runMigrations executes pending database migrations
+func runMigrations(ctx context.Context, db *sql.DB) error {
+	// Create a simple logger for migrations
+	logger, err := zap.NewDevelopment()
+	if err != nil {
+		return fmt.Errorf("failed to create logger for migrations: %w", err)
+	}
+	defer func() { _ = logger.Sync() }()
+
+	runner := NewMigrationRunner(db, logger)
+	return runner.Run(ctx)
 }
 
 // Close closes the database connection
@@ -111,12 +132,12 @@ func (p *PostgresDB) GetUserByUsername(ctx context.Context, username string) (*m
 
 	err := p.db.QueryRowContext(
 		ctx,
-		`SELECT id, username, email, password_hash, full_name, role, is_active, last_login, created_at, updated_at
+		`SELECT id, username, email, password_hash, full_name, role, is_active, password_changed, last_login, created_at, updated_at
 		 FROM pganalytics.users WHERE username = $1`,
 		username,
 	).Scan(
 		&user.ID, &user.Username, &user.Email, &user.PasswordHash, &user.FullName,
-		&user.Role, &user.IsActive, &user.LastLogin, &user.CreatedAt, &user.UpdatedAt,
+		&user.Role, &user.IsActive, &user.PasswordChanged, &user.LastLogin, &user.CreatedAt, &user.UpdatedAt,
 	)
 
 	if err == sql.ErrNoRows {
@@ -135,12 +156,12 @@ func (p *PostgresDB) GetUserByID(ctx context.Context, userID int) (*models.User,
 
 	err := p.db.QueryRowContext(
 		ctx,
-		`SELECT id, username, email, password_hash, full_name, role, is_active, last_login, created_at, updated_at
+		`SELECT id, username, email, password_hash, full_name, role, is_active, password_changed, last_login, created_at, updated_at
 		 FROM pganalytics.users WHERE id = $1`,
 		userID,
 	).Scan(
 		&user.ID, &user.Username, &user.Email, &user.PasswordHash, &user.FullName,
-		&user.Role, &user.IsActive, &user.LastLogin, &user.CreatedAt, &user.UpdatedAt,
+		&user.Role, &user.IsActive, &user.PasswordChanged, &user.LastLogin, &user.CreatedAt, &user.UpdatedAt,
 	)
 
 	if err == sql.ErrNoRows {
@@ -179,13 +200,13 @@ func (p *PostgresDB) CreateUserWithRole(ctx context.Context, username, email, pa
 
 	err := p.db.QueryRowContext(
 		ctx,
-		`INSERT INTO pganalytics.users (username, email, password_hash, full_name, role, is_active)
-		 VALUES ($1, $2, $3, $4, $5, true)
-		 RETURNING id, username, email, password_hash, full_name, role, is_active, last_login, created_at, updated_at`,
+		`INSERT INTO pganalytics.users (username, email, password_hash, full_name, role, is_active, password_changed)
+		 VALUES ($1, $2, $3, $4, $5, true, false)
+		 RETURNING id, username, email, password_hash, full_name, role, is_active, password_changed, last_login, created_at, updated_at`,
 		username, email, passwordHash, fullName, role,
 	).Scan(
 		&user.ID, &user.Username, &user.Email, &user.PasswordHash, &user.FullName,
-		&user.Role, &user.IsActive, &user.LastLogin, &user.CreatedAt, &user.UpdatedAt,
+		&user.Role, &user.IsActive, &user.PasswordChanged, &user.LastLogin, &user.CreatedAt, &user.UpdatedAt,
 	)
 
 	if err != nil {
@@ -203,7 +224,7 @@ func (p *PostgresDB) CreateUserWithRole(ctx context.Context, username, email, pa
 func (p *PostgresDB) ListUsers(ctx context.Context) ([]*models.User, error) {
 	rows, err := p.db.QueryContext(
 		ctx,
-		`SELECT id, username, email, password_hash, full_name, role, is_active, last_login, created_at, updated_at
+		`SELECT id, username, email, password_hash, full_name, role, is_active, password_changed, last_login, created_at, updated_at
 		 FROM pganalytics.users
 		 ORDER BY created_at DESC`,
 	)
@@ -218,7 +239,7 @@ func (p *PostgresDB) ListUsers(ctx context.Context) ([]*models.User, error) {
 		user := &models.User{}
 		err := rows.Scan(
 			&user.ID, &user.Username, &user.Email, &user.PasswordHash, &user.FullName,
-			&user.Role, &user.IsActive, &user.LastLogin, &user.CreatedAt, &user.UpdatedAt,
+			&user.Role, &user.IsActive, &user.PasswordChanged, &user.LastLogin, &user.CreatedAt, &user.UpdatedAt,
 		)
 		if err != nil {
 			return nil, apperrors.DatabaseError("scan user", err.Error())
@@ -326,6 +347,33 @@ func (p *PostgresDB) ResetUserPassword(ctx context.Context, userID int, newPassw
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
 		return apperrors.DatabaseError("reset user password", err.Error())
+	}
+
+	if rowsAffected == 0 {
+		return apperrors.NotFound("User not found", fmt.Sprintf("User ID %d not found", userID))
+	}
+
+	return nil
+}
+
+// UpdateUserPassword updates a user's password and marks password_changed as true
+func (p *PostgresDB) UpdateUserPassword(ctx context.Context, userID int, newPasswordHash string) error {
+	result, err := p.db.ExecContext(
+		ctx,
+		`UPDATE pganalytics.users
+		 SET password_hash = $1, password_changed = true, updated_at = CURRENT_TIMESTAMP
+		 WHERE id = $2`,
+		newPasswordHash,
+		userID,
+	)
+
+	if err != nil {
+		return apperrors.DatabaseError("update user password", err.Error())
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return apperrors.DatabaseError("update user password", err.Error())
 	}
 
 	if rowsAffected == 0 {

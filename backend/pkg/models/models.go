@@ -12,16 +12,17 @@ import (
 
 // User represents a user in the system
 type User struct {
-	ID           int        `db:"id" json:"id"`
-	Username     string     `db:"username" json:"username"`
-	Email        string     `db:"email" json:"email"`
-	PasswordHash string     `db:"password_hash" json:"-"`
-	FullName     string     `db:"full_name" json:"full_name,omitempty"`
-	Role         string     `db:"role" json:"role"`
-	IsActive     bool       `db:"is_active" json:"is_active"`
-	LastLogin    *time.Time `db:"last_login" json:"last_login,omitempty"`
-	CreatedAt    time.Time  `db:"created_at" json:"created_at"`
-	UpdatedAt    time.Time  `db:"updated_at" json:"updated_at"`
+	ID               int        `db:"id" json:"id"`
+	Username         string     `db:"username" json:"username"`
+	Email            string     `db:"email" json:"email"`
+	PasswordHash     string     `db:"password_hash" json:"-"`
+	FullName         string     `db:"full_name" json:"full_name,omitempty"`
+	Role             string     `db:"role" json:"role"`
+	IsActive         bool       `db:"is_active" json:"is_active"`
+	PasswordChanged  bool       `db:"password_changed" json:"password_changed"`
+	LastLogin        *time.Time `db:"last_login" json:"last_login,omitempty"`
+	CreatedAt        time.Time  `db:"created_at" json:"created_at"`
+	UpdatedAt        time.Time  `db:"updated_at" json:"updated_at"`
 }
 
 // ============================================================================

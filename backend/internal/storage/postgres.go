@@ -413,17 +413,14 @@ func (p *PostgresDB) GetCollectorByID(ctx context.Context, collectorID string) (
 
 	err := p.db.QueryRowContext(
 		ctx,
-		`SELECT id, name, description, hostname, address, version, status, last_seen,
-		        certificate_thumbprint, certificate_expires_at, config_version, metrics_count_total,
-		        metrics_count_24h, health_check_interval, created_at, updated_at
+		`SELECT id, name, hostname, status, last_seen, metrics_count_24h, config_version,
+		        health_check_interval, created_at, updated_at
 		 FROM pganalytics.collectors WHERE id::text = $1`,
 		collectorID,
 	).Scan(
-		&collector.ID, &collector.Name, &collector.Description, &collector.Hostname, &collector.Address,
-		&collector.Version, &collector.Status, &collector.LastSeen,
-		&collector.CertificateThumbprint, &collector.CertificateExpiresAt, &collector.ConfigVersion,
-		&collector.MetricsCountTotal, &collector.MetricsCount24h, &collector.HealthCheckInterval,
-		&collector.CreatedAt, &collector.UpdatedAt,
+		&collector.ID, &collector.Name, &collector.Hostname,
+		&collector.Status, &collector.LastSeen, &collector.MetricsCount24h, &collector.ConfigVersion,
+		&collector.HealthCheckInterval, &collector.CreatedAt, &collector.UpdatedAt,
 	)
 
 	if err == sql.ErrNoRows {
@@ -442,17 +439,14 @@ func (p *PostgresDB) GetCollectorByHostname(ctx context.Context, hostname string
 
 	err := p.db.QueryRowContext(
 		ctx,
-		`SELECT id, name, description, hostname, address, version, status, last_seen,
-		        certificate_thumbprint, certificate_expires_at, config_version, metrics_count_total,
-		        metrics_count_24h, health_check_interval, created_at, updated_at
+		`SELECT id, name, hostname, status, last_seen, metrics_count_24h, config_version,
+		        health_check_interval, created_at, updated_at
 		 FROM pganalytics.collectors WHERE hostname = $1`,
 		hostname,
 	).Scan(
-		&collector.ID, &collector.Name, &collector.Description, &collector.Hostname, &collector.Address,
-		&collector.Version, &collector.Status, &collector.LastSeen,
-		&collector.CertificateThumbprint, &collector.CertificateExpiresAt, &collector.ConfigVersion,
-		&collector.MetricsCountTotal, &collector.MetricsCount24h, &collector.HealthCheckInterval,
-		&collector.CreatedAt, &collector.UpdatedAt,
+		&collector.ID, &collector.Name, &collector.Hostname,
+		&collector.Status, &collector.LastSeen, &collector.MetricsCount24h, &collector.ConfigVersion,
+		&collector.HealthCheckInterval, &collector.CreatedAt, &collector.UpdatedAt,
 	)
 
 	if err == sql.ErrNoRows {
@@ -469,9 +463,8 @@ func (p *PostgresDB) GetCollectorByHostname(ctx context.Context, hostname string
 func (p *PostgresDB) ListCollectors(ctx context.Context, offset, limit int) ([]*models.Collector, error) {
 	rows, err := p.db.QueryContext(
 		ctx,
-		`SELECT id, name, description, hostname, address, version, status, last_seen,
-		        certificate_thumbprint, certificate_expires_at, config_version, metrics_count_total,
-		        metrics_count_24h, health_check_interval, created_at, updated_at
+		`SELECT id, name, hostname, status, last_seen, metrics_count_24h, config_version,
+		        health_check_interval, created_at, updated_at
 		 FROM pganalytics.collectors
 		 ORDER BY created_at DESC
 		 LIMIT $1 OFFSET $2`,
@@ -487,11 +480,9 @@ func (p *PostgresDB) ListCollectors(ctx context.Context, offset, limit int) ([]*
 	for rows.Next() {
 		collector := &models.Collector{}
 		if err := rows.Scan(
-			&collector.ID, &collector.Name, &collector.Description, &collector.Hostname, &collector.Address,
-			&collector.Version, &collector.Status, &collector.LastSeen,
-			&collector.CertificateThumbprint, &collector.CertificateExpiresAt, &collector.ConfigVersion,
-			&collector.MetricsCountTotal, &collector.MetricsCount24h, &collector.HealthCheckInterval,
-			&collector.CreatedAt, &collector.UpdatedAt,
+			&collector.ID, &collector.Name, &collector.Hostname,
+			&collector.Status, &collector.LastSeen, &collector.MetricsCount24h, &collector.ConfigVersion,
+			&collector.HealthCheckInterval, &collector.CreatedAt, &collector.UpdatedAt,
 		); err != nil {
 			return nil, apperrors.DatabaseError("scan collector row", err.Error())
 		}

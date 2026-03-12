@@ -1724,7 +1724,6 @@ func (s *Server) handleCreateRegistrationSecret(c *gin.Context) {
 	response, err := s.postgres.CreateRegistrationSecret(
 		c.Request.Context(),
 		req.Name,
-		req.Description,
 		req.ExpiresAt,
 		userIdInt,
 	)
@@ -1828,7 +1827,6 @@ func (s *Server) handleUpdateRegistrationSecret(c *gin.Context) {
 		c.Request.Context(),
 		secretId,
 		&req.Name,
-		&req.Description,
 		req.Active,
 	)
 

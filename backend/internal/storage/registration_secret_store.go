@@ -15,7 +15,6 @@ import (
 func (s *PostgresDB) CreateRegistrationSecret(
 	ctx context.Context,
 	name string,
-	description string,
 	expiresAt *time.Time,
 	createdBy int,
 ) (*models.CreateRegistrationSecretResponse, error) {
@@ -29,16 +28,16 @@ func (s *PostgresDB) CreateRegistrationSecret(
 	now := time.Now()
 
 	query := `
-		INSERT INTO pganalytics.registration_secrets (id, name, secret_value, description, active, created_by, created_at, updated_at, expires_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-		RETURNING id, name, description, active, created_at
+		INSERT INTO pganalytics.registration_secrets (id, name, secret_value, active, created_by, created_at, updated_at, expires_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		RETURNING id, name, active, created_at
 	`
 
 	var createdSecret models.RegistrationSecret
 	err = s.db.QueryRowContext(ctx, query,
-		id, name, secretValue, description, true, createdBy, now, now, expiresAt,
+		id, name, secretValue, true, createdBy, now, now, expiresAt,
 	).Scan(
-		&createdSecret.ID, &createdSecret.Name, &createdSecret.Description,
+		&createdSecret.ID, &createdSecret.Name,
 		&createdSecret.Active, &createdSecret.CreatedAt,
 	)
 
@@ -60,7 +59,7 @@ func (s *PostgresDB) CreateRegistrationSecret(
 // GetRegistrationSecret retrieves a registration secret by ID
 func (s *PostgresDB) GetRegistrationSecret(ctx context.Context, id string) (*models.RegistrationSecret, error) {
 	query := `
-		SELECT rs.id, rs.name, rs.description, rs.active, rs.created_by, u.username,
+		SELECT rs.id, rs.name, rs.active, rs.created_by, u.username,
 		       rs.created_at, rs.updated_at, rs.expires_at, rs.total_registrations, rs.last_used_at
 		FROM pganalytics.registration_secrets rs
 		LEFT JOIN pganalytics.users u ON rs.created_by = u.id
@@ -70,7 +69,7 @@ func (s *PostgresDB) GetRegistrationSecret(ctx context.Context, id string) (*mod
 	var secret models.RegistrationSecret
 	var username *string
 	err := s.db.QueryRowContext(ctx, query, id).Scan(
-		&secret.ID, &secret.Name, &secret.Description, &secret.Active, &secret.CreatedBy,
+		&secret.ID, &secret.Name, &secret.Active, &secret.CreatedBy,
 		&username, &secret.CreatedAt, &secret.UpdatedAt, &secret.ExpiresAt,
 		&secret.TotalRegistrations, &secret.LastUsedAt,
 	)
@@ -89,7 +88,7 @@ func (s *PostgresDB) GetRegistrationSecret(ctx context.Context, id string) (*mod
 // ListRegistrationSecrets retrieves all registration secrets
 func (s *PostgresDB) ListRegistrationSecrets(ctx context.Context) ([]models.RegistrationSecret, error) {
 	query := `
-		SELECT rs.id, rs.name, rs.description, rs.active, rs.created_by, u.username,
+		SELECT rs.id, rs.name, rs.active, rs.created_by, u.username,
 		       rs.created_at, rs.updated_at, rs.expires_at, rs.total_registrations, rs.last_used_at
 		FROM pganalytics.registration_secrets rs
 		LEFT JOIN pganalytics.users u ON rs.created_by = u.id
@@ -107,7 +106,7 @@ func (s *PostgresDB) ListRegistrationSecrets(ctx context.Context) ([]models.Regi
 		var secret models.RegistrationSecret
 		var username *string
 		err := rows.Scan(
-			&secret.ID, &secret.Name, &secret.Description, &secret.Active, &secret.CreatedBy,
+			&secret.ID, &secret.Name, &secret.Active, &secret.CreatedBy,
 			&username, &secret.CreatedAt, &secret.UpdatedAt, &secret.ExpiresAt,
 			&secret.TotalRegistrations, &secret.LastUsedAt,
 		)
@@ -130,22 +129,20 @@ func (s *PostgresDB) UpdateRegistrationSecret(
 	ctx context.Context,
 	id string,
 	name *string,
-	description *string,
 	active *bool,
 ) (*models.RegistrationSecret, error) {
 	query := `
 		UPDATE pganalytics.registration_secrets
 		SET name = COALESCE($2, name),
-		    description = COALESCE($3, description),
-		    active = COALESCE($4, active),
+		    active = COALESCE($3, active),
 		    updated_at = NOW()
 		WHERE id = $1
-		RETURNING id, name, description, active, created_by, created_at, updated_at, expires_at, total_registrations, last_used_at
+		RETURNING id, name, active, created_by, created_at, updated_at, expires_at, total_registrations, last_used_at
 	`
 
 	var secret models.RegistrationSecret
-	err := s.db.QueryRowContext(ctx, query, id, name, description, active).Scan(
-		&secret.ID, &secret.Name, &secret.Description, &secret.Active, &secret.CreatedBy,
+	err := s.db.QueryRowContext(ctx, query, id, name, active).Scan(
+		&secret.ID, &secret.Name, &secret.Active, &secret.CreatedBy,
 		&secret.CreatedAt, &secret.UpdatedAt, &secret.ExpiresAt, &secret.TotalRegistrations,
 		&secret.LastUsedAt,
 	)

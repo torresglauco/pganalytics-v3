@@ -109,35 +109,21 @@ func (p *PostgresDB) CreateManagedInstance(ctx context.Context, instance *models
 // GetManagedInstance retrieves an RDS instance by ID
 func (p *PostgresDB) GetManagedInstance(ctx context.Context, id int) (*models.ManagedInstance, error) {
 	instance := &models.ManagedInstance{}
-	var tags json.RawMessage
 
 	err := p.db.QueryRowContext(
 		ctx,
-		`SELECT id, name, description, aws_region, endpoint, port,
-			engine_version, db_instance_class, allocated_storage_gb,
-			environment, master_username, secret_id,
-			enable_enhanced_monitoring, monitoring_interval,
-			ssl_enabled, ssl_mode, connection_timeout,
-			is_active, status, last_heartbeat, last_connection_status,
-			last_error_message, last_error_time,
-			multi_az, backup_retention_days, preferred_backup_window,
-			preferred_maintenance_window, tags,
-			created_at, updated_at, created_by, updated_by
+		`SELECT id, name, aws_region, rds_endpoint, port, engine_version, db_instance_class,
+			ssl_enabled, ssl_mode, is_active, last_connection_status,
+			last_heartbeat, last_error_message, environment, multi_az,
+			backup_retention_days, created_by, created_at, updated_at
 		FROM pganalytics.managed_instances WHERE id = $1`,
 		id,
 	).Scan(
-		&instance.ID, &instance.Name, &instance.Description, &instance.AWSRegion,
-		&instance.Endpoint, &instance.Port, &instance.EngineVersion,
-		&instance.DBInstanceClass, &instance.AllocatedStorageGB,
-		&instance.Environment, &instance.MasterUsername, &instance.SecretID,
-		&instance.EnableEnhancedMonitoring, &instance.MonitoringInterval,
-		&instance.SSLEnabled, &instance.SSLMode, &instance.ConnectionTimeout,
-		&instance.IsActive, &instance.Status, &instance.LastHeartbeat, &instance.LastConnectionStatus,
-		&instance.LastErrorMessage, &instance.LastErrorTime,
-		&instance.MultiAZ, &instance.BackupRetentionDays,
-		&instance.PreferredBackupWindow, &instance.PreferredMaintenanceWindow,
-		&tags,
-		&instance.CreatedAt, &instance.UpdatedAt, &instance.CreatedBy, &instance.UpdatedBy,
+		&instance.ID, &instance.Name, &instance.AWSRegion, &instance.Endpoint, &instance.Port,
+		&instance.EngineVersion, &instance.DBInstanceClass,
+		&instance.SSLEnabled, &instance.SSLMode, &instance.IsActive, &instance.LastConnectionStatus,
+		&instance.LastHeartbeat, &instance.LastErrorMessage, &instance.Environment, &instance.MultiAZ,
+		&instance.BackupRetentionDays, &instance.CreatedBy, &instance.CreatedAt, &instance.UpdatedAt,
 	)
 
 	if err != nil {
@@ -147,11 +133,6 @@ func (p *PostgresDB) GetManagedInstance(ctx context.Context, id int) (*models.Ma
 		return nil, apperrors.DatabaseError("get managed instance", err.Error())
 	}
 
-	// Parse tags
-	if len(tags) > 0 {
-		_ = json.Unmarshal(tags, &instance.Tags)
-	}
-
 	return instance, nil
 }
 
@@ -159,16 +140,10 @@ func (p *PostgresDB) GetManagedInstance(ctx context.Context, id int) (*models.Ma
 func (p *PostgresDB) ListManagedInstances(ctx context.Context) ([]*models.ManagedInstance, error) {
 	rows, err := p.db.QueryContext(
 		ctx,
-		`SELECT id, name, description, aws_region, endpoint, port,
-			engine_version, db_instance_class, allocated_storage_gb,
-			environment, master_username, secret_id,
-			enable_enhanced_monitoring, monitoring_interval,
-			ssl_enabled, ssl_mode, connection_timeout,
-			is_active, status, last_heartbeat, last_connection_status,
-			last_error_message, last_error_time,
-			multi_az, backup_retention_days, preferred_backup_window,
-			preferred_maintenance_window, tags,
-			created_at, updated_at, created_by, updated_by
+		`SELECT id, name, aws_region, rds_endpoint, port, engine_version, db_instance_class,
+			ssl_enabled, ssl_mode, is_active, last_connection_status,
+			last_heartbeat, last_error_message, environment, multi_az,
+			backup_retention_days, created_by, created_at, updated_at
 		FROM pganalytics.managed_instances WHERE is_active = true
 		ORDER BY name ASC`,
 	)
@@ -181,28 +156,16 @@ func (p *PostgresDB) ListManagedInstances(ctx context.Context) ([]*models.Manage
 	var instances []*models.ManagedInstance
 	for rows.Next() {
 		instance := &models.ManagedInstance{}
-		var tags json.RawMessage
 
 		err := rows.Scan(
-			&instance.ID, &instance.Name, &instance.Description, &instance.AWSRegion,
-			&instance.Endpoint, &instance.Port, &instance.EngineVersion,
-			&instance.DBInstanceClass, &instance.AllocatedStorageGB,
-			&instance.Environment, &instance.MasterUsername, &instance.SecretID,
-			&instance.EnableEnhancedMonitoring, &instance.MonitoringInterval,
-			&instance.SSLEnabled, &instance.SSLMode, &instance.ConnectionTimeout,
-			&instance.IsActive, &instance.Status, &instance.LastHeartbeat, &instance.LastConnectionStatus,
-			&instance.LastErrorMessage, &instance.LastErrorTime,
-			&instance.MultiAZ, &instance.BackupRetentionDays,
-			&instance.PreferredBackupWindow, &instance.PreferredMaintenanceWindow,
-			&tags,
-			&instance.CreatedAt, &instance.UpdatedAt, &instance.CreatedBy, &instance.UpdatedBy,
+			&instance.ID, &instance.Name, &instance.AWSRegion, &instance.Endpoint, &instance.Port,
+			&instance.EngineVersion, &instance.DBInstanceClass,
+			&instance.SSLEnabled, &instance.SSLMode, &instance.IsActive, &instance.LastConnectionStatus,
+			&instance.LastHeartbeat, &instance.LastErrorMessage, &instance.Environment, &instance.MultiAZ,
+			&instance.BackupRetentionDays, &instance.CreatedBy, &instance.CreatedAt, &instance.UpdatedAt,
 		)
 		if err != nil {
 			return nil, apperrors.DatabaseError("scan RDS instance", err.Error())
-		}
-
-		if len(tags) > 0 {
-			_ = json.Unmarshal(tags, &instance.Tags)
 		}
 
 		instances = append(instances, instance)

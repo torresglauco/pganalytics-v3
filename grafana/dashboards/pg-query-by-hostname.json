@@ -439,6 +439,7 @@
           "uid": "P4755FD0186DF985F",
           "type": "grafana-postgresql-datasource"
         },
+        "definition": "SELECT DISTINCT c.hostname FROM collectors c ORDER BY c.hostname",
         "description": null,
         "error": null,
         "hide": 0,
@@ -447,6 +448,7 @@
         "multi": false,
         "name": "hostname",
         "options": [],
+        "query": "SELECT DISTINCT c.hostname FROM collectors c ORDER BY c.hostname",
         "refresh": 2,
         "skipUrlSync": false,
         "sort": 1,

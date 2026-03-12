@@ -185,12 +185,17 @@ func (mr *MigrationRunner) executeMigration(ctx context.Context, migration Migra
 	defer func() { _ = tx.Rollback() }()
 
 	// Execute the migration SQL
-	// Some migrations may contain multiple statements separated by semicolons
-	statements := splitStatements(migration.Content)
-	for _, stmt := range statements {
+	// Split on semicolons followed by newline to avoid splitting inside strings/clauses
+	statements := strings.Split(migration.Content, ";\n")
+	for i, stmt := range statements {
 		stmt = strings.TrimSpace(stmt)
 		if stmt == "" {
 			continue
+		}
+
+		// Re-add semicolon if not the last statement
+		if i < len(statements)-1 && !strings.HasSuffix(stmt, ";") {
+			stmt += ";"
 		}
 
 		if _, err := tx.ExecContext(ctx, stmt); err != nil {

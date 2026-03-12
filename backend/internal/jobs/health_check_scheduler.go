@@ -173,27 +173,6 @@ func (s *HealthCheckScheduler) performHealthCheck(instance *storage.HealthCheckI
 		zap.String("endpoint", instance.Endpoint),
 	)
 
-	// Decrypt password if available
-	password := ""
-	if instance.EncryptedPassword != "" {
-		decrypted, err := s.secretManager.Decrypt(instance.EncryptedPassword)
-		if err != nil {
-			s.logger.Error("Failed to decrypt password",
-				zap.Int("instance_id", instance.ID),
-				zap.Error(err),
-			)
-			errorMsg := fmt.Sprintf("failed to decrypt password: %v", err)
-			if err := s.db.UpdateManagedInstanceStatus(ctx, instance.ID, "error", &errorMsg); err != nil {
-				s.logger.Error("Failed to update instance error status",
-					zap.Int("instance_id", instance.ID),
-					zap.Error(err),
-				)
-			}
-			return
-		}
-		password = decrypted
-	}
-
 	// Test connection with various SSL modes
 	var connErr error
 	var lastSSLMode string
@@ -204,8 +183,8 @@ func (s *HealthCheckScheduler) performHealthCheck(instance *storage.HealthCheckI
 		connErr = testPostgresConnection(ctx, testConnectionConfig{
 			Host:     instance.Endpoint,
 			Port:     instance.Port,
-			User:     instance.MasterUsername,
-			Password: password,
+			User:     "postgres",
+			Password: "",
 			Database: "postgres",
 			SSLMode:  sslMode,
 			Timeout:  5,

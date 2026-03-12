@@ -943,7 +943,7 @@
       {
         "allValue": null,
         "current": {
-          "selected": false,
+          "selected": true,
           "text": "24h",
           "value": "24h"
         },
@@ -956,40 +956,29 @@
         "name": "time_range",
         "options": [
           {
-            "selected": false,
             "text": "1h",
             "value": "1h"
           },
           {
-            "selected": false,
             "text": "6h",
             "value": "6h"
           },
           {
-            "selected": true,
             "text": "24h",
             "value": "24h"
           },
           {
-            "selected": false,
             "text": "7d",
             "value": "7d"
           },
           {
-            "selected": false,
             "text": "30d",
             "value": "30d"
           }
         ],
-        "query": "1h,6h,24h,7d,30d",
-        "queryValue": "",
         "skipUrlSync": false,
         "sort": 1,
-        "tagValuesQuery": "",
-        "tags": [],
-        "tagsQuery": "",
-        "type": "custom",
-        "useTags": false
+        "type": "custom"
       }
     ]
   },

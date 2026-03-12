@@ -3,24 +3,20 @@ package storage
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"fmt"
 
 	apperrors "github.com/torresglauco/pganalytics-v3/backend/pkg/errors"
 	"github.com/torresglauco/pganalytics-v3/backend/pkg/models"
 )
 
-// HealthCheckInstance represents a managed instance with encrypted credentials for health checks
+// HealthCheckInstance represents a managed instance for health checks
 type HealthCheckInstance struct {
-	ID                int
-	Name              string
-	Endpoint          string
-	Port              int
-	MasterUsername    string
-	EncryptedPassword string
-	SSLMode           string
-	ConnectionTimeout int
-	Status            string
+	ID       int
+	Name     string
+	Endpoint string
+	Port     int
+	SSLMode  string
+	Status   string
 }
 
 // CreateManagedInstance creates a new RDS instance record
@@ -28,44 +24,24 @@ func (p *PostgresDB) CreateManagedInstance(ctx context.Context, instance *models
 	var id int
 	var createdAt, updatedAt sql.NullTime
 
-	tagsJSON, _ := json.Marshal(instance.Tags)
-
-	// Convert nil pointer to interface{} for proper NULL handling
-	var secretIDValue interface{} = secretID
-	if secretID == nil {
-		secretIDValue = nil
-	}
-
 	err := p.db.QueryRowContext(
 		ctx,
 		`INSERT INTO pganalytics.managed_instances (
-			name, description, aws_region, endpoint, port,
-			engine_version, db_instance_class, allocated_storage_gb,
-			environment, master_username, secret_id,
-			enable_enhanced_monitoring, monitoring_interval,
-			ssl_enabled, ssl_mode, connection_timeout,
-			multi_az, backup_retention_days, preferred_backup_window,
-			preferred_maintenance_window, tags, is_active, status,
-			created_by, updated_by, created_at, updated_at
+			name, aws_region, rds_endpoint, port,
+			environment, ssl_enabled, ssl_mode,
+			multi_az, backup_retention_days,
+			is_active, created_by, created_at, updated_at
 		) VALUES (
-			$1, $2, $3, $4, $5,
-			$6, $7, $8,
-			$9, $10, $11,
-			$12, $13,
-			$14, $15, $16,
-			$17, $18, $19,
-			$20, $21, true, 'registered',
-			$22, $22, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+			$1, $2, $3, $4,
+			$5, $6, $7,
+			$8, $9,
+			true, $10, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
 		) RETURNING id, created_at, updated_at`,
-		instance.Name, instance.Description, instance.AWSRegion,
+		instance.Name, instance.AWSRegion,
 		instance.Endpoint, instance.Port,
-		instance.EngineVersion, instance.DBInstanceClass, instance.AllocatedStorageGB,
-		instance.Environment, instance.MasterUsername, secretIDValue,
-		instance.EnableEnhancedMonitoring, instance.MonitoringInterval,
-		instance.SSLEnabled, instance.SSLMode, instance.ConnectionTimeout,
+		instance.Environment, instance.SSLEnabled, instance.SSLMode,
 		instance.MultiAZ, instance.BackupRetentionDays,
-		instance.PreferredBackupWindow, instance.PreferredMaintenanceWindow,
-		tagsJSON, userID,
+		userID,
 	).Scan(&id, &createdAt, &updatedAt)
 
 	if err != nil {
@@ -73,34 +49,20 @@ func (p *PostgresDB) CreateManagedInstance(ctx context.Context, instance *models
 	}
 
 	result := &models.ManagedInstance{
-		ID:                         id,
-		Name:                       instance.Name,
-		Description:                ptrString(instance.Description),
-		AWSRegion:                  instance.AWSRegion,
-		Endpoint:                   instance.Endpoint,
-		Port:                       instance.Port,
-		EngineVersion:              ptrString(instance.EngineVersion),
-		DBInstanceClass:            ptrString(instance.DBInstanceClass),
-		AllocatedStorageGB:         ptrInt(instance.AllocatedStorageGB),
-		Environment:                instance.Environment,
-		MasterUsername:             instance.MasterUsername,
-		SecretID:                   secretID,
-		EnableEnhancedMonitoring:   instance.EnableEnhancedMonitoring,
-		MonitoringInterval:         instance.MonitoringInterval,
-		SSLEnabled:                 instance.SSLEnabled,
-		SSLMode:                    instance.SSLMode,
-		ConnectionTimeout:          instance.ConnectionTimeout,
-		IsActive:                   true,
-		Status:                     "registered",
-		MultiAZ:                    instance.MultiAZ,
-		BackupRetentionDays:        ptrInt(instance.BackupRetentionDays),
-		PreferredBackupWindow:      ptrString(instance.PreferredBackupWindow),
-		PreferredMaintenanceWindow: ptrString(instance.PreferredMaintenanceWindow),
-		Tags:                       instance.Tags,
-		CreatedAt:                  createdAt.Time,
-		UpdatedAt:                  updatedAt.Time,
-		CreatedBy:                  &userID,
-		UpdatedBy:                  &userID,
+		ID:                  id,
+		Name:                instance.Name,
+		AWSRegion:           instance.AWSRegion,
+		Endpoint:            instance.Endpoint,
+		Port:                instance.Port,
+		Environment:         instance.Environment,
+		SSLEnabled:          instance.SSLEnabled,
+		SSLMode:             instance.SSLMode,
+		IsActive:            true,
+		MultiAZ:             instance.MultiAZ,
+		BackupRetentionDays: ptrInt(instance.BackupRetentionDays),
+		CreatedAt:           createdAt.Time,
+		UpdatedAt:           updatedAt.Time,
+		CreatedBy:           &userID,
 	}
 
 	return result, nil
@@ -204,57 +166,33 @@ func (p *PostgresDB) UpdateManagedInstanceStatus(ctx context.Context, id int, st
 
 // UpdateManagedInstance updates an RDS instance
 func (p *PostgresDB) UpdateManagedInstance(ctx context.Context, id int, instance *models.UpdateManagedInstanceRequest, userID int) (*models.ManagedInstance, error) {
-	tagsJSON, _ := json.Marshal(instance.Tags)
-
-	// Convert nil pointer to interface{} for proper NULL handling
-	var secretIDValue interface{} = nil
-
 	updatedInstance := &models.ManagedInstance{}
-	var tags json.RawMessage
 
 	err := p.db.QueryRowContext(
 		ctx,
 		`UPDATE pganalytics.managed_instances SET
-			name = $1, description = $2, aws_region = $3, endpoint = $4, port = $5,
-			engine_version = $6, db_instance_class = $7, allocated_storage_gb = $8,
-			environment = $9, master_username = $10, secret_id = $11,
-			enable_enhanced_monitoring = $12, monitoring_interval = $13,
-			ssl_enabled = $14, ssl_mode = $15, connection_timeout = $16,
-			multi_az = $17, backup_retention_days = $18, preferred_backup_window = $19,
-			preferred_maintenance_window = $20, tags = $21, status = $22,
-			updated_by = $23, updated_at = CURRENT_TIMESTAMP
-		WHERE id = $24
-		RETURNING id, name, description, aws_region, endpoint, port,
-			engine_version, db_instance_class, allocated_storage_gb,
-			environment, master_username, secret_id,
-			enable_enhanced_monitoring, monitoring_interval,
-			ssl_enabled, ssl_mode, connection_timeout,
-			is_active, status, last_heartbeat, last_connection_status,
-			last_error_message, last_error_time,
-			multi_az, backup_retention_days, preferred_backup_window,
-			preferred_maintenance_window, tags,
-			created_at, updated_at, created_by, updated_by`,
-		instance.Name, instance.Description, instance.AWSRegion, instance.Endpoint, instance.Port,
-		instance.EngineVersion, instance.DBInstanceClass, instance.AllocatedStorageGB,
-		instance.Environment, instance.MasterUsername, secretIDValue,
-		instance.EnableEnhancedMonitoring, instance.MonitoringInterval,
-		instance.SSLEnabled, instance.SSLMode, instance.ConnectionTimeout,
-		instance.MultiAZ, instance.BackupRetentionDays, instance.PreferredBackupWindow,
-		instance.PreferredMaintenanceWindow, tagsJSON, instance.Status,
-		userID, id,
+			name = $1, aws_region = $2, rds_endpoint = $3, port = $4,
+			environment = $5, ssl_enabled = $6, ssl_mode = $7,
+			multi_az = $8, backup_retention_days = $9,
+			updated_at = CURRENT_TIMESTAMP
+		WHERE id = $10
+		RETURNING id, name, aws_region, rds_endpoint, port,
+			environment, ssl_enabled, ssl_mode,
+			multi_az, backup_retention_days,
+			is_active, last_heartbeat, last_connection_status,
+			last_error_message, engine_version, db_instance_class,
+			created_at, updated_at, created_by`,
+		instance.Name, instance.AWSRegion, instance.Endpoint, instance.Port,
+		instance.Environment, instance.SSLEnabled, instance.SSLMode,
+		instance.MultiAZ, instance.BackupRetentionDays,
+		id,
 	).Scan(
-		&updatedInstance.ID, &updatedInstance.Name, &updatedInstance.Description, &updatedInstance.AWSRegion,
-		&updatedInstance.Endpoint, &updatedInstance.Port, &updatedInstance.EngineVersion,
-		&updatedInstance.DBInstanceClass, &updatedInstance.AllocatedStorageGB,
-		&updatedInstance.Environment, &updatedInstance.MasterUsername, &updatedInstance.SecretID,
-		&updatedInstance.EnableEnhancedMonitoring, &updatedInstance.MonitoringInterval,
-		&updatedInstance.SSLEnabled, &updatedInstance.SSLMode, &updatedInstance.ConnectionTimeout,
-		&updatedInstance.IsActive, &updatedInstance.Status, &updatedInstance.LastHeartbeat, &updatedInstance.LastConnectionStatus,
-		&updatedInstance.LastErrorMessage, &updatedInstance.LastErrorTime,
+		&updatedInstance.ID, &updatedInstance.Name, &updatedInstance.AWSRegion, &updatedInstance.Endpoint, &updatedInstance.Port,
+		&updatedInstance.Environment, &updatedInstance.SSLEnabled, &updatedInstance.SSLMode,
 		&updatedInstance.MultiAZ, &updatedInstance.BackupRetentionDays,
-		&updatedInstance.PreferredBackupWindow, &updatedInstance.PreferredMaintenanceWindow,
-		&tags,
-		&updatedInstance.CreatedAt, &updatedInstance.UpdatedAt, &updatedInstance.CreatedBy, &updatedInstance.UpdatedBy,
+		&updatedInstance.IsActive, &updatedInstance.LastHeartbeat, &updatedInstance.LastConnectionStatus,
+		&updatedInstance.LastErrorMessage, &updatedInstance.EngineVersion, &updatedInstance.DBInstanceClass,
+		&updatedInstance.CreatedAt, &updatedInstance.UpdatedAt, &updatedInstance.CreatedBy,
 	)
 
 	if err != nil {
@@ -262,10 +200,6 @@ func (p *PostgresDB) UpdateManagedInstance(ctx context.Context, id int, instance
 			return nil, apperrors.NotFound("RDS instance not found", fmt.Sprintf("ID: %d", id))
 		}
 		return nil, apperrors.DatabaseError("update managed instance", err.Error())
-	}
-
-	if len(tags) > 0 {
-		_ = json.Unmarshal(tags, &updatedInstance.Tags)
 	}
 
 	return updatedInstance, nil
@@ -295,15 +229,13 @@ func (p *PostgresDB) DeleteManagedInstance(ctx context.Context, id int) error {
 	return nil
 }
 
-// ListManagedInstancesForHealthCheck retrieves all managed instances with encrypted passwords for background health checks
+// ListManagedInstancesForHealthCheck retrieves all managed instances for background health checks
 func (p *PostgresDB) ListManagedInstancesForHealthCheck(ctx context.Context) ([]*HealthCheckInstance, error) {
 	rows, err := p.db.QueryContext(
 		ctx,
-		`SELECT m.id, m.name, m.endpoint, m.port, m.master_username,
-		        m.ssl_mode, m.connection_timeout, m.status,
-		        COALESCE(s.secret_encrypted, '')
+		`SELECT m.id, m.name, m.rds_endpoint, m.port,
+		        m.ssl_mode, m.last_connection_status
 		 FROM pganalytics.managed_instances m
-		 LEFT JOIN pganalytics.secrets s ON m.secret_id = s.id
 		 WHERE m.is_active = true
 		 ORDER BY m.id ASC`,
 	)
@@ -317,8 +249,7 @@ func (p *PostgresDB) ListManagedInstancesForHealthCheck(ctx context.Context) ([]
 		instance := &HealthCheckInstance{}
 		err := rows.Scan(
 			&instance.ID, &instance.Name, &instance.Endpoint, &instance.Port,
-			&instance.MasterUsername, &instance.SSLMode, &instance.ConnectionTimeout,
-			&instance.Status, &instance.EncryptedPassword,
+			&instance.SSLMode, &instance.Status,
 		)
 		if err != nil {
 			return nil, apperrors.DatabaseError("scan managed instance", err.Error())

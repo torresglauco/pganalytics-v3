@@ -431,13 +431,13 @@
     "list": [
       {
         "current": {
-          "selected": false,
+          "selected": true,
           "text": ".*",
           "value": ".*"
         },
         "datasource": {
           "uid": "P4755FD0186DF985F",
-          "type": "postgres"
+          "type": "grafana-postgresql-datasource"
         },
         "definition": "SELECT DISTINCT c.hostname FROM collectors c ORDER BY c.hostname",
         "description": null,
@@ -448,15 +448,10 @@
         "multi": false,
         "name": "hostname",
         "options": [],
-        "query": "SELECT DISTINCT c.hostname FROM collectors c ORDER BY c.hostname",
-        "refresh": 1,
-        "regex": "",
+        "refresh": 2,
         "skipUrlSync": false,
-        "sort": 0,
-        "tagValuesQuery": "",
-        "tagsQuery": "",
-        "type": "query",
-        "useTags": false
+        "sort": 1,
+        "type": "query"
       }
     ]
   },

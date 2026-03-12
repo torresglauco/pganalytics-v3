@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 )
 
 // ============================================================================
@@ -671,6 +672,3 @@ func isValidEmail(email string) bool {
 func now() time.Time {
 	return time.Now()
 }
-
-// We need to import time
-import "time"

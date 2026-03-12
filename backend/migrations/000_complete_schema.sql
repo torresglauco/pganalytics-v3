@@ -151,7 +151,7 @@ CREATE TABLE managed_instance_databases (
     database_name VARCHAR(255) NOT NULL,
     owner VARCHAR(255),
     encoding VARCHAR(50),
-    collation VARCHAR(100),
+    "collation" VARCHAR(100),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX idx_managed_instance_databases_instance ON managed_instance_databases(instance_id);
@@ -196,7 +196,7 @@ CREATE TABLE databases (
     name VARCHAR(255) NOT NULL,
     owner VARCHAR(255),
     encoding VARCHAR(50),
-    collation VARCHAR(100),
+    "collation" VARCHAR(100),
     size_bytes BIGINT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP

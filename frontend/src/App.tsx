@@ -2,6 +2,10 @@ import { useState, useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Dashboard } from './components/dashboard/Dashboard'
 import { LoginPage } from './components/auth/LoginPage'
+import { LogsPage } from './pages/LogsPage'
+import { MetricsPage } from './pages/MetricsPage'
+import { AlertsPage } from './pages/AlertsPage'
+import { ChannelsPage } from './pages/ChannelsPage'
 import { useAuthStore } from './stores/authStore'
 import { apiClient } from './services/api'
 import { LoadingSpinner } from './components/ui/LoadingSpinner'
@@ -50,7 +54,10 @@ function App() {
         {isAuthenticated ? (
           <>
             <Route path="/" element={<Dashboard />} />
-            {/* Other routes will be added in Phase 2+ */}
+            <Route path="/logs" element={<LogsPage />} />
+            <Route path="/metrics" element={<MetricsPage />} />
+            <Route path="/alerts" element={<AlertsPage />} />
+            <Route path="/channels" element={<ChannelsPage />} />
             <Route path="*" element={<Navigate to="/" />} />
           </>
         ) : (

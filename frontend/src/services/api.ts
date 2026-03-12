@@ -166,6 +166,164 @@ export class ApiClient {
     return !!localStorage.getItem('auth_token')
   }
 
+  // Logs endpoints
+  async getLogs(params?: {
+    page?: number
+    page_size?: number
+    level?: string
+    search?: string
+    instance_id?: string
+    from_time?: string
+    to_time?: string
+  }): Promise<any> {
+    try {
+      const response = await this.client.get('/logs', { params })
+      return response.data
+    } catch (error) {
+      throw this.handleError(error)
+    }
+  }
+
+  async getLogDetails(logId: string): Promise<any> {
+    try {
+      const response = await this.client.get(`/logs/${logId}`)
+      return response.data
+    } catch (error) {
+      throw this.handleError(error)
+    }
+  }
+
+  // Metrics endpoints
+  async getMetrics(params?: {
+    instance_id?: string
+    time_range?: string
+  }): Promise<any> {
+    try {
+      const response = await this.client.get('/metrics', { params })
+      return response.data
+    } catch (error) {
+      throw this.handleError(error)
+    }
+  }
+
+  async getErrorTrend(params?: {
+    instance_id?: string
+    hours?: number
+  }): Promise<any> {
+    try {
+      const response = await this.client.get('/metrics/error-trend', { params })
+      return response.data
+    } catch (error) {
+      throw this.handleError(error)
+    }
+  }
+
+  async getLogDistribution(params?: {
+    instance_id?: string
+    time_range?: string
+  }): Promise<any> {
+    try {
+      const response = await this.client.get('/metrics/log-distribution', { params })
+      return response.data
+    } catch (error) {
+      throw this.handleError(error)
+    }
+  }
+
+  // Alert endpoints
+  async getAlerts(params?: {
+    page?: number
+    page_size?: number
+    status?: string
+  }): Promise<any> {
+    try {
+      const response = await this.client.get('/alerts', { params })
+      return response.data
+    } catch (error) {
+      throw this.handleError(error)
+    }
+  }
+
+  async createAlert(data: any): Promise<any> {
+    try {
+      const response = await this.client.post('/alerts', data)
+      return response.data
+    } catch (error) {
+      throw this.handleError(error)
+    }
+  }
+
+  async updateAlert(alertId: string, data: any): Promise<any> {
+    try {
+      const response = await this.client.put(`/alerts/${alertId}`, data)
+      return response.data
+    } catch (error) {
+      throw this.handleError(error)
+    }
+  }
+
+  async deleteAlert(alertId: string): Promise<void> {
+    try {
+      await this.client.delete(`/alerts/${alertId}`)
+    } catch (error) {
+      throw this.handleError(error)
+    }
+  }
+
+  async testAlert(alertId: string): Promise<any> {
+    try {
+      const response = await this.client.post(`/alerts/${alertId}/test`)
+      return response.data
+    } catch (error) {
+      throw this.handleError(error)
+    }
+  }
+
+  // Channel endpoints
+  async getChannels(): Promise<any> {
+    try {
+      const response = await this.client.get('/channels')
+      return response.data
+    } catch (error) {
+      throw this.handleError(error)
+    }
+  }
+
+  async createChannel(data: any): Promise<any> {
+    try {
+      const response = await this.client.post('/channels', data)
+      return response.data
+    } catch (error) {
+      throw this.handleError(error)
+    }
+  }
+
+  async updateChannel(channelId: string, data: any): Promise<any> {
+    try {
+      const response = await this.client.put(`/channels/${channelId}`, data)
+      return response.data
+    } catch (error) {
+      throw this.handleError(error)
+    }
+  }
+
+  async deleteChannel(channelId: string): Promise<void> {
+    try {
+      await this.client.delete(`/channels/${channelId}`)
+    } catch (error) {
+      throw this.handleError(error)
+    }
+  }
+
+  async testChannel(channelId: string): Promise<any> {
+    try {
+      const response = await this.client.post(`/channels/${channelId}/test`)
+      return response.data
+    } catch (error) {
+      throw this.handleError(error)
+    }
+  }
+
   private handleError(error: unknown): ApiError {
     if (axios.isAxiosError(error)) {
       const axiosError = error as AxiosError<ApiError>

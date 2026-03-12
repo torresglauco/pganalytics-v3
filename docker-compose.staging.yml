@@ -193,12 +193,11 @@ services:
         ipv4_address: 172.21.0.40
 
   grafana-staging:
-    image: grafana/grafana:latest
+    image: grafana/grafana:11.0.0
     container_name: pganalytics-staging-grafana
     environment:
       GF_SECURITY_ADMIN_PASSWORD: staging_admin
       GF_USERS_ALLOW_SIGN_UP: "false"
-      GF_INSTALL_PLUGINS: "grafana-piechart-panel"
     ports:
       - "3001:3000"
     volumes:

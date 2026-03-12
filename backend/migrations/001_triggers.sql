@@ -3,6 +3,9 @@
 
 SET search_path TO pganalytics, public;
 
+-- Create the update timestamp function FIRST
+CREATE OR REPLACE FUNCTION pganalytics.update_updated_at_column() RETURNS TRIGGER AS 'BEGIN NEW.updated_at := CURRENT_TIMESTAMP; RETURN NEW; END;' LANGUAGE plpgsql;
+
 CREATE TRIGGER IF NOT EXISTS trigger_users_updated_at BEFORE UPDATE ON pganalytics.users
     FOR EACH ROW EXECUTE FUNCTION pganalytics.update_updated_at_column();
 

@@ -541,6 +541,122 @@ func generateTemporaryPassword(length int) string {
 	return string(password)
 }
 
+// SetupUserRequest represents a request to create the first admin user
+type SetupUserRequest struct {
+	Username string `json:"username" binding:"required,min=3,max=255"`
+	Email    string `json:"email" binding:"required,email"`
+	Password string `json:"password" binding:"required,min=8"`
+	FullName string `json:"full_name" binding:"max=255"`
+}
+
+// @Summary Setup First User
+// @Description Create the initial admin user during first boot (only available if no users exist and SETUP_ENDPOINT_ENABLED=true)
+// @Tags Authentication
+// @Accept json
+// @Produce json
+// @Param request body SetupUserRequest true "First admin user details"
+// @Success 200 {object} models.LoginResponse
+// @Failure 400 {object} apperrors.AppError
+// @Failure 403 {object} apperrors.AppError
+// @Router /api/v1/auth/setup [post]
+func (s *Server) handleSetupFirstUser(c *gin.Context) {
+	// Check if setup endpoint is enabled (should only be true during initial deployment)
+	if !s.config.SetupEndpointEnabled {
+		s.logger.Warn("Setup endpoint called but SETUP_ENDPOINT_ENABLED is false")
+		errResp := apperrors.Forbidden("Setup endpoint is disabled. Use standard login.", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	var req SetupUserRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		s.logger.Error("Failed to bind setup request", zap.Error(err))
+		errResp := apperrors.BadRequest("Invalid request", err.Error())
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	// Check if any users already exist
+	users, err := s.postgres.ListUsers(ctx)
+	if err != nil {
+		s.logger.Error("Failed to check existing users", zap.Error(err))
+		errResp := apperrors.InternalServerError("Failed to check setup status", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	// If users exist, setup is already complete
+	if len(users) > 0 {
+		s.logger.Warn("Setup attempted but users already exist")
+		errResp := apperrors.Forbidden("Setup already completed. Use admin login.", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	s.logger.Debug("Creating first admin user", zap.String("username", req.Username))
+
+	// Hash password
+	passwordHash, err := s.authService.PasswordManager.HashPassword(req.Password)
+	if err != nil {
+		s.logger.Error("Failed to hash password", zap.Error(err))
+		errResp := apperrors.InternalServerError("Failed to process request", err.Error())
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	// Create first admin user
+	newUser, err := s.postgres.CreateUserWithRole(ctx, req.Username, req.Email, passwordHash, req.FullName, "admin")
+	if err != nil {
+		s.logger.Error("Failed to create first user",
+			zap.String("username", req.Username),
+			zap.Error(err),
+		)
+		errResp := apperrors.ToAppError(err)
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	s.logger.Info("First admin user created successfully",
+		zap.String("username", req.Username),
+		zap.Int("user_id", newUser.ID),
+	)
+
+	// Generate JWT tokens for immediate login
+	accessToken, refreshToken, err := s.authService.GenerateUserTokens(newUser)
+	if err != nil {
+		s.logger.Error("Failed to generate tokens for first user", zap.Error(err))
+		errResp := apperrors.InternalServerError("Failed to generate tokens", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	// Create session
+	sess, err := s.sessionManager.CreateSession(newUser.ID, c.ClientIP(), c.GetHeader("User-Agent"))
+	if err != nil {
+		s.logger.Error("Failed to create session for first user", zap.Error(err))
+	}
+	sessionToken := ""
+	if sess != nil {
+		sessionToken = sess.Token
+	}
+
+	// Log authentication event
+	s.logAuthEvent(ctx, newUser.ID, "setup_first_user", true, "")
+
+	response := &models.LoginResponse{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+		SessionToken: sessionToken,
+		User:         newUser,
+		ExpiresIn:    int(s.config.JWTExpiration.Seconds()),
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
 func (s *Server) handleLogin(c *gin.Context) {
 	var req models.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {

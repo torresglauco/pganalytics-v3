@@ -23,7 +23,8 @@ type Config struct {
 	JWTRefreshExpiration time.Duration
 
 	// Security
-	RegistrationSecret string
+	RegistrationSecret      string
+	SetupEndpointEnabled    bool // Only enable /api/v1/auth/setup during initial deployment
 
 	// TLS
 	TLSCertPath string
@@ -120,6 +121,7 @@ func Load() *Config {
 		JWTExpiration:          time.Duration(getIntEnv("JWT_EXPIRATION", 900)) * time.Second,
 		JWTRefreshExpiration:   time.Duration(getIntEnv("JWT_REFRESH_EXPIRATION", 86400)) * time.Second,
 		RegistrationSecret:     getEnv("REGISTRATION_SECRET", "change-me-in-production"),
+		SetupEndpointEnabled:   getBoolEnv("SETUP_ENDPOINT_ENABLED", false),
 		TLSCertPath:            getEnv("TLS_CERT", ""),
 		TLSKeyPath:             getEnv("TLS_KEY", ""),
 		TLSEnabled:             getBoolEnv("TLS_ENABLED", false),

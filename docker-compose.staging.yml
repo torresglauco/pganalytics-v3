@@ -89,6 +89,7 @@ services:
       JWT_EXPIRATION: "3600"
       ENCRYPTION_KEY: "WkSMJvo2wKQ1FuceaE2yW2lEyxKIcJ1wfbrcNUOGUkE="
       REGISTRATION_SECRET: "staging-registration-secret"
+      SETUP_ENDPOINT_ENABLED: "true"  # Enable setup endpoint for initial deployment only
 
       # TLS (self-signed for staging)
       TLS_CERT: "/etc/pganalytics/tls/server.crt"

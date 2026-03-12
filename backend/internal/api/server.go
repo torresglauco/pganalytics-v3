@@ -105,6 +105,7 @@ func (s *Server) RegisterRoutes(router *gin.Engine) {
 			auth.POST("/logout", s.handleLogout)
 			auth.POST("/refresh", s.handleRefreshToken)
 			auth.POST("/change-password", s.AuthMiddleware(), s.handleChangePassword)
+			auth.POST("/setup", s.handleSetupFirstUser) // Create initial admin user (no auth required)
 		}
 
 		// User Management routes (admin only)

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/torresglauco/pganalytics-v3/backend/internal/auth"
@@ -673,6 +674,56 @@ func (s *Server) logAuthEvent(ctx context.Context, userID int, action string, su
 	// Placeholder implementation - to be completed with audit logging
 }
 
+// ============================================================================
+// PASSWORD CHANGE FLOW HANDLERS
+// ============================================================================
+
+// PasswordChangeRequiredResponse indicates if password change is required
+type PasswordChangeRequiredResponse struct {
+	PasswordChangeRequired bool `json:"password_change_required"`
+	Message               string `json:"message,omitempty"`
+}
+
+// @Summary Check Password Change Requirement
+// @Description Check if the current user is required to change their password
+// @Tags Authentication
+// @Security Bearer
+// @Produce json
+// @Success 200 {object} PasswordChangeRequiredResponse
+// @Failure 401 {object} apperrors.AppError
+// @Router /api/v1/auth/password-change-required [get]
+func (s *Server) handleCheckPasswordChangeRequired(c *gin.Context) {
+	currentUser, exists := c.Get("user")
+	if !exists {
+		errResp := apperrors.Unauthorized("Authentication required", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	user := currentUser.(*models.User)
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	userRecord, err := s.postgres.GetUserByID(ctx, user.ID)
+	if err != nil {
+		s.logger.Error("Failed to get user", zap.Error(err))
+		errResp := apperrors.InternalServerError("Failed to check password status", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	response := PasswordChangeRequiredResponse{
+		PasswordChangeRequired: !userRecord.PasswordChanged,
+	}
+
+	if !userRecord.PasswordChanged {
+		response.Message = "Password change is required on first login"
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
 // RegisterAuthHandlers registers all authentication handlers
 func (s *Server) RegisterAuthHandlers(engine *gin.Engine) {
 	authGroup := engine.Group("/api/v1/auth")
@@ -695,4 +746,7 @@ func (s *Server) RegisterAuthHandlers(engine *gin.Engine) {
 
 	// MFA challenge
 	authGroup.POST("/mfa/challenge", s.handleMFAChallenge)
+
+	// Password change flow
+	authGroup.GET("/password-change-required", s.AuthMiddleware(), s.handleCheckPasswordChangeRequired)
 }

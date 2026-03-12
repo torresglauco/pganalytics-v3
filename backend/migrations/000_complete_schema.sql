@@ -3,8 +3,6 @@
 -- This migration runs first (000_) and creates all necessary infrastructure
 -- Subsequent migrations build on top of this foundation
 
-SET search_path TO pganalytics, public;
-
 -- ============================================================================
 -- EXTENSIONS & SCHEMA SETUP
 -- ============================================================================
@@ -14,8 +12,10 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 CREATE EXTENSION IF NOT EXISTS "pg_trgm";  -- For text search
 CREATE EXTENSION IF NOT EXISTS "btree_gin";  -- For composite indexes
 
--- Create pganalytics schema
+-- Create pganalytics schema FIRST
 CREATE SCHEMA IF NOT EXISTS pganalytics;
+
+SET search_path TO pganalytics, public;
 
 -- ============================================================================
 -- SCHEMA MIGRATION TRACKING (MUST EXIST FIRST)
@@ -414,47 +414,9 @@ ON CONFLICT DO NOTHING;
 -- TRIGGER FUNCTIONS
 -- ============================================================================
 
-CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = CURRENT_TIMESTAMP;
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
+CREATE OR REPLACE FUNCTION pganalytics.update_updated_at_column() RETURNS TRIGGER AS 'BEGIN NEW.updated_at := CURRENT_TIMESTAMP; RETURN NEW; END;' LANGUAGE plpgsql;
 
--- ============================================================================
--- TRIGGERS
--- ============================================================================
-
-CREATE TRIGGER IF NOT EXISTS trigger_users_updated_at BEFORE UPDATE ON users
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER IF NOT EXISTS trigger_collectors_updated_at BEFORE UPDATE ON collectors
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER IF NOT EXISTS trigger_servers_updated_at BEFORE UPDATE ON servers
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER IF NOT EXISTS trigger_postgresql_instances_updated_at BEFORE UPDATE ON postgresql_instances
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER IF NOT EXISTS trigger_databases_updated_at BEFORE UPDATE ON databases
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER IF NOT EXISTS trigger_secrets_updated_at BEFORE UPDATE ON secrets
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER IF NOT EXISTS trigger_alert_rules_updated_at BEFORE UPDATE ON alert_rules
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER IF NOT EXISTS trigger_registration_secrets_updated_at BEFORE UPDATE ON registration_secrets
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER IF NOT EXISTS trigger_managed_instances_updated_at BEFORE UPDATE ON managed_instances
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER IF NOT EXISTS trigger_managed_instance_databases_updated_at BEFORE UPDATE ON managed_instance_databases
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+-- Triggers are now created in 001_triggers.sql after this schema is fully initialized
 
 -- ============================================================================
 -- ROLE-BASED ACCESS CONTROL

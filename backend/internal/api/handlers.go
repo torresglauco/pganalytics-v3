@@ -491,8 +491,8 @@ func (s *Server) handleChangePassword(c *gin.Context) {
 		return
 	}
 
-	// Update password in database
-	if err := s.postgres.ResetUserPassword(ctx, user.ID, newPasswordHash); err != nil {
+	// Update password in database (marks password_changed as true)
+	if err := s.postgres.UpdateUserPassword(ctx, user.ID, newPasswordHash); err != nil {
 		s.logger.Error("Failed to change password", zap.Int("user_id", user.ID), zap.Error(err))
 		errResp := apperrors.ToAppError(err)
 		c.JSON(errResp.StatusCode, errResp)

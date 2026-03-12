@@ -183,25 +183,42 @@ func (mr *MigrationRunner) executeMigration(ctx context.Context, migration Migra
 	// Measure execution time
 	startTime := time.Now()
 
-	// Execute migration in a transaction
-	tx, err := mr.db.BeginTx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("failed to begin transaction: %w", err)
-	}
-	defer func() { _ = tx.Rollback() }()
-
 	// Execute the migration SQL
 	// Split statements carefully, respecting string literals and dollar-quoted blocks
 	statements := splitSQLStatements(migration.Content)
-	for _, stmt := range statements {
+
+	for stmtIdx, stmt := range statements {
 		stmt = strings.TrimSpace(stmt)
 		if stmt == "" {
 			continue
 		}
 
-		if _, err := tx.ExecContext(ctx, stmt); err != nil {
+		// Skip comment-only statements to avoid PostgreSQL parsing issues
+		if isCommentOnly(stmt) {
+			mr.logger.Debug("Skipping comment-only statement",
+				zap.Int("statement_index", stmtIdx),
+			)
+			continue
+		}
+
+		// Remove leading comments before executing
+		stmt = removeLeadingComments(stmt)
+		stmt = strings.TrimSpace(stmt)
+		if stmt == "" {
+			continue
+		}
+
+		mr.logger.Debug("Executing statement",
+			zap.Int("statement_index", stmtIdx),
+			zap.String("statement_preview", truncateString(stmt, 80)),
+			zap.Int("statement_length", len(stmt)),
+		)
+
+		// Execute each statement directly (pq has issues with IF NOT EXISTS in transactions)
+		if _, err := mr.db.ExecContext(ctx, stmt); err != nil {
 			mr.logger.Error("Migration statement failed",
 				zap.String("migration", migration.Name),
+				zap.Int("statement_index", stmtIdx),
 				zap.String("statement_preview", truncateString(stmt, 100)),
 				zap.Error(err),
 			)
@@ -211,7 +228,7 @@ func (mr *MigrationRunner) executeMigration(ctx context.Context, migration Migra
 
 	// Record migration in schema_versions table
 	executionTime := int(time.Since(startTime).Milliseconds())
-	_, err = tx.ExecContext(
+	_, err = mr.db.ExecContext(
 		ctx,
 		`INSERT INTO pganalytics.schema_versions (version, description, execution_time_ms)
 		 VALUES ($1, $2, $3)`,
@@ -221,11 +238,6 @@ func (mr *MigrationRunner) executeMigration(ctx context.Context, migration Migra
 	)
 	if err != nil {
 		return fmt.Errorf("failed to record migration: %w", err)
-	}
-
-	// Commit transaction
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("failed to commit migration transaction: %w", err)
 	}
 
 	mr.logger.Info("Migration executed successfully",
@@ -244,15 +256,22 @@ func splitSQLStatements(content string) []string {
 	i := 0
 
 	for i < len(content) {
+		// Safety check - should never happen but prevents panics
+		if i >= len(content) {
+			break
+		}
+
+		ch := content[i]
+
 		// Check for single-quoted string
-		if content[i] == '\'' {
+		if ch == '\'' {
 			current.WriteByte(content[i])
 			i++
 			for i < len(content) {
 				current.WriteByte(content[i])
 				if content[i] == '\'' {
 					if i+1 < len(content) && content[i+1] == '\'' {
-						// Escaped quote
+						// Escaped quote ''
 						i++
 						current.WriteByte(content[i])
 					} else {
@@ -267,16 +286,20 @@ func splitSQLStatements(content string) []string {
 		}
 
 		// Check for dollar-quoted string
-		if content[i] == '$' {
+		if ch == '$' {
 			// Capture the tag ($tag$)
 			tagStart := i
 			i++
+
+			// Scan for tag name (alphanumeric and underscore)
 			for i < len(content) && ((content[i] >= 'a' && content[i] <= 'z') ||
 				(content[i] >= 'A' && content[i] <= 'Z') ||
 				(content[i] >= '0' && content[i] <= '9') ||
 				content[i] == '_') {
 				i++
 			}
+
+			// Check if we found the closing $ of the opening tag
 			if i < len(content) && content[i] == '$' {
 				tag := content[tagStart : i+1]
 				// Write opening tag
@@ -285,20 +308,27 @@ func splitSQLStatements(content string) []string {
 
 				// Find closing tag
 				for i < len(content) {
+					// Check if we have enough characters left for the tag
 					if i+len(tag) <= len(content) && content[i:i+len(tag)] == tag {
+						// Found closing tag
 						current.WriteString(tag)
 						i += len(tag)
 						break
 					}
-					current.WriteByte(content[i])
-					i++
+					// Not the closing tag yet, write this character
+					if i < len(content) {
+						current.WriteByte(content[i])
+						i++
+					}
 				}
 				continue
 			}
+			// If we didn't find the closing $, treat the $ as a regular character
+			// (This handles cases like $ at EOF or $ not followed by valid tag syntax)
 		}
 
 		// Check for statement terminator
-		if content[i] == ';' {
+		if ch == ';' {
 			current.WriteByte(content[i])
 			i++
 			stmt := current.String()
@@ -310,7 +340,9 @@ func splitSQLStatements(content string) []string {
 		}
 
 		// Regular character
-		current.WriteByte(content[i])
+		if i < len(content) {
+			current.WriteByte(content[i])
+		}
 		i++
 	}
 
@@ -320,6 +352,43 @@ func splitSQLStatements(content string) []string {
 	}
 
 	return statements
+}
+
+// isCommentOnly checks if a statement consists only of comments and whitespace
+func isCommentOnly(stmt string) bool {
+	for _, line := range strings.Split(stmt, "\n") {
+		trimmed := strings.TrimSpace(line)
+		// If we find any non-comment, non-empty line, it's not comment-only
+		if trimmed != "" && !strings.HasPrefix(trimmed, "--") {
+			return false
+		}
+	}
+	return true
+}
+
+// removeLeadingComments removes SQL line comments (--) from the beginning of a statement
+// This is necessary because some PostgreSQL drivers don't handle leading comments well
+func removeLeadingComments(stmt string) string {
+	lines := strings.Split(stmt, "\n")
+	var result []string
+	foundCode := false
+
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+
+		// If we haven't found code yet, skip comments and empty lines
+		if !foundCode {
+			if trimmed == "" || strings.HasPrefix(trimmed, "--") {
+				continue
+			}
+			foundCode = true
+		}
+
+		// Once we find code, include all lines (including comments)
+		result = append(result, line)
+	}
+
+	return strings.Join(result, "\n")
 }
 
 // truncateString truncates a string to a maximum length

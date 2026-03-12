@@ -61,14 +61,20 @@ func (mr *MigrationRunner) Run(ctx context.Context) error {
 }
 
 // createVersionsTable creates the schema_versions table if it doesn't exist
+// IMPORTANT: This also creates the pganalytics schema if it doesn't exist
+// This must run BEFORE any migrations, so migrations can rely on the schema existing
 func (mr *MigrationRunner) createVersionsTable(ctx context.Context) error {
+	// First, ensure the pganalytics schema exists
+	if _, err := mr.db.ExecContext(ctx, "CREATE SCHEMA IF NOT EXISTS pganalytics"); err != nil {
+		return fmt.Errorf("failed to create schema: %w", err)
+	}
+
 	query := `
 	CREATE TABLE IF NOT EXISTS pganalytics.schema_versions (
-		id SERIAL PRIMARY KEY,
-		version VARCHAR(100) NOT NULL UNIQUE,
+		version VARCHAR(100) PRIMARY KEY,
 		description TEXT,
-		executed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-		execution_time_ms INT
+		executed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+		execution_time_ms INTEGER
 	);
 	`
 
@@ -185,17 +191,12 @@ func (mr *MigrationRunner) executeMigration(ctx context.Context, migration Migra
 	defer func() { _ = tx.Rollback() }()
 
 	// Execute the migration SQL
-	// Split on semicolons followed by newline to avoid splitting inside strings/clauses
-	statements := strings.Split(migration.Content, ";\n")
-	for i, stmt := range statements {
+	// Split statements carefully, respecting string literals and dollar-quoted blocks
+	statements := splitSQLStatements(migration.Content)
+	for _, stmt := range statements {
 		stmt = strings.TrimSpace(stmt)
 		if stmt == "" {
 			continue
-		}
-
-		// Re-add semicolon if not the last statement
-		if i < len(statements)-1 && !strings.HasSuffix(stmt, ";") {
-			stmt += ";"
 		}
 
 		if _, err := tx.ExecContext(ctx, stmt); err != nil {
@@ -235,50 +236,141 @@ func (mr *MigrationRunner) executeMigration(ctx context.Context, migration Migra
 	return nil
 }
 
-// splitStatements splits SQL content into individual statements
-// This is a simple implementation that splits on semicolons
-// For complex SQL with strings containing semicolons, a more sophisticated parser would be needed
-func splitStatements(content string) []string {
+// splitSQLStatements splits SQL content into individual statements
+// Properly handles:
+// - Single-quoted strings ('...')
+// - Dollar-quoted strings ($$...$$, $tag$...$tag$)
+// - SQL comments (-- and /* */)
+// - Escaped characters
+func splitSQLStatements(content string) []string {
 	var statements []string
 	var current strings.Builder
-	inString := false
-	escaped := false
+	runes := []rune(content)
+	i := 0
 
-	for _, char := range content {
-		if escaped {
-			current.WriteRune(char)
-			escaped = false
+	for i < len(runes) {
+		// Skip whitespace and comments at statement boundaries
+		for i < len(runes) && (runes[i] == ' ' || runes[i] == '\t' || runes[i] == '\n' || runes[i] == '\r') {
+			current.WriteRune(runes[i])
+			i++
+		}
+
+		// Check for line comment
+		if i < len(runes)-1 && runes[i] == '-' && runes[i+1] == '-' {
+			for i < len(runes) && runes[i] != '\n' {
+				current.WriteRune(runes[i])
+				i++
+			}
+			if i < len(runes) {
+				current.WriteRune(runes[i]) // Add newline
+				i++
+			}
 			continue
 		}
 
-		if char == '\\' && inString {
-			current.WriteRune(char)
-			escaped = true
+		// Check for block comment
+		if i < len(runes)-1 && runes[i] == '/' && runes[i+1] == '*' {
+			current.WriteRune(runes[i])
+			current.WriteRune(runes[i+1])
+			i += 2
+			for i < len(runes)-1 {
+				if runes[i] == '*' && runes[i+1] == '/' {
+					current.WriteRune(runes[i])
+					current.WriteRune(runes[i+1])
+					i += 2
+					break
+				}
+				current.WriteRune(runes[i])
+				i++
+			}
 			continue
 		}
 
-		if char == '\'' {
-			current.WriteRune(char)
-			inString = !inString
+		// Check for dollar-quoted string
+		if runes[i] == '$' {
+			// Find the end of the tag
+			tagStart := i
+			i++
+			for i < len(runes) && (isAlphaNum(runes[i])) {
+				i++
+			}
+			if i < len(runes) && runes[i] == '$' {
+				// Found complete opening tag
+				tag := string(runes[tagStart : i+1])
+				for j := tagStart; j <= i; j++ {
+					current.WriteRune(runes[j])
+				}
+				i++
+
+				// Find closing tag
+				for i < len(runes) {
+					// Check if remaining content starts with tag
+					if i+len(tag) <= len(runes) && string(runes[i:i+len(tag)]) == tag {
+						for j := i; j < i+len(tag); j++ {
+							current.WriteRune(runes[j])
+						}
+						i += len(tag)
+						break
+					}
+					current.WriteRune(runes[i])
+					i++
+				}
+				continue
+			}
+		}
+
+		// Check for single-quoted string
+		if runes[i] == '\'' {
+			current.WriteRune(runes[i])
+			i++
+			for i < len(runes) {
+				if runes[i] == '\'' {
+					if i+1 < len(runes) && runes[i+1] == '\'' {
+						// Escaped single quote
+						current.WriteRune(runes[i])
+						current.WriteRune(runes[i+1])
+						i += 2
+					} else {
+						// End of string
+						current.WriteRune(runes[i])
+						i++
+						break
+					}
+				} else {
+					current.WriteRune(runes[i])
+					i++
+				}
+			}
 			continue
 		}
 
-		if char == ';' && !inString {
+		// Check for statement terminator
+		if runes[i] == ';' {
+			current.WriteRune(runes[i])
+			i++
 			stmt := current.String()
-			statements = append(statements, stmt)
+			if strings.TrimSpace(stmt) != "" {
+				statements = append(statements, stmt)
+			}
 			current.Reset()
 			continue
 		}
 
-		current.WriteRune(char)
+		// Regular character
+		current.WriteRune(runes[i])
+		i++
 	}
 
-	// Add any remaining content
-	if remaining := current.String(); strings.TrimSpace(remaining) != "" {
-		statements = append(statements, remaining)
+	// Add any remaining statement
+	if stmt := current.String(); strings.TrimSpace(stmt) != "" {
+		statements = append(statements, stmt)
 	}
 
 	return statements
+}
+
+func isAlphaNum(r rune) bool {
+	return (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_'
 }
 
 // truncateString truncates a string to a maximum length

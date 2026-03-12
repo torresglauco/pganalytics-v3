@@ -64,3 +64,6 @@ collector_data/
 
 # K6 results
 results.json
+
+# Git worktrees for feature branches
+.worktrees/

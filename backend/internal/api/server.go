@@ -98,14 +98,18 @@ func (s *Server) RegisterRoutes(router *gin.Engine) {
 	api := router.Group("/api/v1")
 	api.Use(s.RateLimitMiddleware())
 	{
-		// Authentication routes (no auth required)
+		// Authentication routes
 		auth := api.Group("/auth")
 		{
+			// Public endpoints (no auth required)
 			auth.POST("/login", s.handleLogin)
 			auth.POST("/logout", s.handleLogout)
 			auth.POST("/refresh", s.handleRefreshToken)
-			auth.POST("/change-password", s.AuthMiddleware(), s.handleChangePassword)
 			auth.POST("/setup", s.handleSetupFirstUser) // Create initial admin user (no auth required)
+
+			// Protected endpoints (auth required)
+			auth.GET("/me", s.AuthMiddleware(), s.handleGetCurrentUser)
+			auth.POST("/change-password", s.AuthMiddleware(), s.handleChangePassword)
 		}
 
 		// User Management routes (admin only)

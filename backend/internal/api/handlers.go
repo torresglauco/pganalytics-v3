@@ -700,6 +700,28 @@ func (s *Server) handleLogout(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Logged out successfully"})
 }
 
+// @Summary Get Current User
+// @Description Get the currently authenticated user's information
+// @Tags Authentication
+// @Accept json
+// @Produce json
+// @Success 200 {object} models.User
+// @Failure 401 {object} models.ErrorResponse
+// @Router /api/v1/auth/me [get]
+// @Security BearerAuth
+func (s *Server) handleGetCurrentUser(c *gin.Context) {
+	// Get current user from context (set by AuthMiddleware)
+	currentUser, exists := c.Get("user")
+	if !exists {
+		errResp := apperrors.Unauthorized("Authentication required", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	user := currentUser.(*models.User)
+	c.JSON(http.StatusOK, user)
+}
+
 // @Summary Refresh Token
 // @Description Refresh JWT token
 // @Tags Authentication

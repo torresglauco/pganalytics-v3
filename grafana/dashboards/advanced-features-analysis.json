@@ -184,8 +184,6 @@
       {
         "allValue": null,
         "current": {"text": "24 hours", "value": "24h"},
-        "datasource": "-- Grafana --",
-        "definition": "",
         "description": null,
         "error": null,
         "hide": 0,
@@ -193,16 +191,15 @@
         "label": "Time Range",
         "multi": false,
         "name": "range",
-        "options": [],
-        "query": {"query": "", "refId": "StandardVariableQuery"},
+        "options": [
+          {"text": "24 hours", "value": "24h"},
+          {"text": "7 days", "value": "7d"},
+          {"text": "30 days", "value": "30d"}
+        ],
         "refresh": 1,
-        "regex": "",
         "skipUrlSync": false,
         "sort": 1,
-        "tagValuesQuery": "",
-        "tagsQuery": "",
         "type": "custom",
-        "useTags": false,
         "values": ["24h", "7d", "30d"]
       }
     ]

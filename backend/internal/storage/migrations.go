@@ -237,116 +237,69 @@ func (mr *MigrationRunner) executeMigration(ctx context.Context, migration Migra
 }
 
 // splitSQLStatements splits SQL content into individual statements
-// Properly handles:
-// - Single-quoted strings ('...')
-// - Dollar-quoted strings ($$...$$, $tag$...$tag$)
-// - SQL comments (-- and /* */)
-// - Escaped characters
+// Properly handles dollar-quoted strings and single-quoted strings
 func splitSQLStatements(content string) []string {
 	var statements []string
 	var current strings.Builder
-	runes := []rune(content)
 	i := 0
 
-	for i < len(runes) {
-		// Skip whitespace and comments at statement boundaries
-		for i < len(runes) && (runes[i] == ' ' || runes[i] == '\t' || runes[i] == '\n' || runes[i] == '\r') {
-			current.WriteRune(runes[i])
+	for i < len(content) {
+		// Check for single-quoted string
+		if content[i] == '\'' {
+			current.WriteByte(content[i])
 			i++
-		}
-
-		// Check for line comment
-		if i < len(runes)-1 && runes[i] == '-' && runes[i+1] == '-' {
-			for i < len(runes) && runes[i] != '\n' {
-				current.WriteRune(runes[i])
-				i++
-			}
-			if i < len(runes) {
-				current.WriteRune(runes[i]) // Add newline
-				i++
-			}
-			continue
-		}
-
-		// Check for block comment
-		if i < len(runes)-1 && runes[i] == '/' && runes[i+1] == '*' {
-			current.WriteRune(runes[i])
-			current.WriteRune(runes[i+1])
-			i += 2
-			for i < len(runes)-1 {
-				if runes[i] == '*' && runes[i+1] == '/' {
-					current.WriteRune(runes[i])
-					current.WriteRune(runes[i+1])
-					i += 2
-					break
+			for i < len(content) {
+				current.WriteByte(content[i])
+				if content[i] == '\'' {
+					if i+1 < len(content) && content[i+1] == '\'' {
+						// Escaped quote
+						i++
+						current.WriteByte(content[i])
+					} else {
+						// End of string
+						i++
+						break
+					}
 				}
-				current.WriteRune(runes[i])
 				i++
 			}
 			continue
 		}
 
 		// Check for dollar-quoted string
-		if runes[i] == '$' {
-			// Find the end of the tag
+		if content[i] == '$' {
+			// Capture the tag ($tag$)
 			tagStart := i
 			i++
-			for i < len(runes) && (isAlphaNum(runes[i])) {
+			for i < len(content) && ((content[i] >= 'a' && content[i] <= 'z') ||
+				(content[i] >= 'A' && content[i] <= 'Z') ||
+				(content[i] >= '0' && content[i] <= '9') ||
+				content[i] == '_') {
 				i++
 			}
-			if i < len(runes) && runes[i] == '$' {
-				// Found complete opening tag
-				tag := string(runes[tagStart : i+1])
-				for j := tagStart; j <= i; j++ {
-					current.WriteRune(runes[j])
-				}
+			if i < len(content) && content[i] == '$' {
+				tag := content[tagStart : i+1]
+				// Write opening tag
+				current.WriteString(tag)
 				i++
 
 				// Find closing tag
-				for i < len(runes) {
-					// Check if remaining content starts with tag
-					if i+len(tag) <= len(runes) && string(runes[i:i+len(tag)]) == tag {
-						for j := i; j < i+len(tag); j++ {
-							current.WriteRune(runes[j])
-						}
+				for i < len(content) {
+					if i+len(tag) <= len(content) && content[i:i+len(tag)] == tag {
+						current.WriteString(tag)
 						i += len(tag)
 						break
 					}
-					current.WriteRune(runes[i])
+					current.WriteByte(content[i])
 					i++
 				}
 				continue
 			}
 		}
 
-		// Check for single-quoted string
-		if runes[i] == '\'' {
-			current.WriteRune(runes[i])
-			i++
-			for i < len(runes) {
-				if runes[i] == '\'' {
-					if i+1 < len(runes) && runes[i+1] == '\'' {
-						// Escaped single quote
-						current.WriteRune(runes[i])
-						current.WriteRune(runes[i+1])
-						i += 2
-					} else {
-						// End of string
-						current.WriteRune(runes[i])
-						i++
-						break
-					}
-				} else {
-					current.WriteRune(runes[i])
-					i++
-				}
-			}
-			continue
-		}
-
 		// Check for statement terminator
-		if runes[i] == ';' {
-			current.WriteRune(runes[i])
+		if content[i] == ';' {
+			current.WriteByte(content[i])
 			i++
 			stmt := current.String()
 			if strings.TrimSpace(stmt) != "" {
@@ -357,7 +310,7 @@ func splitSQLStatements(content string) []string {
 		}
 
 		// Regular character
-		current.WriteRune(runes[i])
+		current.WriteByte(content[i])
 		i++
 	}
 
@@ -367,10 +320,6 @@ func splitSQLStatements(content string) []string {
 	}
 
 	return statements
-}
-
-func isAlphaNum(r rune) bool {
-	return (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_'
 }
 
 // truncateString truncates a string to a maximum length

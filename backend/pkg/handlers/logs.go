@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/torresglauco/pganalytics-v3/backend/internal/storage"
 	"github.com/torresglauco/pganalytics-v3/backend/pkg/models"
 	"github.com/torresglauco/pganalytics-v3/backend/pkg/services"
@@ -28,7 +29,7 @@ type IngestLogsResponse struct {
 }
 
 // IngestLogs handles POST /api/v1/logs/ingest
-func IngestLogs(db storage.Storage, wsManager *services.ConnectionManager) http.HandlerFunc {
+func IngestLogs(db *storage.PostgresDB, wsManager *services.ConnectionManager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
@@ -85,6 +86,17 @@ func IngestLogs(db storage.Storage, wsManager *services.ConnectionManager) http.
 			return
 		}
 
+		// Parse collector_id as UUID
+		collectorID, err := uuid.Parse(req.CollectorID)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(IngestLogsResponse{
+				Success: false,
+				Message: "Invalid collector_id format",
+			})
+			return
+		}
+
 		// Process each log
 		ingestedCount := 0
 		errors := []string{}
@@ -136,7 +148,7 @@ func IngestLogs(db storage.Storage, wsManager *services.ConnectionManager) http.
 
 			// Create PostgreSQLLog model
 			pgLog := &models.PostgreSQLLog{
-				CollectorID:    req.CollectorID,
+				CollectorID:    collectorID,
 				InstanceID:     req.InstanceID,
 				LogTimestamp:   parsedTime,
 				LogLevel:       level,

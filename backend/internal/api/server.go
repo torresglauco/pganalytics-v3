@@ -11,6 +11,8 @@ import (
 	"github.com/torresglauco/pganalytics-v3/backend/internal/session"
 	"github.com/torresglauco/pganalytics-v3/backend/internal/storage"
 	"github.com/torresglauco/pganalytics-v3/backend/internal/timescale"
+	"github.com/torresglauco/pganalytics-v3/backend/pkg/handlers"
+	"github.com/torresglauco/pganalytics-v3/backend/pkg/services"
 	"go.uber.org/zap"
 )
 
@@ -30,6 +32,7 @@ type Server struct {
 	sessionManager   *session.SessionManager
 	mfaManager       *auth.MFAManager
 	auditLogger      *audit.AuditLogger
+	wsManager        *services.ConnectionManager
 }
 
 // NewServer creates a new API server
@@ -77,6 +80,7 @@ func NewServer(
 		cacheManager:     nil, // Set via SetCacheManager
 		rateLimiter:      rateLimiter,
 		secretManager:    secretManager,
+		wsManager:        services.NewConnectionManager(),
 	}
 }
 
@@ -93,6 +97,9 @@ func (s *Server) RegisterRoutes(router *gin.Engine) {
 	// Health check (no auth required)
 	router.GET("/api/v1/health", s.handleHealth)
 	router.GET("/version", s.handleVersion)
+
+	// WebSocket route (JWT auth required, handled in handler)
+	router.GET("/api/v1/ws", s.handleWebSocket)
 
 	// API v1 routes
 	api := router.Group("/api/v1")
@@ -186,6 +193,13 @@ func (s *Server) RegisterRoutes(router *gin.Engine) {
 			metrics.POST("/push", s.CollectorAuthMiddleware(), s.handleMetricsPush)
 			// Cache metrics (protected)
 			metrics.GET("/cache", s.AuthMiddleware(), s.handleCacheMetrics)
+		}
+
+		// Log Ingest routes
+		logs := api.Group("/logs")
+		{
+			// High-volume endpoint for log ingestion - requires API token auth
+			logs.POST("/ingest", s.handleIngestLogs)
 		}
 
 		// Internal analysis routes (collector -> backend for analyzed data like EXPLAIN plans)
@@ -347,4 +361,16 @@ func (s *Server) RegisterRoutes(router *gin.Engine) {
 	}
 
 	s.logger.Info("API routes registered")
+}
+
+// handleWebSocket is a Gin wrapper for the WebSocket handler
+func (s *Server) handleWebSocket(c *gin.Context) {
+	handler := WebSocketHandler(s.wsManager, s.jwtManager)
+	handler(c.Writer, c.Request)
+}
+
+// handleIngestLogs is a Gin wrapper for the log ingest handler
+func (s *Server) handleIngestLogs(c *gin.Context) {
+	handler := handlers.IngestLogs(s.postgres, s.wsManager)
+	handler(c.Writer, c.Request)
 }

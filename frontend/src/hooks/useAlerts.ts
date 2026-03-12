@@ -1,103 +1,68 @@
-import { useEffect, useState } from 'react';
-import { Alert } from '../types/alerts';
-import { useAlertStore } from '../store/alertStore';
-import { apiClient } from '../services/api';
-import { REFRESH_INTERVALS } from '../utils/constants';
+import { useState, useEffect } from 'react'
+import { apiClient } from '../services/api'
 
-export const useAlerts = (autoRefresh = true) => {
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+interface AlertsParams {
+  page?: number
+  page_size?: number
+  status?: string
+}
 
-  const { alerts, setAlerts, filters, setLoading: setStoreLoading } = useAlertStore();
+export const useAlerts = (params: AlertsParams = {}) => {
+  const [data, setData] = useState<any>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const fetchAlerts = async () => {
     try {
-      setIsLoading(true);
-      setStoreLoading(true);
-      setError(null);
-
-      // Build query parameters
-      const params = new URLSearchParams();
-      if (filters.severity) params.append('severity', filters.severity);
-      if (filters.status) params.append('status', filters.status);
-      if (filters.collectorId) params.append('collector_id', filters.collectorId);
-      params.append('limit', '100');
-      params.append('offset', '0');
-
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1'}/alerts?${params.toString()}`,
-        {
-          headers: { 'Authorization': `Bearer ${apiClient.getToken()}` }
-        }
-      );
-
-      if (!response.ok) throw new Error('Failed to fetch alerts');
-
-      const data = await response.json();
-      const alertsData = (data.data || []).map((alert: any) => ({
-        ...alert,
-        fired_at: new Date(alert.fired_at),
-        resolved_at: alert.resolved_at ? new Date(alert.resolved_at) : undefined,
-      }));
-      setAlerts(alertsData);
+      setLoading(true)
+      setError(null)
+      const result = await apiClient.getAlerts(params)
+      setData(result)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch alerts');
+      setError(err instanceof Error ? err.message : 'Failed to fetch alerts')
     } finally {
-      setIsLoading(false);
-      setStoreLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
-  // Auto-refresh
+  const createAlert = async (alertData: any) => {
+    try {
+      const result = await apiClient.createAlert(alertData)
+      await fetchAlerts()
+      return result
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Failed to create alert'
+      setError(errorMsg)
+      throw err
+    }
+  }
+
+  const updateAlert = async (alertId: string, alertData: any) => {
+    try {
+      const result = await apiClient.updateAlert(alertId, alertData)
+      await fetchAlerts()
+      return result
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Failed to update alert'
+      setError(errorMsg)
+      throw err
+    }
+  }
+
+  const deleteAlert = async (alertId: string) => {
+    try {
+      await apiClient.deleteAlert(alertId)
+      await fetchAlerts()
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Failed to delete alert'
+      setError(errorMsg)
+      throw err
+    }
+  }
+
   useEffect(() => {
-    fetchAlerts();
+    fetchAlerts()
+  }, [JSON.stringify(params)])
 
-    if (autoRefresh) {
-      const interval = setInterval(fetchAlerts, REFRESH_INTERVALS.alerts);
-      return () => clearInterval(interval);
-    }
-  }, [filters, autoRefresh]);
-
-  const acknowledgeAlert = async (alertId: string) => {
-    try {
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1'}/alerts/${alertId}/acknowledge`,
-        {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${apiClient.getToken()}` }
-        }
-      );
-
-      if (!response.ok) throw new Error('Failed to acknowledge alert');
-      await fetchAlerts();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to acknowledge alert');
-    }
-  };
-
-  const muteAlert = async (alertId: string) => {
-    try {
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1'}/alerts/${alertId}/mute`,
-        {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${apiClient.getToken()}` }
-        }
-      );
-
-      if (!response.ok) throw new Error('Failed to mute alert');
-      await fetchAlerts();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to mute alert');
-    }
-  };
-
-  return {
-    alerts,
-    isLoading,
-    error,
-    fetchAlerts,
-    acknowledgeAlert,
-    muteAlert,
-  };
-};
+  return { data, loading, error, fetchAlerts, createAlert, updateAlert, deleteAlert }
+}

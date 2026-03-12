@@ -13,33 +13,28 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
 
   useEffect(() => {
-    // Auto-login with admin credentials
-    const autoLogin = async () => {
+    // Check if user is already authenticated via stored token
+    const checkAuthentication = async () => {
       try {
         setIsLoading(true)
         setError(null)
 
-        // Try to login with admin credentials
-        const response = await apiClient.login('admin', 'admin')
-        if (response) {
-          // Login successful
+        if (apiClient.isAuthenticated()) {
+          // Token exists, user is authenticated
           setIsAuthenticated(true)
-          setIsLoading(false)
+        } else {
+          // No token, user needs to login
+          setIsAuthenticated(false)
         }
       } catch (err) {
-        console.error('Auto-login failed:', err)
-        setError('Failed to authenticate. Please try logging in manually.')
+        console.error('Auth check failed:', err)
+        setIsAuthenticated(false)
+      } finally {
         setIsLoading(false)
       }
     }
 
-    // Only auto-login if not already authenticated
-    if (!apiClient.isAuthenticated()) {
-      autoLogin()
-    } else {
-      setIsAuthenticated(true)
-      setIsLoading(false)
-    }
+    checkAuthentication()
   }, [])
 
   const handleLogin = async (username: string, password: string) => {

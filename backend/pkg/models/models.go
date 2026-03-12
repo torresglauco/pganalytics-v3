@@ -1007,3 +1007,29 @@ type LogEventHourly struct {
 	CreatedAt       time.Time  `db:"created_at" json:"created_at"`
 	UpdatedAt       time.Time  `db:"updated_at" json:"updated_at"`
 }
+
+// ============================================================================
+// REALTIME & ALERT EXECUTION MODELS
+// ============================================================================
+
+// AlertTrigger represents an alert rule that was triggered
+type AlertTrigger struct {
+	ID          int64     `db:"id" json:"id"`
+	AlertID     int64     `db:"alert_id" json:"alert_id"`
+	InstanceID  int       `db:"instance_id" json:"instance_id"`
+	TriggeredAt time.Time `db:"triggered_at" json:"triggered_at"`
+	CreatedAt   time.Time `db:"created_at" json:"created_at"`
+}
+
+// Notification represents a pending/sent notification
+type Notification struct {
+	ID             int64      `db:"id" json:"id"`
+	ChannelID      int64      `db:"channel_id" json:"channel_id"`
+	AlertTriggerID int64      `db:"alert_trigger_id" json:"alert_trigger_id"`
+	Status         string     `db:"status" json:"status"` // pending, delivered, failed
+	RetryCount     int        `db:"retry_count" json:"retry_count"`
+	LastRetryAt    *time.Time `db:"last_retry_at" json:"last_retry_at"`
+	SentAt         *time.Time `db:"sent_at" json:"sent_at"`
+	CreatedAt      time.Time  `db:"created_at" json:"created_at"`
+	UpdatedAt      time.Time  `db:"updated_at" json:"updated_at"`
+}

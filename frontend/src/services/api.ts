@@ -324,6 +324,64 @@ export class ApiClient {
     }
   }
 
+  // Alert Rules endpoints
+  async validateAlertCondition(condition: any): Promise<any> {
+    try {
+      const response = await this.client.post('/alert-rules/validate', condition)
+      return response.data
+    } catch (error) {
+      throw this.handleError(error)
+    }
+  }
+
+  async createAlertRule(data: any): Promise<any> {
+    try {
+      const response = await this.client.post('/alert-rules', data)
+      return response.data
+    } catch (error) {
+      throw this.handleError(error)
+    }
+  }
+
+  async getAlertRules(params?: {
+    page?: number
+    page_size?: number
+    status?: string
+  }): Promise<any> {
+    try {
+      const response = await this.client.get('/alert-rules', { params })
+      return response.data
+    } catch (error) {
+      throw this.handleError(error)
+    }
+  }
+
+  async getAlertRule(ruleId: string): Promise<any> {
+    try {
+      const response = await this.client.get(`/alert-rules/${ruleId}`)
+      return response.data
+    } catch (error) {
+      throw this.handleError(error)
+    }
+  }
+
+  async updateAlertRule(ruleId: string, data: any): Promise<any> {
+    try {
+      const response = await this.client.put(`/alert-rules/${ruleId}`, data)
+      return response.data
+    } catch (error) {
+      throw this.handleError(error)
+    }
+  }
+
+  async deleteAlertRule(ruleId: string): Promise<void> {
+    try {
+      await this.client.delete(`/alert-rules/${ruleId}`)
+    } catch (error) {
+      throw this.handleError(error)
+    }
+  }
+
   private handleError(error: unknown): ApiError {
     if (axios.isAxiosError(error)) {
       const axiosError = error as AxiosError<ApiError>

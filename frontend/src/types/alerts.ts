@@ -52,3 +52,37 @@ export interface SuppressionRule {
     days: string[];
   };
 }
+
+/**
+ * Alert Rule Builder Types
+ * Used for the frontend alert rule builder UI
+ */
+
+export type MetricType =
+  | 'error_count'
+  | 'slow_query_count'
+  | 'connection_count'
+  | 'cache_hit_ratio';
+
+export type ComparisonOperator =
+  | '>'
+  | '<'
+  | '=='
+  | '!='
+  | '>='
+  | '<=';
+
+export interface AlertCondition {
+  id?: string;
+  metricType: MetricType;
+  operator: ComparisonOperator;
+  threshold: number;
+  timeWindow: number; // in minutes
+  duration?: number; // in minutes, how long the condition must persist
+}
+
+export interface AlertRuleBuilderData {
+  name: string;
+  description?: string;
+  conditions: AlertCondition[];
+}

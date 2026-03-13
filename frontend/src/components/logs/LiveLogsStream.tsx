@@ -47,16 +47,17 @@ export const LiveLogsStream: React.FC<LiveLogsStreamProps> = ({
       }
 
       setLogs((prev) => {
-        const updated = [...prev, newLog]
-        // Keep only last 50 logs
-        return updated.slice(-50)
+        // Prepend new log (newest first)
+        const updated = [newLog, ...prev]
+        // Keep only last 50 logs (50 newest)
+        return updated.slice(0, 50)
       })
 
       // Auto-scroll if enabled
       if (autoScroll && scrollRef.current) {
         setTimeout(() => {
           if (scrollRef.current) {
-            scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+            scrollRef.current.scrollTop = 0
           }
         }, 0)
       }

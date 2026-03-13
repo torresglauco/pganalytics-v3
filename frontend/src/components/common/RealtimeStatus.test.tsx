@@ -58,7 +58,7 @@ describe('RealtimeStatus', () => {
     it('should have correct text color when connected', () => {
       ;(useRealtime as any).mockReturnValue({ connected: true })
 
-      const { container } = render(<RealtimeStatus />)
+      render(<RealtimeStatus />)
 
       const statusText = screen.getByText('Live')
       // Check for green text styling
@@ -68,7 +68,7 @@ describe('RealtimeStatus', () => {
     it('should have correct text color when disconnected', () => {
       ;(useRealtime as any).mockReturnValue({ connected: false })
 
-      const { container } = render(<RealtimeStatus />)
+      render(<RealtimeStatus />)
 
       const statusText = screen.getByText('Polling')
       // Check for yellow text styling
@@ -78,7 +78,7 @@ describe('RealtimeStatus', () => {
     it('should be small and compact in size', () => {
       ;(useRealtime as any).mockReturnValue({ connected: true })
 
-      const { container } = render(<RealtimeStatus />)
+      render(<RealtimeStatus />)
 
       // Check for small text size class
       const statusText = screen.getByText('Live')
@@ -144,7 +144,7 @@ describe('RealtimeStatus', () => {
 
       const { container } = render(<RealtimeStatus />)
 
-      const wrapper = container.firstChild
+      const wrapper = container.firstChild as HTMLElement
       expect(wrapper?.className).toContain('flex')
       expect(wrapper?.className).toContain('gap-2')
     })
@@ -209,6 +209,86 @@ describe('RealtimeStatus', () => {
       render(<RealtimeStatus />)
 
       expect(screen.getByText('Live')).toBeInTheDocument()
+    })
+  })
+
+  describe('timestamp display', () => {
+    it('should not display timestamp by default', () => {
+      ;(useRealtime as any).mockReturnValue({
+        connected: true,
+        lastUpdate: '2024-03-13T12:00:00Z',
+      })
+
+      render(<RealtimeStatus />)
+
+      const timeString = new Date('2024-03-13T12:00:00Z').toLocaleTimeString()
+      expect(screen.queryByText(timeString)).not.toBeInTheDocument()
+    })
+
+    it('should display timestamp when showTimestamp prop is true', () => {
+      ;(useRealtime as any).mockReturnValue({
+        connected: true,
+        lastUpdate: '2024-03-13T12:00:00Z',
+      })
+
+      render(<RealtimeStatus showTimestamp={true} />)
+
+      const timeString = new Date('2024-03-13T12:00:00Z').toLocaleTimeString()
+      expect(screen.getByText(timeString)).toBeInTheDocument()
+    })
+
+    it('should not display timestamp when lastUpdate is null', () => {
+      ;(useRealtime as any).mockReturnValue({
+        connected: true,
+        lastUpdate: null,
+      })
+
+      render(<RealtimeStatus showTimestamp={true} />)
+
+      // Should not throw, just not display timestamp
+      expect(screen.getByText('Live')).toBeInTheDocument()
+    })
+
+    it('should display timestamp with correct styling', () => {
+      ;(useRealtime as any).mockReturnValue({
+        connected: true,
+        lastUpdate: '2024-03-13T12:00:00Z',
+      })
+
+      render(<RealtimeStatus showTimestamp={true} />)
+
+      const timeString = new Date('2024-03-13T12:00:00Z').toLocaleTimeString()
+      const timestampElement = screen.getByText(timeString)
+
+      expect(timestampElement.className).toContain('text-xs')
+      expect(timestampElement.className).toContain('text-slate-500')
+    })
+
+    it('should display timestamp with dark mode support', () => {
+      ;(useRealtime as any).mockReturnValue({
+        connected: true,
+        lastUpdate: '2024-03-13T12:00:00Z',
+      })
+
+      render(<RealtimeStatus showTimestamp={true} />)
+
+      const timeString = new Date('2024-03-13T12:00:00Z').toLocaleTimeString()
+      const timestampElement = screen.getByText(timeString)
+
+      expect(timestampElement.className).toContain('dark:text-slate-400')
+    })
+
+    it('should work with disconnected state and timestamp', () => {
+      ;(useRealtime as any).mockReturnValue({
+        connected: false,
+        lastUpdate: '2024-03-13T12:00:00Z',
+      })
+
+      render(<RealtimeStatus showTimestamp={true} />)
+
+      expect(screen.getByText('Polling')).toBeInTheDocument()
+      const timeString = new Date('2024-03-13T12:00:00Z').toLocaleTimeString()
+      expect(screen.getByText(timeString)).toBeInTheDocument()
     })
   })
 })

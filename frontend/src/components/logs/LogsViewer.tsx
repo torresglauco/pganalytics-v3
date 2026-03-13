@@ -3,6 +3,8 @@ import { useLogs } from '../../hooks/useLogs'
 import { SearchBar } from './SearchBar'
 import { LogFilters, FilterState } from './LogFilters'
 import { LogsTable } from './LogsTable'
+import { LiveLogsStream } from './LiveLogsStream'
+import { RealtimeStatus } from '../common/RealtimeStatus'
 
 export const LogsViewer: React.FC = () => {
   const [page, setPage] = useState(1)
@@ -11,6 +13,7 @@ export const LogsViewer: React.FC = () => {
     level: null,
     fromDate: '',
     toDate: '',
+    instanceId: null,
   })
 
   const { data, loading, error, fetchLogs } = useLogs({
@@ -18,6 +21,7 @@ export const LogsViewer: React.FC = () => {
     page_size: 25,
     level: filters.level || undefined,
     search: search || undefined,
+    instance_id: filters.instanceId ? String(filters.instanceId) : undefined,
     from_time: filters.fromDate || undefined,
     to_time: filters.toDate || undefined,
   })
@@ -50,13 +54,32 @@ export const LogsViewer: React.FC = () => {
         </div>
 
         <div className="lg:col-span-3">
-          <LogsTable
-            logs={data?.logs || []}
-            loading={loading}
-            page={page}
-            pageSize={25}
-            onPageChange={setPage}
-          />
+          {/* Live Stream Section - only show when instance is selected */}
+          {filters.instanceId && (
+            <div className="mb-6 border-b pb-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+                  Live Stream
+                </h2>
+                <RealtimeStatus showTimestamp={true} />
+              </div>
+              <LiveLogsStream instanceId={filters.instanceId} />
+            </div>
+          )}
+
+          {/* Historical Logs Section */}
+          <div>
+            <h2 className="text-lg font-semibold mb-4 text-slate-900 dark:text-white">
+              Historical Logs
+            </h2>
+            <LogsTable
+              logs={data?.logs || []}
+              loading={loading}
+              page={page}
+              pageSize={25}
+              onPageChange={setPage}
+            />
+          </div>
         </div>
       </div>
     </div>

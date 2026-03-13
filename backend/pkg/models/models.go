@@ -1033,3 +1033,77 @@ type Notification struct {
 	CreatedAt      time.Time  `db:"created_at" json:"created_at"`
 	UpdatedAt      time.Time  `db:"updated_at" json:"updated_at"`
 }
+
+// ============================================================================
+// PHASE 4: ALERT SILENCES, ESCALATION POLICIES & STATE MODELS
+// ============================================================================
+
+// AlertCondition represents the condition for an alert rule
+type AlertCondition struct {
+	MetricType  string        `json:"metric_type"`
+	Operator    string        `json:"operator"`   // gt, lt, eq, gte, lte, ne
+	Threshold   float64       `json:"threshold"`
+	TimeWindow  string        `json:"time_window"`
+	Duration    int           `json:"duration"` // Duration in seconds
+}
+
+// AlertSilence represents a silenced alert rule
+type AlertSilence struct {
+	ID            int64      `db:"id" json:"id"`
+	AlertRuleID   int        `db:"alert_rule_id" json:"alert_rule_id"`
+	InstanceID    int        `db:"instance_id" json:"instance_id"`
+	SilencedUntil time.Time  `db:"silenced_until" json:"silenced_until"`
+	SilenceType   string     `db:"silence_type" json:"silence_type"` // temporary, permanent, schedule-based
+	Reason        *string    `db:"reason" json:"reason,omitempty"`
+	CreatedBy     *int       `db:"created_by" json:"created_by,omitempty"`
+	CreatedAt     time.Time  `db:"created_at" json:"created_at"`
+}
+
+// EscalationPolicy represents an escalation workflow configuration
+type EscalationPolicy struct {
+	ID          int64                    `db:"id" json:"id"`
+	Name        string                   `db:"name" json:"name"`
+	Description *string                  `db:"description" json:"description,omitempty"`
+	IsActive    bool                     `db:"is_active" json:"is_active"`
+	CreatedBy   *int                     `db:"created_by" json:"created_by,omitempty"`
+	CreatedAt   time.Time                `db:"created_at" json:"created_at"`
+	UpdatedAt   time.Time                `db:"updated_at" json:"updated_at"`
+	Steps       []*EscalationPolicyStep  `db:"-" json:"steps,omitempty"`
+}
+
+// EscalationPolicyStep represents a single step in an escalation policy
+type EscalationPolicyStep struct {
+	ID                    int64           `db:"id" json:"id"`
+	PolicyID              int64           `db:"policy_id" json:"policy_id"`
+	StepOrder             int             `db:"step_order" json:"step_order"`
+	ChannelType           string          `db:"channel_type" json:"channel_type"` // email, slack, webhook, pagerduty, sms
+	ChannelConfig         map[string]interface{} `db:"channel_config" json:"channel_config"`
+	DelayMinutes          int             `db:"delay_minutes" json:"delay_minutes"`
+	RequiresAcknowledgment bool           `db:"requires_acknowledgment" json:"requires_acknowledgment"`
+}
+
+// AlertRuleEscalationPolicy represents the linking between alert rules and escalation policies
+type AlertRuleEscalationPolicy struct {
+	ID                  int64     `db:"id" json:"id"`
+	AlertRuleID         int       `db:"alert_rule_id" json:"alert_rule_id"`
+	EscalationPolicyID  int64     `db:"escalation_policy_id" json:"escalation_policy_id"`
+	IsPrimary           bool      `db:"is_primary" json:"is_primary"`
+	CreatedAt           time.Time `db:"created_at" json:"created_at"`
+}
+
+// EscalationState represents the current escalation state for a triggered alert
+type EscalationState struct {
+	ID                 int64                  `db:"id" json:"id"`
+	AlertTriggerID     int64                  `db:"alert_trigger_id" json:"alert_trigger_id"`
+	PolicyID           int64                  `db:"policy_id" json:"policy_id"`
+	CurrentStep        int                    `db:"current_step" json:"current_step"`
+	AckReceived        bool                   `db:"ack_received" json:"ack_received"`
+	AckBy              *int                   `db:"ack_by" json:"ack_by,omitempty"`
+	AckAt              *time.Time             `db:"ack_at" json:"ack_at,omitempty"`
+	LastEscalatedAt    *time.Time             `db:"last_escalated_at" json:"last_escalated_at,omitempty"`
+	NextEscalationAt   *time.Time             `db:"next_escalation_at" json:"next_escalation_at,omitempty"`
+	Status             string                 `db:"status" json:"status"` // active, resolved, acknowledged, failed
+	Metadata           map[string]interface{} `db:"metadata" json:"metadata,omitempty"`
+	CreatedAt          time.Time              `db:"created_at" json:"created_at"`
+	UpdatedAt          time.Time              `db:"updated_at" json:"updated_at"`
+}

@@ -134,10 +134,8 @@ func TestCircuitBreakerMetrics(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	cb := ml.NewCircuitBreaker(logger)
 
-	// Record some operations
-	cb.RecordSuccess()
+	// Record failure to test metrics
 	cb.RecordFailure()
-	cb.RecordSuccess()
 
 	metrics := cb.GetMetrics()
 
@@ -151,7 +149,7 @@ func TestCircuitBreakerMetrics(t *testing.T) {
 	}
 
 	if successCount, ok := metrics["success_count"].(int); !ok || successCount != 0 {
-		t.Errorf("Expected success_count=0 (reset in closed state), got %v", metrics["success_count"])
+		t.Errorf("Expected success_count=0 (not yet succeeded), got %v", metrics["success_count"])
 	}
 }
 

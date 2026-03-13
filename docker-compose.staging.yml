@@ -1,239 +1,116 @@
-version: '3.9'
-
-# pgAnalytics v3.3.0 - Staging Environment (Local Sandbox)
-# This docker-compose file creates a complete staging environment for testing
-# All data is ephemeral and will be destroyed when containers stop
+version: '3.8'
 
 services:
-  # ==================== DATABASES ====================
-
-  # Main PostgreSQL for pgAnalytics metadata
-  postgres-staging:
-    image: postgres:16-bullseye
-    container_name: pganalytics-staging-postgres
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: pganalytics-staging-db
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: staging_password
       POSTGRES_DB: pganalytics_staging
-      POSTGRES_INITDB_ARGS: "-c shared_preload_libraries=pg_stat_statements"
+      POSTGRES_USER: pganalytics
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-staging-password}
     ports:
       - "5432:5432"
     volumes:
       - postgres_staging_data:/var/lib/postgresql/data
-      # - ./backend/migrations:/docker-entrypoint-initdb.d:ro
-      # - ./postgresql.conf:/etc/postgresql/postgresql.conf:ro
-    # command: -c config_file=/etc/postgresql/postgresql.conf
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    deploy:
-      resources:
-        limits:
-          cpus: '2'
-          memory: 2G
-        reservations:
-          cpus: '1'
-          memory: 1G
-    networks:
-      pganalytics-staging:
-        ipv4_address: 172.21.0.10
-
-  # TimescaleDB for time-series metrics
-  timescale-staging:
-    build:
-      context: .
-      dockerfile: Dockerfile.timescaledb
-    container_name: pganalytics-staging-timescale
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: staging_password
-      POSTGRES_DB: metrics_staging
-      POSTGRES_INITDB_ARGS: "-c shared_preload_libraries=timescaledb"
-    ports:
-      - "5433:5432"
-    volumes:
-      - timescale_staging_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    deploy:
-      resources:
-        limits:
-          cpus: '2'
-          memory: 2G
-        reservations:
-          cpus: '1'
-          memory: 1G
-    networks:
-      pganalytics-staging:
-        ipv4_address: 172.21.0.11
-
-  # ==================== API SERVER ====================
-
-  backend-staging:
-    build:
-      context: .
-      dockerfile: backend/Dockerfile
-    container_name: pganalytics-staging-backend
-    environment:
-      # Databases
-      DATABASE_URL: "postgres://postgres:staging_password@postgres-staging:5432/pganalytics_staging?sslmode=disable"
-      TIMESCALE_URL: "postgres://postgres:staging_password@timescale-staging:5432/metrics_staging?sslmode=disable"
-
-      # Security
-      JWT_SECRET: "staging-jwt-secret-change-in-production"
-      JWT_EXPIRATION: "3600"
-      ENCRYPTION_KEY: "WkSMJvo2wKQ1FuceaE2yW2lEyxKIcJ1wfbrcNUOGUkE="
-      REGISTRATION_SECRET: "staging-registration-secret"
-      SETUP_ENDPOINT_ENABLED: "true"  # Enable setup endpoint for initial deployment only
-
-      # TLS (self-signed for staging)
-      TLS_CERT: "/etc/pganalytics/tls/server.crt"
-      TLS_KEY: "/etc/pganalytics/tls/server.key"
-
-      # Server
-      PORT: "8080"
-      LOG_LEVEL: "info"
-      ENVIRONMENT: "staging"
-
-      # Limits & Timeouts
-      MAX_CONNECTIONS: "100"
-      REQUEST_TIMEOUT: "30s"
-      RATE_LIMIT: "100/min"
-    ports:
-      - "8080:8080"
-    depends_on:
-      postgres-staging:
-        condition: service_healthy
-      timescale-staging:
-        condition: service_healthy
-    volumes:
-      - ./backend/migrations:/migrations:ro
-      - ./tls:/etc/pganalytics/tls:ro
-    healthcheck:
-      test: ["CMD", "curl", "-k", "-f", "https://localhost:8080/api/v1/health"]
+      test: ["CMD-SHELL", "pg_isready -U pganalytics -d pganalytics_staging"]
       interval: 10s
       timeout: 5s
-      retries: 3
-      start_period: 15s
-    deploy:
-      resources:
-        limits:
-          cpus: '2'
-          memory: 1G
-        reservations:
-          cpus: '1'
-          memory: 512M
+      retries: 5
     networks:
-      pganalytics-staging:
-        ipv4_address: 172.21.0.20
+      - pganalytics-staging
 
-  # ==================== FRONTEND ====================
-
-  frontend-staging:
+  # Backend API
+  api:
     build:
-      context: .
-      dockerfile: frontend/Dockerfile
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: pganalytics-staging-api
+    environment:
+      POSTGRES_URL: postgresql://pganalytics:${DB_PASSWORD:-staging-password}@postgres:5432/pganalytics_staging
+      API_PORT: 8000
+      JWT_SECRET: ${JWT_SECRET:-staging-secret-key}
+      LOG_LEVEL: info
+      ENVIRONMENT: staging
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - pganalytics-staging
+    volumes:
+      - ./backend/logs:/var/log/pganalytics
+
+  # Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: http://localhost:8000
     container_name: pganalytics-staging-frontend
-    environment:
-      REACT_APP_API_URL: "https://localhost:8080"
-      REACT_APP_ENVIRONMENT: "staging"
-      VITE_API_BACKEND_HOST: "backend-staging"
-      VITE_API_BACKEND_PORT: "8080"
-      VITE_API_BACKEND_PROTOCOL: "http"
-      PORT: "3000"
     ports:
-      - "3000:3000"
+      - "3000:80"
     depends_on:
-      - backend-staging
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:80/"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-    deploy:
-      resources:
-        limits:
-          cpus: '1'
-          memory: 512M
-        reservations:
-          cpus: '0.5'
-          memory: 256M
+      - api
     networks:
-      pganalytics-staging:
-        ipv4_address: 172.21.0.30
+      - pganalytics-staging
 
-  # ==================== MONITORING ====================
+  # Redis (optional, for future caching)
+  redis:
+    image: redis:7-alpine
+    container_name: pganalytics-staging-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_staging_data:/data
+    networks:
+      - pganalytics-staging
 
-  prometheus-staging:
+  # Prometheus for metrics
+  prometheus:
     image: prom/prometheus:latest
     container_name: pganalytics-staging-prometheus
     ports:
       - "9090:9090"
     volumes:
-      - ./monitoring/prometheus.staging.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/prometheus.staging.yml:/etc/prometheus/prometheus.yml
       - prometheus_staging_data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
-    deploy:
-      resources:
-        limits:
-          cpus: '1'
-          memory: 512M
-        reservations:
-          cpus: '0.5'
-          memory: 256M
     networks:
-      pganalytics-staging:
-        ipv4_address: 172.21.0.40
+      - pganalytics-staging
 
-  grafana-staging:
-    image: grafana/grafana:11.0.0
+  # Grafana for dashboards
+  grafana:
+    image: grafana/grafana:latest
     container_name: pganalytics-staging-grafana
-    environment:
-      GF_SECURITY_ADMIN_PASSWORD: staging_admin
-      GF_USERS_ALLOW_SIGN_UP: "false"
     ports:
       - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-staging-admin}
     volumes:
       - grafana_staging_data:/var/lib/grafana
-      - ./grafana/provisioning:/etc/grafana/provisioning:ro
-      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
     depends_on:
-      - prometheus-staging
-    deploy:
-      resources:
-        limits:
-          cpus: '1'
-          memory: 512M
-        reservations:
-          cpus: '0.5'
-          memory: 256M
+      - prometheus
     networks:
-      pganalytics-staging:
-        ipv4_address: 172.21.0.41
+      - pganalytics-staging
 
-  # ==================== TESTING & UTILITIES ====================
-  # (Removed pgAdmin for resource efficiency - not necessary for enterprise deployment)
+volumes:
+  postgres_staging_data:
+  redis_staging_data:
+  prometheus_staging_data:
+  grafana_staging_data:
 
 networks:
   pganalytics-staging:
     driver: bridge
-    ipam:
-      config:
-        - subnet: 172.21.0.0/16
-
-volumes:
-  postgres_staging_data:
-    driver: local
-  timescale_staging_data:
-    driver: local
-  prometheus_staging_data:
-    driver: local
-  grafana_staging_data:
-    driver: local

@@ -18,21 +18,24 @@ import (
 
 // Server represents the API server
 type Server struct {
-	config           *config.Config
-	logger           *zap.Logger
-	postgres         *storage.PostgresDB
-	timescale        *timescale.TimescaleDB
-	authService      *auth.AuthService
-	jwtManager       *auth.JWTManager
-	mlClient         *ml.Client
-	featureExtractor ml.IFeatureExtractor
-	cacheManager     *cache.Manager
-	rateLimiter      *RateLimiter
-	secretManager    *crypto.SecretManager
-	sessionManager   *session.SessionManager
-	mfaManager       *auth.MFAManager
-	auditLogger      *audit.AuditLogger
-	wsManager        *services.ConnectionManager
+	config              *config.Config
+	logger              *zap.Logger
+	postgres            *storage.PostgresDB
+	timescale           *timescale.TimescaleDB
+	authService         *auth.AuthService
+	jwtManager          *auth.JWTManager
+	mlClient            *ml.Client
+	featureExtractor    ml.IFeatureExtractor
+	cacheManager        *cache.Manager
+	rateLimiter         *RateLimiter
+	secretManager       *crypto.SecretManager
+	sessionManager      *session.SessionManager
+	mfaManager          *auth.MFAManager
+	auditLogger         *audit.AuditLogger
+	wsManager           *services.ConnectionManager
+	conditionHandler    *handlers.ConditionHandler
+	silenceHandler      *handlers.SilenceHandler
+	escalationHandler   *handlers.EscalationHandler
 }
 
 // NewServer creates a new API server
@@ -68,19 +71,34 @@ func NewServer(
 	// Initialize rate limiter (100 req/min per user, 1000 req/min per collector)
 	rateLimiter := NewRateLimiter(1000) // Increased to handle high-volume metric pushes from collectors
 
+	// Initialize services and handlers
+	conditionValidator := services.NewConditionValidator()
+	conditionHandler := handlers.NewConditionHandler(conditionValidator)
+
+	// TODO: Initialize SilenceService with SilenceDB implementation
+	var silenceHandler *handlers.SilenceHandler
+	// silenceHandler = handlers.NewSilenceHandler(silenceService)
+
+	// TODO: Initialize EscalationService with EscalationDB implementation and Notifier
+	var escalationHandler *handlers.EscalationHandler
+	// escalationHandler = handlers.NewEscalationHandler(escalationService)
+
 	return &Server{
-		config:           cfg,
-		logger:           logger,
-		postgres:         postgres,
-		timescale:        timescale,
-		authService:      authService,
-		jwtManager:       jwtManager,
-		mlClient:         mlClient,
-		featureExtractor: featureExtractor,
-		cacheManager:     nil, // Set via SetCacheManager
-		rateLimiter:      rateLimiter,
-		secretManager:    secretManager,
-		wsManager:        services.NewConnectionManager(),
+		config:              cfg,
+		logger:              logger,
+		postgres:            postgres,
+		timescale:           timescale,
+		authService:         authService,
+		jwtManager:          jwtManager,
+		mlClient:            mlClient,
+		featureExtractor:    featureExtractor,
+		cacheManager:        nil, // Set via SetCacheManager
+		rateLimiter:         rateLimiter,
+		secretManager:       secretManager,
+		wsManager:           services.NewConnectionManager(),
+		conditionHandler:    conditionHandler,
+		silenceHandler:      silenceHandler,
+		escalationHandler:   escalationHandler,
 	}
 }
 
@@ -202,6 +220,37 @@ func (s *Server) RegisterRoutes(router *gin.Engine) {
 			logs.POST("/ingest", s.handleIngestLogs)
 		}
 
+		// ========================================================================
+		// PHASE 4.6: ALERT RULES, SILENCES, AND ESCALATIONS ROUTES
+		// ========================================================================
+
+		// Alert Rule Validation routes
+		alertRules := api.Group("/alert-rules")
+		{
+			alertRules.POST("/validate", s.AuthMiddleware(), s.handleValidateAlertCondition)
+		}
+
+		// Silences management routes
+		silences := api.Group("/silences")
+		{
+			silences.GET("", s.AuthMiddleware(), s.handleListActiveSilences)
+			silences.DELETE("/:id", s.AuthMiddleware(), s.handleDeleteSilence)
+		}
+
+		// Escalation Policies routes
+		escalationPolicies := api.Group("/escalation-policies")
+		{
+			escalationPolicies.POST("", s.AuthMiddleware(), s.handleCreateEscalationPolicy)
+			escalationPolicies.GET("/:policy_id", s.AuthMiddleware(), s.handleGetEscalationPolicy)
+			escalationPolicies.PUT("/:id", s.AuthMiddleware(), s.handleUpdateEscalationPolicy)
+		}
+
+		// Alert Acknowledgment via Escalation routes
+		alertAcknowledge := api.Group("/alerts")
+		{
+			alertAcknowledge.POST("/:trigger_id/acknowledge", s.AuthMiddleware(), s.handleAcknowledgeAlertEscalation)
+		}
+
 		// Internal analysis routes (collector -> backend for analyzed data like EXPLAIN plans)
 		internal := api.Group("/internal")
 		{
@@ -229,6 +278,8 @@ func (s *Server) RegisterRoutes(router *gin.Engine) {
 			alerts.GET("", s.AuthMiddleware(), s.handleListAlerts)
 			alerts.GET("/:id", s.AuthMiddleware(), s.handleGetAlert)
 			alerts.POST("/:id/acknowledge", s.AuthMiddleware(), s.handleAcknowledgeAlert)
+			// Silence endpoint
+			alerts.POST("/:rule_id/silence", s.AuthMiddleware(), s.handleCreateSilence)
 		}
 
 		// Query timeline routes
@@ -373,4 +424,80 @@ func (s *Server) handleWebSocket(c *gin.Context) {
 func (s *Server) handleIngestLogs(c *gin.Context) {
 	handler := handlers.IngestLogs(s.postgres, s.wsManager)
 	handler(c.Writer, c.Request)
+}
+
+// ========================================================================
+// PHASE 4.6: ALERT CONDITIONS, SILENCES, AND ESCALATIONS HANDLERS
+// ========================================================================
+
+// handleValidateAlertCondition is a Gin wrapper for condition validation
+func (s *Server) handleValidateAlertCondition(c *gin.Context) {
+	if s.conditionHandler == nil {
+		c.JSON(500, gin.H{"error": "Condition handler not initialized"})
+		return
+	}
+	s.conditionHandler.ValidateCondition(c.Writer, c.Request)
+}
+
+// handleCreateSilence is a Gin wrapper for creating a silence
+func (s *Server) handleCreateSilence(c *gin.Context) {
+	if s.silenceHandler == nil {
+		c.JSON(500, gin.H{"error": "Silence handler not initialized"})
+		return
+	}
+	s.silenceHandler.CreateSilence(c.Writer, c.Request)
+}
+
+// handleListActiveSilences is a Gin wrapper for listing active silences
+func (s *Server) handleListActiveSilences(c *gin.Context) {
+	if s.silenceHandler == nil {
+		c.JSON(500, gin.H{"error": "Silence handler not initialized"})
+		return
+	}
+	s.silenceHandler.ListActiveSilences(c.Writer, c.Request)
+}
+
+// handleDeleteSilence is a Gin wrapper for deleting a silence
+func (s *Server) handleDeleteSilence(c *gin.Context) {
+	if s.silenceHandler == nil {
+		c.JSON(500, gin.H{"error": "Silence handler not initialized"})
+		return
+	}
+	s.silenceHandler.DeleteSilence(c.Writer, c.Request)
+}
+
+// handleCreateEscalationPolicy is a Gin wrapper for creating an escalation policy
+func (s *Server) handleCreateEscalationPolicy(c *gin.Context) {
+	if s.escalationHandler == nil {
+		c.JSON(500, gin.H{"error": "Escalation handler not initialized"})
+		return
+	}
+	s.escalationHandler.CreatePolicy(c.Writer, c.Request)
+}
+
+// handleGetEscalationPolicy is a Gin wrapper for retrieving an escalation policy
+func (s *Server) handleGetEscalationPolicy(c *gin.Context) {
+	if s.escalationHandler == nil {
+		c.JSON(500, gin.H{"error": "Escalation handler not initialized"})
+		return
+	}
+	s.escalationHandler.GetPolicy(c.Writer, c.Request)
+}
+
+// handleUpdateEscalationPolicy is a Gin wrapper for updating an escalation policy
+func (s *Server) handleUpdateEscalationPolicy(c *gin.Context) {
+	if s.escalationHandler == nil {
+		c.JSON(500, gin.H{"error": "Escalation handler not initialized"})
+		return
+	}
+	s.escalationHandler.UpdatePolicy(c.Writer, c.Request)
+}
+
+// handleAcknowledgeAlertEscalation is a Gin wrapper for acknowledging an alert
+func (s *Server) handleAcknowledgeAlertEscalation(c *gin.Context) {
+	if s.escalationHandler == nil {
+		c.JSON(500, gin.H{"error": "Escalation handler not initialized"})
+		return
+	}
+	s.escalationHandler.AcknowledgeAlert(c.Writer, c.Request)
 }

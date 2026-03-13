@@ -18,17 +18,17 @@ type ConditionValidator struct {
 func NewConditionValidator() *ConditionValidator {
 	return &ConditionValidator{
 		validMetrics: map[string]bool{
-			"error_count":         true,
-			"slow_query_count":    true,
-			"connection_count":    true,
-			"transaction_count":   true,
-			"cache_hit_ratio":     true,
-			"query_latency_p95":   true,
-			"query_latency_p99":   true,
-			"replication_lag":     true,
-			"cpu_usage":           true,
-			"memory_usage":        true,
-			"disk_usage":          true,
+			"error_count":       true,
+			"slow_query_count":  true,
+			"connection_count":  true,
+			"transaction_count": true,
+			"cache_hit_ratio":   true,
+			"query_latency_p95": true,
+			"query_latency_p99": true,
+			"replication_lag":   true,
+			"cpu_usage":         true,
+			"memory_usage":      true,
+			"disk_usage":        true,
 		},
 		validOperators: map[string]bool{
 			">":  true,

@@ -7,13 +7,16 @@ import { MetricsPage } from './pages/MetricsPage'
 import { AlertsPage } from './pages/AlertsPage'
 import { ChannelsPage } from './pages/ChannelsPage'
 import { useAuthStore } from './stores/authStore'
+import { useRealtimeStore } from './stores/realtimeStore'
+import { realtimeClient } from './services/realtime'
 import { apiClient } from './services/api'
 import { LoadingSpinner } from './components/ui/LoadingSpinner'
 import './styles/index.css'
 
 function App() {
   const [isLoading, setIsLoading] = useState(true)
-  const { isAuthenticated, setAuthenticated } = useAuthStore()
+  const { isAuthenticated, setAuthenticated, token } = useAuthStore()
+  const { setConnected, setError: setRealtimeError, setLastUpdate, emit } = useRealtimeStore()
 
   useEffect(() => {
     const checkAuthentication = async () => {
@@ -36,6 +39,87 @@ function App() {
 
     checkAuthentication()
   }, [setAuthenticated])
+
+  // Initialize RealtimeClient connection when authenticated
+  useEffect(() => {
+    if (!isAuthenticated || !token) {
+      // Disconnect if not authenticated
+      if (realtimeClient) {
+        realtimeClient.disconnect()
+        setConnected(false)
+      }
+      return
+    }
+
+    // Handler for connection established
+    const handleConnected = () => {
+      setConnected(true)
+      setRealtimeError(null)
+    }
+
+    // Handler for disconnection
+    const handleDisconnected = () => {
+      setConnected(false)
+    }
+
+    // Handler for connection errors
+    const handleError = (error: any) => {
+      const errorMessage = error?.message || 'Connection error'
+      setRealtimeError(errorMessage)
+      console.error('RealtimeClient error:', error)
+    }
+
+    // Handler for new logs received
+    const handleLogReceived = (logData: any) => {
+      setLastUpdate(new Date().toISOString())
+      emit('log:new', logData)
+    }
+
+    // Handler for metric updates
+    const handleMetricUpdate = (metricData: any) => {
+      setLastUpdate(new Date().toISOString())
+      emit('metric:update', metricData)
+    }
+
+    // Handler for alert triggers
+    const handleAlertTriggered = (alertData: any) => {
+      setLastUpdate(new Date().toISOString())
+      emit('alert:triggered', alertData)
+    }
+
+    // Connect to WebSocket
+    realtimeClient
+      .connect(token)
+      .then(() => {
+        setConnected(true)
+        setRealtimeError(null)
+
+        // Subscribe to events
+        realtimeClient.on('log:new', handleLogReceived)
+        realtimeClient.on('metric:update', handleMetricUpdate)
+        realtimeClient.on('alert:triggered', handleAlertTriggered)
+        realtimeClient.on('connected', handleConnected)
+        realtimeClient.on('disconnected', handleDisconnected)
+        realtimeClient.on('error', handleError)
+      })
+      .catch((error) => {
+        const errorMessage = error?.message || 'Failed to connect to realtime service'
+        setRealtimeError(errorMessage)
+        console.error('Failed to connect RealtimeClient:', error)
+      })
+
+    // Cleanup on unmount or token change
+    return () => {
+      realtimeClient.off('log:new', handleLogReceived)
+      realtimeClient.off('metric:update', handleMetricUpdate)
+      realtimeClient.off('alert:triggered', handleAlertTriggered)
+      realtimeClient.off('connected', handleConnected)
+      realtimeClient.off('disconnected', handleDisconnected)
+      realtimeClient.off('error', handleError)
+      realtimeClient.disconnect()
+      setConnected(false)
+    }
+  }, [isAuthenticated, token, setConnected, setRealtimeError, setLastUpdate, emit])
 
   if (isLoading) {
     return <LoadingSpinner fullScreen message="Loading pgAnalytics..." />

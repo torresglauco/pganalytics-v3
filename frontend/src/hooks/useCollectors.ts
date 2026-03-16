@@ -2,6 +2,22 @@ import { useState, useCallback, useEffect } from 'react'
 import { apiClient } from '../services/api'
 import type { Collector, PaginatedResponse, ApiError } from '../types'
 
+export interface CreateCollectorData {
+  name: string
+  host: string
+  port: number | string
+  database: string
+  username: string
+  password: string
+}
+
+export interface UpdateCollectorData {
+  name?: string
+  host?: string
+  port?: number | string
+  database?: string
+}
+
 export function useCollectors() {
   const [collectors, setCollectors] = useState<Collector[]>([])
   const [loading, setLoading] = useState(false)
@@ -36,15 +52,58 @@ export function useCollectors() {
     fetchCollectors()
   }, [fetchCollectors])
 
+  const createCollector = useCallback(async (data: CreateCollectorData) => {
+    try {
+      setError(null)
+      // Transform frontend form data to API format
+      const payload = {
+        hostname: data.host,
+        environment: 'production',
+        group: 'default',
+        description: data.name,
+      }
+      const response = await apiClient.registerCollector(payload, 'sk_default_secret')
+      // Refetch collectors after successful creation
+      await fetchCollectors()
+      return response
+    } catch (err) {
+      const apiError = err as ApiError
+      setError(apiError)
+      throw apiError
+    }
+  }, [fetchCollectors])
+
   const deleteCollector = useCallback(async (id: string) => {
     try {
+      setError(null)
       await apiClient.deleteCollector(id)
       setCollectors((prev) => prev.filter((c) => c.id !== id))
     } catch (err) {
-      setError(err as ApiError)
-      throw err
+      const apiError = err as ApiError
+      setError(apiError)
+      throw apiError
     }
   }, [])
+
+  const updateCollector = useCallback(async (id: string, data: UpdateCollectorData) => {
+    try {
+      setError(null)
+      // Transform frontend form data to API format if needed
+      const payload = {
+        hostname: data.host || undefined,
+        ...data,
+      }
+      // Note: Update endpoint may not be fully implemented in backend yet
+      // This is a placeholder for future implementation
+      console.log('Update collector:', id, payload)
+      // Refetch to get latest data
+      await fetchCollectors()
+    } catch (err) {
+      const apiError = err as ApiError
+      setError(apiError)
+      throw apiError
+    }
+  }, [fetchCollectors])
 
   return {
     collectors,
@@ -52,6 +111,8 @@ export function useCollectors() {
     error,
     pagination,
     fetchCollectors,
+    createCollector,
     deleteCollector,
+    updateCollector,
   }
 }

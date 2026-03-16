@@ -6,6 +6,7 @@ import { LogsPage } from './pages/LogsPage'
 import { MetricsPage } from './pages/MetricsPage'
 import { AlertsPage } from './pages/AlertsPage'
 import { ChannelsPage } from './pages/ChannelsPage'
+import { CollectorsManagement } from './pages/CollectorsManagement'
 import { NotImplementedPage } from './pages/NotImplementedPage'
 import { useAuthStore } from './stores/authStore'
 import { useRealtimeStore } from './stores/realtimeStore'
@@ -152,19 +153,10 @@ function App() {
             <Route path="/metrics" element={<MetricsPage />} />
             <Route path="/alerts" element={<AlertsPage />} />
             <Route path="/channels" element={<ChannelsPage />} />
+            <Route path="/collectors" element={<CollectorsManagement />} />
             {/* Grafana redirect to external service */}
             <Route path="/grafana" element={<GrafanaRedirect />} />
             {/* Unimplemented routes - show "Coming Soon" pages */}
-            <Route
-              path="/collectors"
-              element={
-                <NotImplementedPage
-                  icon="📁"
-                  title="Collectors"
-                  description="Manage PostgreSQL collectors and data sources"
-                />
-              }
-            />
             <Route
               path="/users"
               element={

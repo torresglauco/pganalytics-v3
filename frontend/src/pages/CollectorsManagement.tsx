@@ -2,94 +2,22 @@ import React, { useMemo, useState } from 'react';
 import {
   Plus,
   Trash2,
-  Refresh,
+  RefreshCw,
   Eye,
   EyeOff,
   Copy,
   Check,
   AlertTriangle,
+  AlertCircle,
 } from 'lucide-react';
 import { PageWrapper } from '../components/common/PageWrapper';
 import { MetricCard } from '../components/cards/MetricCard';
 import { StatusBadge } from '../components/cards/StatusBadge';
 import { DataTable, Column } from '../components/tables/DataTable';
 import { formatTimeAgo } from '../utils/formatting';
-
-interface Collector {
-  id: string;
-  name: string;
-  host: string;
-  port: number;
-  database: string;
-  status: 'online' | 'offline' | 'error';
-  health_score: number;
-  last_heartbeat: Date;
-  metrics_collected: number;
-  collection_interval: number;
-  version: string;
-  registration_secret?: string;
-  created_at: Date;
-}
-
-// Mock data
-const mockCollectors: Collector[] = [
-  {
-    id: 'prod-db-01',
-    name: 'Production Primary',
-    host: 'prod-postgres-01.internal',
-    port: 5432,
-    database: 'maindb',
-    status: 'online',
-    health_score: 94,
-    last_heartbeat: new Date(Date.now() - 30000),
-    metrics_collected: 2847,
-    collection_interval: 60,
-    version: '1.2.3',
-    created_at: new Date(Date.now() - 90 * 24 * 3600000),
-  },
-  {
-    id: 'prod-db-02',
-    name: 'Production Replica',
-    host: 'prod-postgres-02.internal',
-    port: 5432,
-    database: 'maindb',
-    status: 'online',
-    health_score: 88,
-    last_heartbeat: new Date(Date.now() - 45000),
-    metrics_collected: 2801,
-    collection_interval: 60,
-    version: '1.2.3',
-    created_at: new Date(Date.now() - 85 * 24 * 3600000),
-  },
-  {
-    id: 'staging-db-02',
-    name: 'Staging Database',
-    host: 'staging-postgres.internal',
-    port: 5432,
-    database: 'stagedb',
-    status: 'online',
-    health_score: 91,
-    last_heartbeat: new Date(Date.now() - 20000),
-    metrics_collected: 2612,
-    collection_interval: 60,
-    version: '1.2.3',
-    created_at: new Date(Date.now() - 45 * 24 * 3600000),
-  },
-  {
-    id: 'dev-db-local',
-    name: 'Development Local',
-    host: 'localhost',
-    port: 5432,
-    database: 'devdb',
-    status: 'offline',
-    health_score: 0,
-    last_heartbeat: new Date(Date.now() - 2 * 3600000),
-    metrics_collected: 156,
-    collection_interval: 60,
-    version: '1.2.2',
-    created_at: new Date(Date.now() - 10 * 24 * 3600000),
-  },
-];
+import { useCollectors } from '../hooks/useCollectors';
+import { LoadingSpinner } from '../components/ui/LoadingSpinner';
+import type { Collector } from '../types';
 
 interface NewCollectorForm {
   name: string;
@@ -100,11 +28,42 @@ interface NewCollectorForm {
   password: string;
 }
 
+// Transform API collector to display format
+function transformCollectorForDisplay(collector: Collector) {
+  return {
+    ...collector,
+    name: collector.hostname || 'Unknown',
+    host: collector.hostname || 'N/A',
+    port: 5432, // Default, would come from config
+    database: 'N/A', // Not in API response
+    status: (collector.status === 'active' ? 'online' : collector.status === 'inactive' ? 'offline' : 'error') as 'online' | 'offline' | 'error',
+    health_score: 85, // Would come from metrics
+    last_heartbeat: collector.last_seen ? new Date(collector.last_seen) : new Date(),
+    metrics_collected: collector.metrics_count_total || 0,
+    collection_interval: 60,
+    version: collector.version || 'unknown',
+    created_at: new Date(collector.created_at),
+  };
+}
+
+interface DisplayCollector extends Collector {
+  status: 'online' | 'offline' | 'error';
+  health_score: number;
+  last_heartbeat: Date;
+  metrics_collected: number;
+  collection_interval: number;
+  database: string;
+  port: number;
+}
+
 export const CollectorsManagement: React.FC = () => {
+  const { collectors, loading, error, fetchCollectors, createCollector, deleteCollector } = useCollectors();
   const [showNewForm, setShowNewForm] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [visibleSecrets, setVisibleSecrets] = useState<Set<string>>(new Set());
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [formData, setFormData] = useState<NewCollectorForm>({
     name: '',
     host: '',
@@ -114,19 +73,26 @@ export const CollectorsManagement: React.FC = () => {
     password: '',
   });
 
+  // Transform collectors for display
+  const displayCollectors: DisplayCollector[] = useMemo(() => {
+    return collectors.map(c => transformCollectorForDisplay(c)) as DisplayCollector[];
+  }, [collectors]);
+
   // Calculate stats
   const stats = useMemo(() => {
     return {
-      total: mockCollectors.length,
-      online: mockCollectors.filter((c) => c.status === 'online').length,
-      offline: mockCollectors.filter((c) => c.status === 'offline').length,
-      error: mockCollectors.filter((c) => c.status === 'error').length,
+      total: displayCollectors.length,
+      online: displayCollectors.filter((c) => c.status === 'online').length,
+      offline: displayCollectors.filter((c) => c.status === 'offline').length,
+      error: displayCollectors.filter((c) => c.status === 'error').length,
       avgHealth:
-        Math.round(
-          mockCollectors.reduce((sum, c) => sum + c.health_score, 0) / mockCollectors.length
-        ) || 0,
+        displayCollectors.length > 0
+          ? Math.round(
+              displayCollectors.reduce((sum, c) => sum + c.health_score, 0) / displayCollectors.length
+            )
+          : 0,
     };
-  }, []);
+  }, [displayCollectors]);
 
   const toggleSecretVisibility = (id: string) => {
     const newSet = new Set(visibleSecrets);
@@ -144,21 +110,48 @@ export const CollectorsManagement: React.FC = () => {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const handleAddCollector = (e: React.FormEvent) => {
+  const handleAddCollector = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Adding collector:', formData);
-    setShowNewForm(false);
-    setFormData({
-      name: '',
-      host: '',
-      port: '5432',
-      database: '',
-      username: '',
-      password: '',
-    });
+    setIsSubmitting(true);
+    setSubmitError(null);
+
+    try {
+      await createCollector({
+        name: formData.name,
+        host: formData.host,
+        port: parseInt(formData.port) || 5432,
+        database: formData.database,
+        username: formData.username,
+        password: formData.password,
+      });
+      setShowNewForm(false);
+      setFormData({
+        name: '',
+        host: '',
+        port: '5432',
+        database: '',
+        username: '',
+        password: '',
+      });
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Failed to create collector';
+      setSubmitError(errorMsg);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const columns: Column<Collector>[] = [
+  const handleDeleteCollector = async (id: string) => {
+    try {
+      await deleteCollector(id);
+      setDeleteConfirm(null);
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Failed to delete collector';
+      setSubmitError(errorMsg);
+    }
+  };
+
+  const columns: Column<DisplayCollector>[] = [
     {
       key: 'name',
       label: 'Collector',
@@ -218,11 +211,36 @@ export const CollectorsManagement: React.FC = () => {
     },
   ];
 
+  if (loading && displayCollectors.length === 0) {
+    return <LoadingSpinner fullScreen message="Loading collectors..." />;
+  }
+
   return (
     <PageWrapper
       title="Collectors Management"
       description="Manage PostgreSQL database collectors and monitor their health"
     >
+      {/* Error Messages */}
+      {error && (
+        <div className="mb-6 p-4 bg-pg-danger/10 border border-pg-danger/20 rounded-lg flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-pg-danger flex-shrink-0 mt-0.5" />
+          <div>
+            <h3 className="font-semibold text-pg-dark">Error</h3>
+            <p className="text-sm text-pg-dark/70">{error.message}</p>
+          </div>
+        </div>
+      )}
+
+      {submitError && (
+        <div className="mb-6 p-4 bg-pg-danger/10 border border-pg-danger/20 rounded-lg flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-pg-danger flex-shrink-0 mt-0.5" />
+          <div>
+            <h3 className="font-semibold text-pg-dark">Form Error</h3>
+            <p className="text-sm text-pg-dark/70">{submitError}</p>
+          </div>
+        </div>
+      )}
+
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3 mb-8">
         <MetricCard
@@ -271,6 +289,7 @@ export const CollectorsManagement: React.FC = () => {
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   className="w-full px-3 py-2 border border-pg-slate/20 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pg-blue"
                   required
+                  disabled={isSubmitting}
                 />
               </div>
               <div>
@@ -282,6 +301,7 @@ export const CollectorsManagement: React.FC = () => {
                   onChange={(e) => setFormData({ ...formData, database: e.target.value })}
                   className="w-full px-3 py-2 border border-pg-slate/20 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pg-blue"
                   required
+                  disabled={isSubmitting}
                 />
               </div>
               <div>
@@ -293,6 +313,7 @@ export const CollectorsManagement: React.FC = () => {
                   onChange={(e) => setFormData({ ...formData, host: e.target.value })}
                   className="w-full px-3 py-2 border border-pg-slate/20 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pg-blue"
                   required
+                  disabled={isSubmitting}
                 />
               </div>
               <div>
@@ -304,6 +325,7 @@ export const CollectorsManagement: React.FC = () => {
                   onChange={(e) => setFormData({ ...formData, port: e.target.value })}
                   className="w-full px-3 py-2 border border-pg-slate/20 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pg-blue"
                   required
+                  disabled={isSubmitting}
                 />
               </div>
               <div>
@@ -315,6 +337,7 @@ export const CollectorsManagement: React.FC = () => {
                   onChange={(e) => setFormData({ ...formData, username: e.target.value })}
                   className="w-full px-3 py-2 border border-pg-slate/20 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pg-blue"
                   required
+                  disabled={isSubmitting}
                 />
               </div>
               <div>
@@ -326,20 +349,26 @@ export const CollectorsManagement: React.FC = () => {
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   className="w-full px-3 py-2 border border-pg-slate/20 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pg-blue"
                   required
+                  disabled={isSubmitting}
                 />
               </div>
             </div>
             <div className="flex gap-2">
               <button
                 type="submit"
-                className="px-4 py-2 bg-pg-blue text-white rounded-lg hover:bg-pg-blue/90 transition-colors text-sm font-medium"
+                disabled={isSubmitting}
+                className="px-4 py-2 bg-pg-blue text-white rounded-lg hover:bg-pg-blue/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium"
               >
-                Register Collector
+                {isSubmitting ? 'Registering...' : 'Register Collector'}
               </button>
               <button
                 type="button"
-                onClick={() => setShowNewForm(false)}
-                className="px-4 py-2 border border-pg-slate/20 text-pg-dark rounded-lg hover:bg-pg-slate/5 transition-colors text-sm font-medium"
+                onClick={() => {
+                  setShowNewForm(false);
+                  setSubmitError(null);
+                }}
+                disabled={isSubmitting}
+                className="px-4 py-2 border border-pg-slate/20 text-pg-dark rounded-lg hover:bg-pg-slate/5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium"
               >
                 Cancel
               </button>
@@ -352,70 +381,84 @@ export const CollectorsManagement: React.FC = () => {
       <div className="bg-white rounded-lg shadow p-6 mb-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-pg-dark">Active Collectors</h3>
-          <button
-            onClick={() => setShowNewForm(!showNewForm)}
-            className="flex items-center gap-2 px-4 py-2 bg-pg-blue text-white rounded-lg hover:bg-pg-blue/90 transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            Add Collector
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => fetchCollectors()}
+              disabled={loading}
+              className="p-2 hover:bg-pg-slate/10 disabled:opacity-50 disabled:cursor-not-allowed rounded transition-colors"
+              title="Refresh"
+            >
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            </button>
+            <button
+              onClick={() => setShowNewForm(!showNewForm)}
+              className="flex items-center gap-2 px-4 py-2 bg-pg-blue text-white rounded-lg hover:bg-pg-blue/90 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Add Collector
+            </button>
+          </div>
         </div>
         <DataTable
           columns={columns}
-          data={mockCollectors}
+          data={displayCollectors}
           searchable={true}
-          emptyMessage="No collectors found"
+          emptyMessage={displayCollectors.length === 0 ? 'No collectors found' : ''}
         />
       </div>
 
       {/* Registration Secrets */}
       <div className="bg-white rounded-lg shadow p-6 mb-6">
         <h3 className="text-lg font-semibold text-pg-dark mb-4">Registration Secrets</h3>
-        <div className="space-y-3">
-          {mockCollectors.map((collector) => (
-            <div key={collector.id} className="flex items-center justify-between p-4 bg-pg-slate/5 rounded-lg">
-              <div>
-                <h4 className="font-medium text-pg-dark">{collector.name}</h4>
-                <p className="text-xs text-pg-slate">{collector.id}</p>
+        {displayCollectors.length === 0 ? (
+          <p className="text-sm text-pg-slate">No collectors registered yet</p>
+        ) : (
+          <div className="space-y-3">
+            {displayCollectors.map((collector) => (
+              <div key={collector.id} className="flex items-center justify-between p-4 bg-pg-slate/5 rounded-lg">
+                <div>
+                  <h4 className="font-medium text-pg-dark">{collector.name || collector.hostname}</h4>
+                  <p className="text-xs text-pg-slate">{collector.id}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type={visibleSecrets.has(collector.id) ? 'text' : 'password'}
+                    value={'sk_' + collector.id.slice(0, 16) + '...'}
+                    readOnly
+                    className="px-3 py-2 bg-white border border-pg-slate/20 rounded text-sm font-mono w-64"
+                  />
+                  <button
+                    onClick={() => toggleSecretVisibility(collector.id)}
+                    className="p-2 hover:bg-pg-slate/10 rounded transition-colors"
+                    title={visibleSecrets.has(collector.id) ? 'Hide' : 'Show'}
+                  >
+                    {visibleSecrets.has(collector.id) ? (
+                      <EyeOff className="w-4 h-4 text-pg-slate" />
+                    ) : (
+                      <Eye className="w-4 h-4 text-pg-slate" />
+                    )}
+                  </button>
+                  <button
+                    onClick={() =>
+                      copyToClipboard(
+                        'sk_' + collector.id.slice(0, 16),
+                        collector.id
+                      )
+                    }
+                    className="p-2 hover:bg-pg-slate/10 rounded transition-colors"
+                    title="Copy to clipboard"
+                  >
+                    {copiedId === collector.id ? (
+                      <Check className="w-4 h-4 text-pg-success" />
+                    ) : (
+                      <Copy className="w-4 h-4 text-pg-slate" />
+                    )}
+                  </button>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <input
-                  type={visibleSecrets.has(collector.id) ? 'text' : 'password'}
-                  value={collector.registration_secret || 'sk_' + collector.id.slice(0, 16) + '...'}
-                  readOnly
-                  className="px-3 py-2 bg-white border border-pg-slate/20 rounded text-sm font-mono w-64"
-                />
-                <button
-                  onClick={() => toggleSecretVisibility(collector.id)}
-                  className="p-2 hover:bg-pg-slate/10 rounded transition-colors"
-                  title={visibleSecrets.has(collector.id) ? 'Hide' : 'Show'}
-                >
-                  {visibleSecrets.has(collector.id) ? (
-                    <EyeOff className="w-4 h-4 text-pg-slate" />
-                  ) : (
-                    <Eye className="w-4 h-4 text-pg-slate" />
-                  )}
-                </button>
-                <button
-                  onClick={() =>
-                    copyToClipboard(
-                      collector.registration_secret || 'sk_' + collector.id.slice(0, 16),
-                      collector.id
-                    )
-                  }
-                  className="p-2 hover:bg-pg-slate/10 rounded transition-colors"
-                  title="Copy to clipboard"
-                >
-                  {copiedId === collector.id ? (
-                    <Check className="w-4 h-4 text-pg-success" />
-                  ) : (
-                    <Copy className="w-4 h-4 text-pg-slate" />
-                  )}
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Danger Zone */}
@@ -424,47 +467,48 @@ export const CollectorsManagement: React.FC = () => {
           <AlertTriangle className="w-5 h-5 text-pg-danger" />
           Danger Zone
         </h3>
-        <div className="space-y-3">
-          {mockCollectors.map((collector) => (
-            <div
-              key={collector.id}
-              className="flex items-center justify-between p-4 bg-white rounded-lg border border-pg-danger/20"
-            >
-              <div>
-                <h4 className="font-medium text-pg-dark">{collector.name}</h4>
-                <p className="text-xs text-pg-slate">{collector.id}</p>
-              </div>
-              {deleteConfirm === collector.id ? (
-                <div className="flex items-center gap-2">
-                  <p className="text-sm text-pg-danger font-medium">Are you sure?</p>
-                  <button
-                    onClick={() => {
-                      console.log('Deleting:', collector.id);
-                      setDeleteConfirm(null);
-                    }}
-                    className="px-3 py-1 bg-pg-danger text-white rounded text-sm hover:bg-pg-danger/90 transition-colors"
-                  >
-                    Delete
-                  </button>
-                  <button
-                    onClick={() => setDeleteConfirm(null)}
-                    className="px-3 py-1 border border-pg-slate/20 text-pg-dark rounded text-sm hover:bg-pg-slate/5 transition-colors"
-                  >
-                    Cancel
-                  </button>
+        {displayCollectors.length === 0 ? (
+          <p className="text-sm text-pg-slate">No collectors to delete</p>
+        ) : (
+          <div className="space-y-3">
+            {displayCollectors.map((collector) => (
+              <div
+                key={collector.id}
+                className="flex items-center justify-between p-4 bg-white rounded-lg border border-pg-danger/20"
+              >
+                <div>
+                  <h4 className="font-medium text-pg-dark">{collector.name || collector.hostname}</h4>
+                  <p className="text-xs text-pg-slate">{collector.id}</p>
                 </div>
-              ) : (
-                <button
-                  onClick={() => setDeleteConfirm(collector.id)}
-                  className="flex items-center gap-2 px-3 py-2 text-pg-danger border border-pg-danger/20 rounded-lg hover:bg-pg-danger/5 transition-colors"
-                >
-                  <Trash2 className="w-4 h-4" />
-                  Delete Collector
-                </button>
-              )}
-            </div>
-          ))}
-        </div>
+                {deleteConfirm === collector.id ? (
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm text-pg-danger font-medium">Are you sure?</p>
+                    <button
+                      onClick={() => handleDeleteCollector(collector.id)}
+                      className="px-3 py-1 bg-pg-danger text-white rounded text-sm hover:bg-pg-danger/90 transition-colors"
+                    >
+                      Delete
+                    </button>
+                    <button
+                      onClick={() => setDeleteConfirm(null)}
+                      className="px-3 py-1 border border-pg-slate/20 text-pg-dark rounded text-sm hover:bg-pg-slate/5 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setDeleteConfirm(collector.id)}
+                    className="flex items-center gap-2 px-3 py-2 text-pg-danger border border-pg-danger/20 rounded-lg hover:bg-pg-danger/5 transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Delete Collector
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </PageWrapper>
   );

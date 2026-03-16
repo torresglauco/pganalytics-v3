@@ -24,11 +24,12 @@ services:
   # Backend API
   api:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/Dockerfile
     container_name: pganalytics-staging-api
     environment:
-      POSTGRES_URL: postgresql://pganalytics:${DB_PASSWORD:-staging-password}@postgres:5432/pganalytics_staging
+      DATABASE_URL: postgresql://pganalytics:${DB_PASSWORD:-staging-password}@postgres:5432/pganalytics_staging
+      TIMESCALE_URL: postgresql://pganalytics:${DB_PASSWORD:-staging-password}@postgres:5432/pganalytics_staging
       API_PORT: 8000
       JWT_SECRET: ${JWT_SECRET:-staging-secret-key}
       LOG_LEVEL: info
@@ -51,8 +52,8 @@ services:
   # Frontend
   frontend:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: frontend/Dockerfile
       args:
         VITE_API_URL: http://localhost:8000
     container_name: pganalytics-staging-frontend

@@ -137,7 +137,7 @@ services:
       pganalytics:
         ipv4_address: 172.20.0.60
     healthcheck:
-      test: ["CMD", "curl", "-s", "http://localhost:3000"]
+      test: ["CMD", "wget", "-q", "-O-", "http://localhost"]
       interval: 30s
       timeout: 5s
       start_period: 15s

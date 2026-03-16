@@ -245,11 +245,7 @@ func (s *Server) RegisterRoutes(router *gin.Engine) {
 			escalationPolicies.PUT("/:id", s.AuthMiddleware(), s.handleUpdateEscalationPolicy)
 		}
 
-		// Alert Acknowledgment via Escalation routes
-		alertAcknowledge := api.Group("/alerts")
-		{
-			alertAcknowledge.POST("/:trigger_id/acknowledge", s.AuthMiddleware(), s.handleAcknowledgeAlertEscalation)
-		}
+		// Alert routes merged below to avoid route conflicts
 
 		// Internal analysis routes (collector -> backend for analyzed data like EXPLAIN plans)
 		internal := api.Group("/internal")
@@ -278,8 +274,8 @@ func (s *Server) RegisterRoutes(router *gin.Engine) {
 			alerts.GET("", s.AuthMiddleware(), s.handleListAlerts)
 			alerts.GET("/:id", s.AuthMiddleware(), s.handleGetAlert)
 			alerts.POST("/:id/acknowledge", s.AuthMiddleware(), s.handleAcknowledgeAlert)
-			// Silence endpoint
-			alerts.POST("/:rule_id/silence", s.AuthMiddleware(), s.handleCreateSilence)
+			alerts.POST("/:id/silence", s.AuthMiddleware(), s.handleCreateSilence)
+			alerts.POST("/:id/acknowledge-escalation", s.AuthMiddleware(), s.handleAcknowledgeAlertEscalation)
 		}
 
 		// Query timeline routes

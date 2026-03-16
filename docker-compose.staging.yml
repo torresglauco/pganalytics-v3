@@ -27,9 +27,10 @@ services:
       context: .
       dockerfile: backend/Dockerfile
     container_name: pganalytics-staging-api
+    env_file: .env.staging
     environment:
-      DATABASE_URL: postgresql://pganalytics:${DB_PASSWORD:-staging-password}@postgres:5432/pganalytics_staging
-      TIMESCALE_URL: postgresql://pganalytics:${DB_PASSWORD:-staging-password}@postgres:5432/pganalytics_staging
+      DATABASE_URL: postgresql://pganalytics:${DB_PASSWORD:-staging-password}@postgres:5432/pganalytics_staging?sslmode=disable
+      TIMESCALE_URL: postgresql://pganalytics:${DB_PASSWORD:-staging-password}@postgres:5432/pganalytics_staging?sslmode=disable
       API_PORT: 8000
       JWT_SECRET: ${JWT_SECRET:-staging-secret-key}
       LOG_LEVEL: info

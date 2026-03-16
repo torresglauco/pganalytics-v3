@@ -6,6 +6,7 @@ import { LogsPage } from './pages/LogsPage'
 import { MetricsPage } from './pages/MetricsPage'
 import { AlertsPage } from './pages/AlertsPage'
 import { ChannelsPage } from './pages/ChannelsPage'
+import { NotImplementedPage } from './pages/NotImplementedPage'
 import { useAuthStore } from './stores/authStore'
 import { useRealtimeStore } from './stores/realtimeStore'
 import { realtimeClient } from './services/realtime'
@@ -153,10 +154,37 @@ function App() {
             <Route path="/channels" element={<ChannelsPage />} />
             {/* Grafana redirect to external service */}
             <Route path="/grafana" element={<GrafanaRedirect />} />
-            {/* Unimplemented routes (will show placeholder or redirect to home) */}
-            <Route path="/collectors" element={<Navigate to="/" />} />
-            <Route path="/users" element={<Navigate to="/" />} />
-            <Route path="/settings" element={<Navigate to="/" />} />
+            {/* Unimplemented routes - show "Coming Soon" pages */}
+            <Route
+              path="/collectors"
+              element={
+                <NotImplementedPage
+                  icon="📁"
+                  title="Collectors"
+                  description="Manage PostgreSQL collectors and data sources"
+                />
+              }
+            />
+            <Route
+              path="/users"
+              element={
+                <NotImplementedPage
+                  icon="👥"
+                  title="User Management"
+                  description="Manage system users and access permissions"
+                />
+              }
+            />
+            <Route
+              path="/settings"
+              element={
+                <NotImplementedPage
+                  icon="⚙️"
+                  title="Settings"
+                  description="Configure application settings and preferences"
+                />
+              }
+            />
             {/* Catch all */}
             <Route path="*" element={<Navigate to="/" />} />
           </>

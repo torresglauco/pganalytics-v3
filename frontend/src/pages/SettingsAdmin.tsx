@@ -460,17 +460,17 @@ export const SettingsAdmin: React.FC = () => {
         <div className="space-y-6">
           {/* Quick Actions */}
           {users.length === 0 && !showNewUserForm && (
-            <div className="bg-pg-blue/5 border-l-4 border-pg-blue rounded-lg p-6">
+            <div className="bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-300 rounded-lg p-8">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-lg font-semibold text-pg-dark">Add Users</h3>
-                  <p className="text-sm text-pg-slate mt-1">Invite team members to manage PostgreSQL databases.</p>
+                  <h3 className="text-2xl font-bold text-purple-900">👥 Add Users</h3>
+                  <p className="text-base text-purple-700 mt-2">Invite team members to manage PostgreSQL databases.</p>
                 </div>
                 <button
                   onClick={() => setShowNewUserForm(true)}
-                  className="flex items-center gap-2 px-6 py-3 bg-pg-blue text-white rounded-lg hover:bg-pg-blue/90 transition-colors font-medium whitespace-nowrap"
+                  className="flex items-center gap-2 px-8 py-4 bg-purple-600 text-white rounded-lg hover:bg-purple-700 active:bg-purple-800 transition-all font-bold whitespace-nowrap shadow-lg text-lg"
                 >
-                  <Plus className="w-5 h-5" />
+                  <Plus className="w-6 h-6" />
                   Add User
                 </button>
               </div>
@@ -717,17 +717,17 @@ export const SettingsAdmin: React.FC = () => {
         <div className="space-y-6">
           {/* Quick Actions */}
           {tokens.length === 0 && !showNewTokenForm && (
-            <div className="bg-pg-blue/5 border-l-4 border-pg-blue rounded-lg p-6">
+            <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-300 rounded-lg p-8">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-lg font-semibold text-pg-dark">Generate API Token</h3>
-                  <p className="text-sm text-pg-slate mt-1">Create API tokens for programmatic access to pgAnalytics.</p>
+                  <h3 className="text-2xl font-bold text-amber-900">🔑 Generate API Token</h3>
+                  <p className="text-base text-amber-700 mt-2">Create API tokens for programmatic access to pgAnalytics.</p>
                 </div>
                 <button
                   onClick={() => setShowNewTokenForm(true)}
-                  className="flex items-center gap-2 px-6 py-3 bg-pg-blue text-white rounded-lg hover:bg-pg-blue/90 transition-colors font-medium whitespace-nowrap"
+                  className="flex items-center gap-2 px-8 py-4 bg-amber-600 text-white rounded-lg hover:bg-amber-700 active:bg-amber-800 transition-all font-bold whitespace-nowrap shadow-lg text-lg"
                 >
-                  <Plus className="w-5 h-5" />
+                  <Plus className="w-6 h-6" />
                   Generate Token
                 </button>
               </div>

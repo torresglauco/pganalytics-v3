@@ -276,17 +276,17 @@ export const CollectorsManagement: React.FC = () => {
 
       {/* Quick Actions */}
       {displayCollectors.length === 0 && !showNewForm && (
-        <div className="bg-pg-blue/5 border-l-4 border-pg-blue rounded-lg p-6 mb-6">
+        <div className="bg-gradient-to-r from-blue-50 to-cyan-50 border-2 border-blue-300 rounded-lg p-8 mb-6">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-lg font-semibold text-pg-dark">Get Started</h3>
-              <p className="text-sm text-pg-slate mt-1">No collectors registered yet. Register your first PostgreSQL database collector.</p>
+              <h3 className="text-2xl font-bold text-blue-900">🚀 Get Started</h3>
+              <p className="text-base text-blue-700 mt-2">No collectors registered yet. Register your first PostgreSQL database collector.</p>
             </div>
             <button
               onClick={() => setShowNewForm(true)}
-              className="flex items-center gap-2 px-6 py-3 bg-pg-blue text-white rounded-lg hover:bg-pg-blue/90 transition-colors font-medium whitespace-nowrap"
+              className="flex items-center gap-2 px-8 py-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 active:bg-blue-800 transition-all font-bold whitespace-nowrap shadow-lg text-lg"
             >
-              <Plus className="w-5 h-5" />
+              <Plus className="w-6 h-6" />
               Register Collector
             </button>
           </div>

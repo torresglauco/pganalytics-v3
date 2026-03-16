@@ -8,6 +8,9 @@ CREATE EXTENSION "pgcrypto";
 CREATE EXTENSION "pg_trgm";
 CREATE EXTENSION "btree_gin";
 
+-- Create schema if it doesn't exist
+CREATE SCHEMA IF NOT EXISTS pganalytics;
+
 SET search_path TO pganalytics, public;
 
 -- Note: schema_versions table and pganalytics schema are created by the migration runner

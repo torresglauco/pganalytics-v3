@@ -5,6 +5,7 @@ import {
   TrendingUp,
   Clock,
 } from 'lucide-react';
+import { MainLayout } from '../components/layout/MainLayout';
 import { PageWrapper } from '../components/common/PageWrapper';
 import { MetricCard } from '../components/cards/MetricCard';
 import { StatusBadge } from '../components/cards/StatusBadge';
@@ -104,7 +105,8 @@ export const OverviewDashboard: React.FC = () => {
   ];
 
   return (
-    <PageWrapper title="Dashboard" description="System health and recent activity at a glance">
+    <MainLayout>
+      <PageWrapper title="Dashboard" description="System health and recent activity at a glance">
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <MetricCard
@@ -215,5 +217,6 @@ export const OverviewDashboard: React.FC = () => {
         />
       </div>
     </PageWrapper>
+    </MainLayout>
   );
 };

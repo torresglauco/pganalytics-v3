@@ -11,7 +11,8 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./backend/migrations:/docker-entrypoint-initdb.d
+      - ./backend/migrations/000_complete_schema.sql:/docker-entrypoint-initdb.d/001_schema.sql:ro
+      - ./backend/migrations/001_triggers.sql:/docker-entrypoint-initdb.d/002_triggers.sql:ro
       - ./postgresql.conf:/etc/postgresql/postgresql.conf:ro
     command: -c config_file=/etc/postgresql/postgresql.conf
     healthcheck:
@@ -62,6 +63,7 @@ services:
       LOG_LEVEL: "debug"
       PORT: "8080"
       REGISTRATION_SECRET: "${REGISTRATION_SECRET:-demo-registration-secret-change-in-production}"
+      SETUP_ENDPOINT_ENABLED: "true"
     ports:
       - "8080:8080"
     depends_on:
@@ -122,12 +124,12 @@ services:
       dockerfile: frontend/Dockerfile
     container_name: pganalytics-frontend
     environment:
-      VITE_API_BASE_URL: "http://backend:8080"
-      VITE_API_BACKEND_HOST: "backend"
-      VITE_API_BACKEND_PORT: "8080"
-      VITE_API_BACKEND_PROTOCOL: "http"
+      API_HOST: "backend"
+      API_PORT: "8080"
+      API_PROTOCOL: "http"
+      PORT: "80"
     ports:
-      - "4000:3000"
+      - "3000:80"
     depends_on:
       backend:
         condition: service_healthy
@@ -151,7 +153,7 @@ services:
       GF_INSTALL_PLUGINS: "grafana-piechart-panel,grafana-worldmap-panel"
       GF_USERS_ALLOW_SIGN_UP: "false"
     ports:
-      - "3000:3000"
+      - "3001:3000"
     depends_on:
       postgres:
         condition: service_healthy

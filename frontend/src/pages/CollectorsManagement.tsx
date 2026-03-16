@@ -10,6 +10,7 @@ import {
   AlertTriangle,
   AlertCircle,
 } from 'lucide-react';
+import { MainLayout } from '../components/layout/MainLayout';
 import { PageWrapper } from '../components/common/PageWrapper';
 import { MetricCard } from '../components/cards/MetricCard';
 import { StatusBadge } from '../components/cards/StatusBadge';
@@ -216,10 +217,11 @@ export const CollectorsManagement: React.FC = () => {
   }
 
   return (
-    <PageWrapper
-      title="Collectors Management"
-      description="Manage PostgreSQL database collectors and monitor their health"
-    >
+    <MainLayout>
+      <PageWrapper
+        title="Collectors Management"
+        description="Manage PostgreSQL database collectors and monitor their health"
+      >
       {/* Error Messages */}
       {error && (
         <div className="mb-6 p-4 bg-pg-danger/10 border border-pg-danger/20 rounded-lg flex items-start gap-3">
@@ -511,5 +513,6 @@ export const CollectorsManagement: React.FC = () => {
         )}
       </div>
     </PageWrapper>
+    </MainLayout>
   );
 };

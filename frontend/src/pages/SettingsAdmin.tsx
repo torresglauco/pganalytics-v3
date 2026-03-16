@@ -15,6 +15,7 @@ import {
   RotateCw,
   X,
 } from 'lucide-react';
+import { MainLayout } from '../components/layout/MainLayout';
 import { PageWrapper } from '../components/common/PageWrapper';
 import { StatusBadge } from '../components/cards/StatusBadge';
 import { DataTable, Column } from '../components/tables/DataTable';
@@ -378,10 +379,11 @@ export const SettingsAdmin: React.FC = () => {
   ];
 
   return (
-    <PageWrapper
-      title="Settings & Administration"
-      description="Manage users, API tokens, and notification channels"
-    >
+    <MainLayout>
+      <PageWrapper
+        title="Settings & Administration"
+        description="Manage users, API tokens, and notification channels"
+      >
       {/* Success/Error Messages */}
       {successMessage && (
         <div className="mb-6 p-4 bg-pg-success/10 border border-pg-success/30 rounded-lg flex items-start justify-between">
@@ -1079,5 +1081,6 @@ export const SettingsAdmin: React.FC = () => {
         </div>
       )}
     </PageWrapper>
+    </MainLayout>
   );
 };

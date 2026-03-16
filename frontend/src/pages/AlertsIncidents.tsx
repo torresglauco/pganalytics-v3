@@ -7,6 +7,7 @@ import {
   Plus,
   Filter,
 } from 'lucide-react';
+import { MainLayout } from '../components/layout/MainLayout';
 import { PageWrapper } from '../components/common/PageWrapper';
 import { MetricCard } from '../components/cards/MetricCard';
 import { StatusBadge } from '../components/cards/StatusBadge';
@@ -234,10 +235,11 @@ export const AlertsIncidents: React.FC = () => {
   ];
 
   return (
-    <PageWrapper
-      title="Alerts & Incidents"
-      description="Manage database alerts, incidents, and suppression rules"
-    >
+    <MainLayout>
+      <PageWrapper
+        title="Alerts & Incidents"
+        description="Manage database alerts, incidents, and suppression rules"
+      >
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-7 gap-3 mb-8">
         <MetricCard
@@ -468,5 +470,6 @@ export const AlertsIncidents: React.FC = () => {
         />
       </div>
     </PageWrapper>
+    </MainLayout>
   );
 };

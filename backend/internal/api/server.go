@@ -222,6 +222,9 @@ func (s *Server) RegisterRoutes(router *gin.Engine) {
 		{
 			// High-volume endpoint for log ingestion - requires API token auth
 			logs.POST("/ingest", s.handleIngestLogs)
+			// Frontend log viewer endpoints
+			logs.GET("", s.AuthMiddleware(), s.handleGetLogs)
+			logs.GET("/:logId", s.AuthMiddleware(), s.handleGetLogDetails)
 		}
 
 		// ========================================================================

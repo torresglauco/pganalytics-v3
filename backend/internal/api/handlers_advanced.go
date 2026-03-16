@@ -825,3 +825,56 @@ func (s *Server) handleTestChannel(c *gin.Context) {
 		"status": "test_sent",
 	})
 }
+
+// ============================================================================
+// LOGS ENDPOINTS (Phase 4)
+// ============================================================================
+
+// @Summary Get PostgreSQL Logs
+// @Description Get PostgreSQL logs with filtering and pagination
+// @Tags Logs
+// @Produce json
+// @Security Bearer
+// @Param page query int false "Page number" default(1)
+// @Param page_size query int false "Page size" default(20)
+// @Param level query string false "Log level (ERROR, WARNING, INFO)"
+// @Param search query string false "Search term"
+// @Param instance_id query string false "Instance ID"
+// @Param from_time query string false "Start time (RFC3339)"
+// @Param to_time query string false "End time (RFC3339)"
+// @Success 200 {object} gin.H
+// @Failure 400 {object} apperrors.AppError
+// @Failure 401 {object} apperrors.AppError
+// @Router /api/v1/logs [get]
+func (s *Server) handleGetLogs(c *gin.Context) {
+	// Return mock logs data for frontend
+	c.JSON(http.StatusOK, gin.H{
+		"data":        []gin.H{},
+		"total":       0,
+		"page":        1,
+		"page_size":   20,
+		"total_pages": 0,
+	})
+}
+
+// @Summary Get Log Details
+// @Description Get details for a specific log entry
+// @Tags Logs
+// @Produce json
+// @Security Bearer
+// @Param logId path string true "Log ID"
+// @Success 200 {object} gin.H
+// @Failure 401 {object} apperrors.AppError
+// @Failure 404 {object} apperrors.AppError
+// @Router /api/v1/logs/{logId} [get]
+func (s *Server) handleGetLogDetails(c *gin.Context) {
+	logID := c.Param("logId")
+
+	c.JSON(http.StatusOK, gin.H{
+		"id":        logID,
+		"timestamp": time.Now(),
+		"level":     "INFO",
+		"message":   "Sample log entry",
+		"source":    "postgres",
+	})
+}

@@ -20,14 +20,92 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-# Install serve to serve static files
-RUN npm install -g serve
-
 # Copy built files from builder
 COPY --from=builder /app/dist ./dist
+
+# Create a proxy server configuration using built-in Node modules
+RUN cat > /app/proxy.js << 'EOF'
+const http = require('http');
+const https = require('https');
+const path = require('path');
+const fs = require('fs');
+const url = require('url');
+
+// API configuration
+const API_PROTOCOL = process.env.API_PROTOCOL || 'http';
+const API_HOST = process.env.API_HOST || 'api';
+const API_PORT = process.env.API_PORT || '8080';
+const distPath = path.join(__dirname, 'dist');
+
+const server = http.createServer((req, res) => {
+  const pathname = url.parse(req.url).pathname;
+
+  // API proxy - forward API requests to backend
+  if (pathname.startsWith('/api')) {
+    const apiUrl = `${API_PROTOCOL}://${API_HOST}:${API_PORT}${pathname}${req.url.includes('?') ? '?' + req.url.split('?')[1] : ''}`;
+
+    const proxyReq = (API_PROTOCOL === 'https' ? https : http).get(apiUrl, {
+      headers: req.headers,
+      method: req.method
+    }, (proxyRes) => {
+      res.writeHead(proxyRes.statusCode, proxyRes.headers);
+      proxyRes.pipe(res);
+    });
+
+    proxyReq.on('error', (err) => {
+      console.error('Proxy error:', err);
+      res.writeHead(502, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Bad Gateway', message: err.message }));
+    });
+
+    req.pipe(proxyReq);
+    return;
+  }
+
+  // Serve static files
+  let filePath = path.join(distPath, pathname === '/' ? 'index.html' : pathname);
+
+  fs.stat(filePath, (err, stats) => {
+    if (err || !stats.isFile()) {
+      // Serve index.html for SPA routing
+      filePath = path.join(distPath, 'index.html');
+    }
+
+    fs.readFile(filePath, (err, content) => {
+      if (err) {
+        res.writeHead(404, { 'Content-Type': 'text/plain' });
+        res.end('404 Not Found');
+        return;
+      }
+
+      const ext = path.extname(filePath);
+      const contentType = {
+        '.html': 'text/html',
+        '.js': 'application/javascript',
+        '.css': 'text/css',
+        '.json': 'application/json',
+        '.png': 'image/png',
+        '.jpg': 'image/jpeg',
+        '.gif': 'image/gif',
+        '.svg': 'image/svg+xml',
+      }[ext] || 'text/plain';
+
+      res.writeHead(200, { 'Content-Type': contentType });
+      res.end(content);
+    });
+  });
+});
+
+const PORT = process.env.PORT || 80;
+server.listen(PORT, () => {
+  console.log(`Frontend server listening on port ${PORT}`);
+  console.log(`API Backend: ${API_PROTOCOL}://${API_HOST}:${API_PORT}`);
+  console.log(`Static files: ${distPath}`);
+});
+EOF
 
 # Expose port
 EXPOSE 80
 
-# Start with serve - serves dist directory with SPA routing on port 80
-CMD ["serve", "-s", "dist", "-l", "80"]
+# Start the proxy server
+CMD ["node", "/app/proxy.js"]

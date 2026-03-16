@@ -67,7 +67,7 @@ export const LoginPage: React.FC = () => {
       {/* Left Side - Brand */}
       <div className="hidden lg:flex lg:w-1/2 flex-col justify-center px-12">
         <div className="mb-8">
-          <div className="w-16 h-16 bg-primary-600 rounded-xl mb-4" />
+          <img src="/pganalytics-logo.svg" alt="pgAnalytics" className="w-16 h-16 mb-4" />
           <h1 className="text-4xl font-bold text-slate-900 dark:text-slate-100 mb-2">
             pgAnalytics
           </h1>

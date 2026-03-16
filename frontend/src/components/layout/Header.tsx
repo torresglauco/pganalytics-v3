@@ -18,7 +18,7 @@ export const Header: React.FC = () => {
       <div className="flex items-center justify-between h-16 px-4 md:px-6">
         {/* Logo */}
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-primary-600 rounded-lg" />
+          <img src="/pganalytics-logo.svg" alt="pgAnalytics" className="w-8 h-8" />
           <span className="text-lg font-bold text-slate-900 dark:text-slate-100">
             pgAnalytics
           </span>
@@ -75,7 +75,7 @@ export const Header: React.FC = () => {
               onClick={() => setUserMenuOpen(!userMenuOpen)}
               className="flex items-center gap-2 p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
             >
-              <div className="w-8 h-8 bg-primary-600 rounded-full" />
+              <img src="/pganalytics-logo.svg" alt="User" className="w-8 h-8 rounded-full" />
               <span className="hidden sm:inline text-sm font-medium text-slate-900 dark:text-slate-100">
                 {user?.name}
               </span>

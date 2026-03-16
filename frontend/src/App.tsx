@@ -7,6 +7,7 @@ import { MetricsPage } from './pages/MetricsPage'
 import { AlertsPage } from './pages/AlertsPage'
 import { ChannelsPage } from './pages/ChannelsPage'
 import { CollectorsManagement } from './pages/CollectorsManagement'
+import { SettingsAdmin } from './pages/SettingsAdmin'
 import { NotImplementedPage } from './pages/NotImplementedPage'
 import { useAuthStore } from './stores/authStore'
 import { useRealtimeStore } from './stores/realtimeStore'
@@ -156,27 +157,9 @@ function App() {
             <Route path="/collectors" element={<CollectorsManagement />} />
             {/* Grafana redirect to external service */}
             <Route path="/grafana" element={<GrafanaRedirect />} />
-            {/* Unimplemented routes - show "Coming Soon" pages */}
-            <Route
-              path="/users"
-              element={
-                <NotImplementedPage
-                  icon="👥"
-                  title="User Management"
-                  description="Manage system users and access permissions"
-                />
-              }
-            />
-            <Route
-              path="/settings"
-              element={
-                <NotImplementedPage
-                  icon="⚙️"
-                  title="Settings"
-                  description="Configure application settings and preferences"
-                />
-              }
-            />
+            {/* Settings & Administration - Users tab */}
+            <Route path="/users" element={<SettingsAdmin />} />
+            <Route path="/settings" element={<SettingsAdmin />} />
             {/* Catch all */}
             <Route path="*" element={<Navigate to="/" />} />
           </>

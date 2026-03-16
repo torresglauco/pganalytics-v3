@@ -11,21 +11,14 @@ import {
   User,
   Lock,
   Settings as SettingsIcon,
+  RotateCw,
+  X,
 } from 'lucide-react';
 import { PageWrapper } from '../components/common/PageWrapper';
 import { StatusBadge } from '../components/cards/StatusBadge';
 import { DataTable, Column } from '../components/tables/DataTable';
 import { formatDateTime } from '../utils/formatting';
-
-interface AdminUser {
-  id: string;
-  email: string;
-  name: string;
-  role: 'admin' | 'viewer' | 'operator';
-  status: 'active' | 'inactive';
-  last_login: Date;
-  created_at: Date;
-}
+import { useUsers, type AdminUser } from '../hooks/useUsers';
 
 interface ApiToken {
   id: string;
@@ -50,45 +43,6 @@ interface NotificationChannel {
   test_status?: 'pending' | 'success' | 'failed';
 }
 
-// Mock data
-const mockUsers: AdminUser[] = [
-  {
-    id: '1',
-    email: 'admin@company.com',
-    name: 'Admin User',
-    role: 'admin',
-    status: 'active',
-    last_login: new Date(Date.now() - 2 * 3600000),
-    created_at: new Date(Date.now() - 180 * 24 * 3600000),
-  },
-  {
-    id: '2',
-    email: 'operator@company.com',
-    name: 'Database Operator',
-    role: 'operator',
-    status: 'active',
-    last_login: new Date(Date.now() - 15 * 60000),
-    created_at: new Date(Date.now() - 120 * 24 * 3600000),
-  },
-  {
-    id: '3',
-    email: 'viewer@company.com',
-    name: 'Data Analyst',
-    role: 'viewer',
-    status: 'active',
-    last_login: new Date(Date.now() - 4 * 3600000),
-    created_at: new Date(Date.now() - 45 * 24 * 3600000),
-  },
-  {
-    id: '4',
-    email: 'inactive@company.com',
-    name: 'Former Employee',
-    role: 'viewer',
-    status: 'inactive',
-    last_login: new Date(Date.now() - 60 * 24 * 3600000),
-    created_at: new Date(Date.now() - 365 * 24 * 3600000),
-  },
-];
 
 const mockTokens: ApiToken[] = [
   {
@@ -159,16 +113,40 @@ export const SettingsAdmin: React.FC = () => {
   const [visibleTokens, setVisibleTokens] = useState<Set<string>>(new Set());
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [resetPasswordConfirm, setResetPasswordConfirm] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  // Use the useUsers hook
+  const { users, loading, error, fetchUsers, createUser, deleteUser, resetPassword } = useUsers();
 
   const [newUser, setNewUser] = useState({
     email: '',
     name: '',
-    role: 'viewer' as const,
+    username: '',
+    password: '',
+    role: 'viewer' as 'admin' | 'user' | 'viewer',
   });
 
   const [newToken, setNewToken] = useState({
     name: '',
   });
+
+  // Clear success/error messages after 5 seconds
+  React.useEffect(() => {
+    if (successMessage) {
+      const timer = setTimeout(() => setSuccessMessage(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [successMessage]);
+
+  React.useEffect(() => {
+    if (errorMessage) {
+      const timer = setTimeout(() => setErrorMessage(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [errorMessage]);
 
   const toggleTokenVisibility = (id: string) => {
     const newSet = new Set(visibleTokens);
@@ -186,11 +164,59 @@ export const SettingsAdmin: React.FC = () => {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const handleAddUser = (e: React.FormEvent) => {
+  const handleAddUser = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Adding user:', newUser);
-    setShowNewUserForm(false);
-    setNewUser({ email: '', name: '', role: 'viewer' });
+    if (!newUser.email || !newUser.name) {
+      setErrorMessage('Email and name are required');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await createUser({
+        email: newUser.email,
+        name: newUser.name,
+        username: newUser.username || newUser.email,
+        password: newUser.password || 'TempPassword123!',
+        role: newUser.role,
+      });
+      setSuccessMessage('User created successfully');
+      setShowNewUserForm(false);
+      setNewUser({ email: '', name: '', username: '', password: '', role: 'viewer' as 'admin' | 'user' | 'viewer' });
+    } catch (err) {
+      const error = err as any;
+      setErrorMessage(error.message || 'Failed to create user');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeleteUser = async (userId: string | number) => {
+    setSubmitting(true);
+    try {
+      await deleteUser(userId);
+      setSuccessMessage('User deleted successfully');
+      setDeleteConfirm(null);
+    } catch (err) {
+      const error = err as any;
+      setErrorMessage(error.message || 'Failed to delete user');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleResetPassword = async (userId: string | number) => {
+    setSubmitting(true);
+    try {
+      const response = await resetPassword(userId);
+      setSuccessMessage(`Password reset. Temporary password: ${response.temp_password}`);
+      setResetPasswordConfirm(null);
+    } catch (err) {
+      const error = err as any;
+      setErrorMessage(error.message || 'Failed to reset password');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleAddToken = (e: React.FormEvent) => {
@@ -219,7 +245,7 @@ export const SettingsAdmin: React.FC = () => {
       render: (value) => {
         const roleColors: Record<string, string> = {
           admin: 'bg-pg-danger/10 text-pg-danger',
-          operator: 'bg-pg-warning/10 text-pg-warning',
+          user: 'bg-pg-warning/10 text-pg-warning',
           viewer: 'bg-pg-blue/10 text-pg-blue',
         };
         return (
@@ -289,6 +315,32 @@ export const SettingsAdmin: React.FC = () => {
       title="Settings & Administration"
       description="Manage users, API tokens, and notification channels"
     >
+      {/* Success/Error Messages */}
+      {successMessage && (
+        <div className="mb-6 p-4 bg-pg-success/10 border border-pg-success/30 rounded-lg flex items-start justify-between">
+          <p className="text-pg-success font-medium">{successMessage}</p>
+          <button
+            onClick={() => setSuccessMessage(null)}
+            className="text-pg-success hover:text-pg-success/80"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+      {(errorMessage || error) && (
+        <div className="mb-6 p-4 bg-pg-danger/10 border border-pg-danger/30 rounded-lg flex items-start justify-between">
+          <p className="text-pg-danger font-medium">{errorMessage || error?.message}</p>
+          <button
+            onClick={() => {
+              setErrorMessage(null);
+            }}
+            className="text-pg-danger hover:text-pg-danger/80"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {/* Tabs */}
       <div className="bg-white rounded-lg shadow mb-6">
         <div className="flex border-b border-pg-slate/20">
@@ -342,9 +394,9 @@ export const SettingsAdmin: React.FC = () => {
             <div className="bg-white rounded-lg shadow p-6 border-l-4 border-pg-blue">
               <h3 className="text-lg font-semibold text-pg-dark mb-4">Add New User</h3>
               <form onSubmit={handleAddUser}>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                   <div>
-                    <label className="block text-sm font-medium text-pg-dark mb-2">Name</label>
+                    <label className="block text-sm font-medium text-pg-dark mb-2">Full Name</label>
                     <input
                       type="text"
                       placeholder="John Doe"
@@ -366,29 +418,50 @@ export const SettingsAdmin: React.FC = () => {
                     />
                   </div>
                   <div>
+                    <label className="block text-sm font-medium text-pg-dark mb-2">Username</label>
+                    <input
+                      type="text"
+                      placeholder="johndoe"
+                      value={newUser.username}
+                      onChange={(e) => setNewUser({ ...newUser, username: e.target.value })}
+                      className="w-full px-3 py-2 border border-pg-slate/20 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pg-blue"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-pg-dark mb-2">Initial Password</label>
+                    <input
+                      type="password"
+                      placeholder="Leave empty for auto-generated"
+                      value={newUser.password}
+                      onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                      className="w-full px-3 py-2 border border-pg-slate/20 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pg-blue"
+                    />
+                  </div>
+                  <div>
                     <label className="block text-sm font-medium text-pg-dark mb-2">Role</label>
                     <select
                       value={newUser.role}
                       onChange={(e) =>
                         setNewUser({
                           ...newUser,
-                          role: e.target.value as 'admin' | 'operator' | 'viewer',
+                          role: e.target.value as 'admin' | 'user' | 'viewer',
                         })
                       }
                       className="w-full px-3 py-2 border border-pg-slate/20 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pg-blue"
                     >
-                      <option value="viewer">Viewer</option>
-                      <option value="operator">Operator</option>
-                      <option value="admin">Admin</option>
+                      <option value="viewer">Viewer (Read-only access)</option>
+                      <option value="user">User (Standard access)</option>
+                      <option value="admin">Admin (Full access)</option>
                     </select>
                   </div>
                 </div>
                 <div className="flex gap-2">
                   <button
                     type="submit"
-                    className="px-4 py-2 bg-pg-blue text-white rounded-lg hover:bg-pg-blue/90 transition-colors text-sm font-medium"
+                    disabled={submitting}
+                    className="px-4 py-2 bg-pg-blue text-white rounded-lg hover:bg-pg-blue/90 disabled:bg-pg-slate/50 transition-colors text-sm font-medium"
                   >
-                    Add User
+                    {submitting ? 'Creating...' : 'Add User'}
                   </button>
                   <button
                     type="button"
@@ -406,20 +479,116 @@ export const SettingsAdmin: React.FC = () => {
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-pg-dark">Users</h3>
-              <button
-                onClick={() => setShowNewUserForm(!showNewUserForm)}
-                className="flex items-center gap-2 px-4 py-2 bg-pg-blue text-white rounded-lg hover:bg-pg-blue/90 transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                Add User
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => fetchUsers()}
+                  disabled={loading}
+                  className="px-4 py-2 border border-pg-slate/20 text-pg-dark rounded-lg hover:bg-pg-slate/5 transition-colors text-sm font-medium disabled:opacity-50"
+                  title="Refresh users list"
+                >
+                  <RotateCw className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setShowNewUserForm(!showNewUserForm)}
+                  className="flex items-center gap-2 px-4 py-2 bg-pg-blue text-white rounded-lg hover:bg-pg-blue/90 transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add User
+                </button>
+              </div>
             </div>
-            <DataTable
-              columns={userColumns}
-              data={mockUsers}
-              searchable={true}
-              emptyMessage="No users found"
-            />
+            {loading ? (
+              <div className="text-center py-8">
+                <p className="text-pg-slate">Loading users...</p>
+              </div>
+            ) : (
+              <>
+                <DataTable
+                  columns={userColumns}
+                  data={users.map((user) => ({
+                    ...user,
+                    status: user.is_active !== false ? 'active' : 'inactive',
+                    last_login: user.last_login ? new Date(user.last_login) : null,
+                    created_at: user.created_at ? new Date(user.created_at) : new Date(),
+                  }))}
+                  searchable={true}
+                  emptyMessage="No users found"
+                />
+                {/* User Actions */}
+                <div className="mt-6 space-y-2">
+                  <h4 className="text-sm font-semibold text-pg-dark mb-3">User Actions</h4>
+                  {users.length === 0 ? (
+                    <p className="text-sm text-pg-slate">No users to manage</p>
+                  ) : (
+                    <div className="space-y-2 max-h-64 overflow-y-auto">
+                      {users.map((user) => (
+                        <div key={user.id} className="flex items-center justify-between p-3 bg-pg-slate/5 rounded-lg">
+                          <div>
+                            <p className="text-sm font-medium text-pg-dark">{user.name || user.username}</p>
+                            <p className="text-xs text-pg-slate">{user.email}</p>
+                          </div>
+                          <div className="flex gap-2">
+                            {resetPasswordConfirm === String(user.id) ? (
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-pg-warning font-medium">Confirm?</span>
+                                <button
+                                  onClick={() => handleResetPassword(user.id)}
+                                  disabled={submitting}
+                                  className="px-2 py-1 bg-pg-warning text-white rounded text-xs hover:bg-pg-warning/90 disabled:opacity-50"
+                                >
+                                  {submitting ? '...' : 'Yes'}
+                                </button>
+                                <button
+                                  onClick={() => setResetPasswordConfirm(null)}
+                                  className="px-2 py-1 border border-pg-slate/20 text-pg-dark rounded text-xs hover:bg-pg-slate/5"
+                                >
+                                  No
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => setResetPasswordConfirm(String(user.id))}
+                                className="px-3 py-1 border border-pg-slate/20 text-pg-slate rounded text-xs hover:bg-pg-slate/5 transition-colors flex items-center gap-1"
+                                title="Reset password to temporary value"
+                              >
+                                <RotateCw className="w-3 h-3" />
+                                Reset Password
+                              </button>
+                            )}
+                            {deleteConfirm === String(user.id) ? (
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-pg-danger font-medium">Delete?</span>
+                                <button
+                                  onClick={() => handleDeleteUser(user.id)}
+                                  disabled={submitting}
+                                  className="px-2 py-1 bg-pg-danger text-white rounded text-xs hover:bg-pg-danger/90 disabled:opacity-50"
+                                >
+                                  {submitting ? '...' : 'Yes'}
+                                </button>
+                                <button
+                                  onClick={() => setDeleteConfirm(null)}
+                                  className="px-2 py-1 border border-pg-slate/20 text-pg-dark rounded text-xs hover:bg-pg-slate/5"
+                                >
+                                  No
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => setDeleteConfirm(String(user.id))}
+                                className="px-3 py-1 text-pg-danger border border-pg-danger/20 rounded text-xs hover:bg-pg-danger/5 transition-colors flex items-center gap-1"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                                Delete
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
           </div>
 
           {/* Role Descriptions */}
@@ -430,16 +599,16 @@ export const SettingsAdmin: React.FC = () => {
                 Admin
               </h4>
               <p className="text-sm text-pg-slate">
-                Full access to all features. Can manage users, collectors, and settings.
+                Full access to all features. Can manage users, collectors, and system settings.
               </p>
             </div>
             <div className="bg-white rounded-lg shadow p-6">
               <h4 className="font-semibold text-pg-dark mb-2 flex items-center gap-2">
                 <span className="w-3 h-3 rounded-full bg-pg-warning" />
-                Operator
+                User
               </h4>
               <p className="text-sm text-pg-slate">
-                Can register collectors, acknowledge alerts, and manage suppression rules.
+                Standard access. Can view dashboards, manage collectors, and acknowledge alerts.
               </p>
             </div>
             <div className="bg-white rounded-lg shadow p-6">

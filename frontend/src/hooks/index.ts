@@ -5,3 +5,4 @@ export { useMetrics } from './useMetrics';
 export { useChannels } from './useChannels';
 export { useRealtime } from './useRealtime';
 export { useAlertRuleBuilder } from './useAlertRuleBuilder';
+export { useUsers } from './useUsers';

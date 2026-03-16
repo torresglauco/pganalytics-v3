@@ -382,6 +382,62 @@ export class ApiClient {
     }
   }
 
+  // User Management endpoints
+  async listUsers(page: number = 1, pageSize: number = 20): Promise<any> {
+    try {
+      const response = await this.client.get('/users', {
+        params: { page, page_size: pageSize },
+      })
+      return response.data
+    } catch (error) {
+      throw this.handleError(error)
+    }
+  }
+
+  async createUser(data: any): Promise<any> {
+    try {
+      const response = await this.client.post('/users', data)
+      return response.data
+    } catch (error) {
+      throw this.handleError(error)
+    }
+  }
+
+  async getUser(id: string): Promise<any> {
+    try {
+      const response = await this.client.get(`/users/${id}`)
+      return response.data
+    } catch (error) {
+      throw this.handleError(error)
+    }
+  }
+
+  async updateUser(id: string, data: any): Promise<any> {
+    try {
+      const response = await this.client.put(`/users/${id}`, data)
+      return response.data
+    } catch (error) {
+      throw this.handleError(error)
+    }
+  }
+
+  async deleteUser(id: string): Promise<void> {
+    try {
+      await this.client.delete(`/users/${id}`)
+    } catch (error) {
+      throw this.handleError(error)
+    }
+  }
+
+  async resetUserPassword(id: string): Promise<any> {
+    try {
+      const response = await this.client.post(`/users/${id}/reset-password`, {})
+      return response.data
+    } catch (error) {
+      throw this.handleError(error)
+    }
+  }
+
   private handleError(error: unknown): ApiError {
     if (axios.isAxiosError(error)) {
       const axiosError = error as AxiosError<ApiError>

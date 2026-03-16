@@ -211,6 +211,10 @@ func (s *Server) RegisterRoutes(router *gin.Engine) {
 			metrics.POST("/push", s.CollectorAuthMiddleware(), s.handleMetricsPush)
 			// Cache metrics (protected)
 			metrics.GET("/cache", s.AuthMiddleware(), s.handleCacheMetrics)
+			// General metrics endpoints for frontend dashboard
+			metrics.GET("", s.AuthMiddleware(), s.handleGetMetrics)
+			metrics.GET("/error-trend", s.AuthMiddleware(), s.handleGetErrorTrend)
+			metrics.GET("/log-distribution", s.AuthMiddleware(), s.handleGetLogDistribution)
 		}
 
 		// Log Ingest routes
@@ -266,6 +270,16 @@ func (s *Server) RegisterRoutes(router *gin.Engine) {
 			servers.GET("", s.AuthMiddleware(), s.handleListServers)
 			servers.GET("/:id", s.AuthMiddleware(), s.handleGetServer)
 			servers.GET("/:id/metrics", s.AuthMiddleware(), s.handleGetServerMetrics)
+		}
+
+		// Notification Channels routes
+		channels := api.Group("/channels")
+		{
+			channels.GET("", s.AuthMiddleware(), s.handleListChannels)
+			channels.POST("", s.AuthMiddleware(), s.handleCreateChannel)
+			channels.PUT("/:id", s.AuthMiddleware(), s.handleUpdateChannel)
+			channels.DELETE("/:id", s.AuthMiddleware(), s.handleDeleteChannel)
+			channels.POST("/:id/test", s.AuthMiddleware(), s.handleTestChannel)
 		}
 
 		// Alerts routes

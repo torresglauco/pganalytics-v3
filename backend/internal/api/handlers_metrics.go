@@ -366,3 +366,60 @@ func (s *Server) handleGetExtensionMetrics(c *gin.Context) {
 
 	c.JSON(http.StatusOK, resp)
 }
+
+// ============================================================================
+// GENERAL METRICS ENDPOINTS (for frontend dashboard)
+// ============================================================================
+
+// @Summary Get General Metrics
+// @Description Get aggregated metrics across all collectors
+// @Tags Metrics
+// @Produce json
+// @Security Bearer
+// @Param instance_id query string false "Instance ID"
+// @Param time_range query string false "Time range (24h, 7d, 30d)" default(24h)
+// @Success 200 {object} gin.H
+// @Failure 400 {object} apperrors.AppError
+// @Failure 401 {object} apperrors.AppError
+// @Router /api/v1/metrics [get]
+func (s *Server) handleGetMetrics(c *gin.Context) {
+	// Return mock/empty metrics data for frontend
+	c.JSON(http.StatusOK, gin.H{
+		"topErrors": []gin.H{},
+		"errorCount": 0,
+		"warningCount": 0,
+		"infoCount": 0,
+	})
+}
+
+// @Summary Get Error Trend
+// @Description Get error trend data over time
+// @Tags Metrics
+// @Produce json
+// @Security Bearer
+// @Param instance_id query string false "Instance ID"
+// @Param hours query int false "Hours back" default(24)
+// @Success 200 {object} gin.H
+// @Failure 400 {object} apperrors.AppError
+// @Failure 401 {object} apperrors.AppError
+// @Router /api/v1/metrics/error-trend [get]
+func (s *Server) handleGetErrorTrend(c *gin.Context) {
+	// Return mock error trend data for frontend
+	c.JSON(http.StatusOK, []gin.H{})
+}
+
+// @Summary Get Log Distribution
+// @Description Get log distribution by level
+// @Tags Metrics
+// @Produce json
+// @Security Bearer
+// @Param instance_id query string false "Instance ID"
+// @Param time_range query string false "Time range (24h, 7d, 30d)" default(24h)
+// @Success 200 {object} gin.H
+// @Failure 400 {object} apperrors.AppError
+// @Failure 401 {object} apperrors.AppError
+// @Router /api/v1/metrics/log-distribution [get]
+func (s *Server) handleGetLogDistribution(c *gin.Context) {
+	// Return mock log distribution data for frontend
+	c.JSON(http.StatusOK, []gin.H{})
+}

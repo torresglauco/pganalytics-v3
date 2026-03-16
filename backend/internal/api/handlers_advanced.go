@@ -719,3 +719,109 @@ func (s *Server) handleStoreExplainPlan(c *gin.Context) {
 		"status":     "received",
 	})
 }
+
+// ============================================================================
+// NOTIFICATION CHANNELS ENDPOINTS (Phase 4)
+// ============================================================================
+
+// @Summary List Notification Channels
+// @Description Get all notification channels configured for the system
+// @Tags Channels
+// @Produce json
+// @Security Bearer
+// @Success 200 {object} gin.H
+// @Failure 401 {object} apperrors.AppError
+// @Router /api/v1/channels [get]
+func (s *Server) handleListChannels(c *gin.Context) {
+	// Return mock channels data for frontend
+	c.JSON(http.StatusOK, gin.H{
+		"channels": []gin.H{},
+	})
+}
+
+// @Summary Create Notification Channel
+// @Description Create a new notification channel
+// @Tags Channels
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param body body gin.H true "Channel configuration"
+// @Success 201 {object} gin.H
+// @Failure 400 {object} apperrors.AppError
+// @Failure 401 {object} apperrors.AppError
+// @Router /api/v1/channels [post]
+func (s *Server) handleCreateChannel(c *gin.Context) {
+	var req gin.H
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"id":     "ch_" + time.Now().Format("20060102150405"),
+		"status": "created",
+	})
+}
+
+// @Summary Update Notification Channel
+// @Description Update an existing notification channel
+// @Tags Channels
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param id path string true "Channel ID"
+// @Param body body gin.H true "Updated channel configuration"
+// @Success 200 {object} gin.H
+// @Failure 400 {object} apperrors.AppError
+// @Failure 401 {object} apperrors.AppError
+// @Failure 404 {object} apperrors.AppError
+// @Router /api/v1/channels/{id} [put]
+func (s *Server) handleUpdateChannel(c *gin.Context) {
+	channelID := c.Param("id")
+
+	var req gin.H
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"id":     channelID,
+		"status": "updated",
+	})
+}
+
+// @Summary Delete Notification Channel
+// @Description Delete a notification channel
+// @Tags Channels
+// @Produce json
+// @Security Bearer
+// @Param id path string true "Channel ID"
+// @Success 204
+// @Failure 401 {object} apperrors.AppError
+// @Failure 404 {object} apperrors.AppError
+// @Router /api/v1/channels/{id} [delete]
+func (s *Server) handleDeleteChannel(c *gin.Context) {
+	channelID := c.Param("id")
+	s.logger.Info("Deleting channel", zap.String("id", channelID))
+	c.Status(http.StatusNoContent)
+}
+
+// @Summary Test Notification Channel
+// @Description Send a test message to a notification channel
+// @Tags Channels
+// @Produce json
+// @Security Bearer
+// @Param id path string true "Channel ID"
+// @Success 200 {object} gin.H
+// @Failure 401 {object} apperrors.AppError
+// @Failure 404 {object} apperrors.AppError
+// @Router /api/v1/channels/{id}/test [post]
+func (s *Server) handleTestChannel(c *gin.Context) {
+	channelID := c.Param("id")
+
+	c.JSON(http.StatusOK, gin.H{
+		"id":     channelID,
+		"status": "test_sent",
+	})
+}

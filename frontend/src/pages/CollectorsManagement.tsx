@@ -210,40 +210,6 @@ export const CollectorsManagement: React.FC = () => {
       width: '80px',
       render: (value) => <span className="text-sm text-pg-slate">v{String(value)}</span>,
     },
-    {
-      key: 'id' as keyof DisplayCollector,
-      label: 'Actions',
-      width: '120px',
-      render: (_, row) => (
-        <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-          {deleteConfirm === row.id ? (
-            <>
-              <button
-                onClick={() => handleDeleteCollector(row.id)}
-                disabled={isSubmitting}
-                className="px-2 py-1 bg-pg-danger text-white rounded text-xs hover:bg-pg-danger/90 disabled:opacity-50"
-              >
-                {isSubmitting ? '...' : 'Confirm'}
-              </button>
-              <button
-                onClick={() => setDeleteConfirm(null)}
-                className="px-2 py-1 border border-pg-slate/20 text-pg-dark rounded text-xs hover:bg-pg-slate/5"
-              >
-                Cancel
-              </button>
-            </>
-          ) : (
-            <button
-              onClick={() => setDeleteConfirm(row.id)}
-              className="flex items-center gap-1 px-2 py-1 text-pg-danger border border-pg-danger/20 rounded text-xs hover:bg-pg-danger/5"
-            >
-              <Trash2 className="w-3 h-3" />
-              Delete
-            </button>
-          )}
-        </div>
-      ),
-    },
   ];
 
   if (loading && displayCollectors.length === 0) {
@@ -441,6 +407,52 @@ export const CollectorsManagement: React.FC = () => {
           searchable={true}
           emptyMessage={displayCollectors.length === 0 ? 'No collectors found' : ''}
         />
+      </div>
+
+      {/* Collector Actions */}
+      <div className="bg-white rounded-lg shadow p-6 mb-6">
+        <h3 className="text-lg font-semibold text-pg-dark mb-4">Collector Actions</h3>
+        {displayCollectors.length === 0 ? (
+          <p className="text-sm text-pg-slate">No collectors registered. Add a collector from the table above.</p>
+        ) : (
+          <div className="space-y-2 max-h-64 overflow-y-auto">
+            {displayCollectors.map((collector) => (
+              <div key={collector.id} className="flex items-center justify-between p-3 bg-pg-slate/5 rounded-lg">
+                <div>
+                  <p className="text-sm font-medium text-pg-dark">{collector.name}</p>
+                  <p className="text-xs text-pg-slate">{collector.host}:{collector.port}</p>
+                </div>
+                <div className="flex gap-2">
+                  {deleteConfirm === collector.id ? (
+                    <>
+                      <button
+                        onClick={() => handleDeleteCollector(collector.id)}
+                        disabled={isSubmitting}
+                        className="px-3 py-1 bg-pg-danger text-white rounded text-xs hover:bg-pg-danger/90 disabled:opacity-50 transition-colors"
+                      >
+                        {isSubmitting ? 'Deleting...' : 'Confirm Delete'}
+                      </button>
+                      <button
+                        onClick={() => setDeleteConfirm(null)}
+                        className="px-3 py-1 border border-pg-slate/20 text-pg-dark rounded text-xs hover:bg-pg-slate/5 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      onClick={() => setDeleteConfirm(collector.id)}
+                      className="flex items-center gap-2 px-3 py-1 text-pg-danger border border-pg-danger/20 rounded text-xs hover:bg-pg-danger/5 transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      Delete Collector
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Registration Secrets */}

@@ -132,20 +132,39 @@ export const CollectorList: React.FC = () => {
       </div>
 
       {pagination.totalPages > 1 && (
-        <div className="flex justify-center gap-2 mt-4">
-          {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map((page) => (
-            <button
-              key={page}
-              onClick={() => fetchCollectors(page)}
-              className={`px-3 py-1 rounded ${
-                page === pagination.page
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-200 hover:bg-gray-300'
-              }`}
-            >
-              {page}
-            </button>
-          ))}
+        <div className="flex justify-center items-center gap-3 mt-6">
+          <button
+            onClick={() => pagination.page > 1 && fetchCollectors(pagination.page - 1)}
+            disabled={pagination.page === 1}
+            className="px-3 py-2 rounded bg-gray-200 hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+          >
+            ← Previous
+          </button>
+
+          <div className="flex gap-2">
+            {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map((page) => (
+              <button
+                key={page}
+                onClick={() => fetchCollectors(page)}
+                className={`w-9 h-9 rounded-full font-semibold transition-colors ${
+                  page === pagination.page
+                    ? 'bg-blue-600 text-white shadow-lg'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+                title={`Page ${page}`}
+              >
+                {page}
+              </button>
+            ))}
+          </div>
+
+          <button
+            onClick={() => pagination.page < pagination.totalPages && fetchCollectors(pagination.page + 1)}
+            disabled={pagination.page === pagination.totalPages}
+            className="px-3 py-2 rounded bg-gray-200 hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+          >
+            Next →
+          </button>
         </div>
       )}
     </div>

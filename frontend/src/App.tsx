@@ -13,6 +13,15 @@ import { apiClient } from './services/api'
 import { LoadingSpinner } from './components/ui/LoadingSpinner'
 import './styles/index.css'
 
+// Component to redirect to external Grafana service
+function GrafanaRedirect() {
+  useEffect(() => {
+    // Redirect to Grafana service running on port 3001
+    window.location.href = 'http://localhost:3001'
+  }, [])
+  return <LoadingSpinner fullScreen message="Redirecting to Grafana..." />
+}
+
 function App() {
   const [isLoading, setIsLoading] = useState(true)
   const { isAuthenticated, setAuthenticated, token } = useAuthStore()
@@ -142,6 +151,13 @@ function App() {
             <Route path="/metrics" element={<MetricsPage />} />
             <Route path="/alerts" element={<AlertsPage />} />
             <Route path="/channels" element={<ChannelsPage />} />
+            {/* Grafana redirect to external service */}
+            <Route path="/grafana" element={<GrafanaRedirect />} />
+            {/* Unimplemented routes (will show placeholder or redirect to home) */}
+            <Route path="/collectors" element={<Navigate to="/" />} />
+            <Route path="/users" element={<Navigate to="/" />} />
+            <Route path="/settings" element={<Navigate to="/" />} />
+            {/* Catch all */}
             <Route path="*" element={<Navigate to="/" />} />
           </>
         ) : (

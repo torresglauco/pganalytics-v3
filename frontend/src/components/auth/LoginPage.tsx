@@ -10,22 +10,19 @@ export const LoginPage: React.FC = () => {
   const navigate = useNavigate()
   const { setUser, setToken, setError, setLoading, error, isLoading } = useAuthStore()
 
-  const [email, setEmail] = useState('')
+  const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
-  const [emailError, setEmailError] = useState('')
+  const [usernameError, setUsernameError] = useState('')
   const [passwordError, setPasswordError] = useState('')
 
   const validateForm = () => {
     let isValid = true
 
-    if (!email) {
-      setEmailError('Email is required')
-      isValid = false
-    } else if (!/^[^@]+@[^@]+\.[^@]+$/.test(email)) {
-      setEmailError('Please enter a valid email')
+    if (!username) {
+      setUsernameError('Username is required')
       isValid = false
     } else {
-      setEmailError('')
+      setUsernameError('')
     }
 
     if (!password) {
@@ -47,7 +44,7 @@ export const LoginPage: React.FC = () => {
       setLoading(true)
       setError(null)
 
-      const response = await apiClient.login(email, password)
+      const response = await apiClient.login(username, password)
 
       setToken(response.token)
       // Type assertion - the User type from both modules represents the same data
@@ -127,12 +124,12 @@ export const LoginPage: React.FC = () => {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <Input
-              label="Email"
-              type="email"
-              placeholder="you@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              error={emailError}
+              label="Username"
+              type="text"
+              placeholder="admin"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              error={usernameError}
               required
             />
 

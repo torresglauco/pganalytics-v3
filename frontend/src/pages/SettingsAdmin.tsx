@@ -458,6 +458,25 @@ export const SettingsAdmin: React.FC = () => {
       {/* Users Tab */}
       {activeTab === 'users' && (
         <div className="space-y-6">
+          {/* Quick Actions */}
+          {users.length === 0 && !showNewUserForm && (
+            <div className="bg-pg-blue/5 border-l-4 border-pg-blue rounded-lg p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold text-pg-dark">Add Users</h3>
+                  <p className="text-sm text-pg-slate mt-1">Invite team members to manage PostgreSQL databases.</p>
+                </div>
+                <button
+                  onClick={() => setShowNewUserForm(true)}
+                  className="flex items-center gap-2 px-6 py-3 bg-pg-blue text-white rounded-lg hover:bg-pg-blue/90 transition-colors font-medium whitespace-nowrap"
+                >
+                  <Plus className="w-5 h-5" />
+                  Add User
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* New User Form */}
           {showNewUserForm && (
             <div className="bg-white rounded-lg shadow p-6 border-l-4 border-pg-blue">
@@ -696,6 +715,25 @@ export const SettingsAdmin: React.FC = () => {
       {/* API Tokens Tab */}
       {activeTab === 'tokens' && (
         <div className="space-y-6">
+          {/* Quick Actions */}
+          {tokens.length === 0 && !showNewTokenForm && (
+            <div className="bg-pg-blue/5 border-l-4 border-pg-blue rounded-lg p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold text-pg-dark">Generate API Token</h3>
+                  <p className="text-sm text-pg-slate mt-1">Create API tokens for programmatic access to pgAnalytics.</p>
+                </div>
+                <button
+                  onClick={() => setShowNewTokenForm(true)}
+                  className="flex items-center gap-2 px-6 py-3 bg-pg-blue text-white rounded-lg hover:bg-pg-blue/90 transition-colors font-medium whitespace-nowrap"
+                >
+                  <Plus className="w-5 h-5" />
+                  Generate Token
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* New Token Form */}
           {showNewTokenForm && (
             <div className="bg-white rounded-lg shadow p-6 border-l-4 border-pg-blue">

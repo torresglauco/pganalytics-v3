@@ -438,6 +438,51 @@ export class ApiClient {
     }
   }
 
+  // API Token methods
+  async listApiTokens(): Promise<any[]> {
+    try {
+      const response = await this.client.get('/registration-secrets')
+      return response.data
+    } catch (error) {
+      throw this.handleError(error)
+    }
+  }
+
+  async createApiToken(data: { name: string; expires_at?: string }): Promise<any> {
+    try {
+      const response = await this.client.post('/registration-secrets', data)
+      return response.data
+    } catch (error) {
+      throw this.handleError(error)
+    }
+  }
+
+  async getApiToken(id: string): Promise<any> {
+    try {
+      const response = await this.client.get(`/registration-secrets/${id}`)
+      return response.data
+    } catch (error) {
+      throw this.handleError(error)
+    }
+  }
+
+  async updateApiToken(id: string, data: any): Promise<any> {
+    try {
+      const response = await this.client.put(`/registration-secrets/${id}`, data)
+      return response.data
+    } catch (error) {
+      throw this.handleError(error)
+    }
+  }
+
+  async deleteApiToken(id: string): Promise<void> {
+    try {
+      await this.client.delete(`/registration-secrets/${id}`)
+    } catch (error) {
+      throw this.handleError(error)
+    }
+  }
+
   private handleError(error: unknown): ApiError {
     if (axios.isAxiosError(error)) {
       const axiosError = error as AxiosError<ApiError>

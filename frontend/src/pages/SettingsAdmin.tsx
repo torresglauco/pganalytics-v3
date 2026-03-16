@@ -19,6 +19,8 @@ import { StatusBadge } from '../components/cards/StatusBadge';
 import { DataTable, Column } from '../components/tables/DataTable';
 import { formatDateTime } from '../utils/formatting';
 import { useUsers, type AdminUser } from '../hooks/useUsers';
+import { useApiTokens } from '../hooks/useApiTokens';
+import { useChannels } from '../hooks/useChannels';
 
 interface ApiToken {
   id: string;
@@ -43,83 +45,29 @@ interface NotificationChannel {
   test_status?: 'pending' | 'success' | 'failed';
 }
 
-
-const mockTokens: ApiToken[] = [
-  {
-    id: '1',
-    name: 'Production Monitor',
-    token: 'sk_prod_1234567890abcdef1234567890abc',
-    created_at: new Date(Date.now() - 30 * 24 * 3600000),
-    last_used: new Date(Date.now() - 2 * 3600000),
-    expires_at: new Date(Date.now() + 365 * 24 * 3600000),
-  },
-  {
-    id: '2',
-    name: 'Staging Backup',
-    token: 'sk_staging_abcdef1234567890abcdef1234',
-    created_at: new Date(Date.now() - 60 * 24 * 3600000),
-    last_used: new Date(Date.now() - 15 * 60000),
-    expires_at: new Date(Date.now() + 180 * 24 * 3600000),
-  },
-  {
-    id: '3',
-    name: 'CI/CD Pipeline',
-    token: 'sk_ci_fedcba0987654321fedcba098765',
-    created_at: new Date(Date.now() - 7 * 24 * 3600000),
-    last_used: new Date(Date.now() - 30 * 60000),
-    expires_at: null,
-  },
-];
-
-const mockNotifications: NotificationChannel[] = [
-  {
-    id: '1',
-    type: 'email',
-    name: 'Admin Alerts',
-    config: { email: 'admin@company.com' },
-    enabled: true,
-    test_status: 'success',
-  },
-  {
-    id: '2',
-    type: 'slack',
-    name: 'Database Team',
-    config: { slack_channel: '#database-alerts' },
-    enabled: true,
-    test_status: 'success',
-  },
-  {
-    id: '3',
-    type: 'pagerduty',
-    name: 'On-Call Escalation',
-    config: { pagerduty_key: 'REDACTED' },
-    enabled: true,
-    test_status: 'pending',
-  },
-  {
-    id: '4',
-    type: 'webhook',
-    name: 'Custom Integration',
-    config: { webhook_url: 'https://api.company.com/webhooks/pganalytics' },
-    enabled: false,
-    test_status: 'failed',
-  },
-];
-
 export const SettingsAdmin: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'users' | 'tokens' | 'notifications'>('users');
   const [showNewUserForm, setShowNewUserForm] = useState(false);
   const [showNewTokenForm, setShowNewTokenForm] = useState(false);
+  const [showNewChannelForm, setShowNewChannelForm] = useState(false);
   const [visibleTokens, setVisibleTokens] = useState<Set<string>>(new Set());
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [deleteChannelConfirm, setDeleteChannelConfirm] = useState<string | null>(null);
   const [resetPasswordConfirm, setResetPasswordConfirm] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [testingChannelId, setTestingChannelId] = useState<string | null>(null);
 
   // Use the useUsers hook
   const { users, loading, error, fetchUsers, createUser, deleteUser, resetPassword } = useUsers();
+
+  // Use the useApiTokens hook
+  const { data: tokens, loading: tokensLoading, error: tokensError, fetchTokens, createToken, deleteToken } = useApiTokens();
+
+  // Use the useChannels hook
+  const { data: channels, loading: channelsLoading, error: channelsError, fetchChannels, createChannel, deleteChannel, testChannel } = useChannels();
 
   const [newUser, setNewUser] = useState({
     email: '',
@@ -219,11 +167,119 @@ export const SettingsAdmin: React.FC = () => {
     }
   };
 
-  const handleAddToken = (e: React.FormEvent) => {
+  const handleAddToken = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Adding token:', newToken);
-    setShowNewTokenForm(false);
-    setNewToken({ name: '' });
+    if (!newToken.name) {
+      setErrorMessage('Token name is required');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await createToken({
+        name: newToken.name,
+      });
+      setSuccessMessage('API token created successfully');
+      setShowNewTokenForm(false);
+      setNewToken({ name: '' });
+    } catch (err) {
+      const error = err as any;
+      setErrorMessage(error.message || 'Failed to create token');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeleteToken = async (tokenId: string) => {
+    setSubmitting(true);
+    try {
+      await deleteToken(tokenId);
+      setSuccessMessage('Token deleted successfully');
+      setDeleteConfirm(null);
+    } catch (err) {
+      const error = err as any;
+      setErrorMessage(error.message || 'Failed to delete token');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  interface NewChannelForm {
+    type: 'email' | 'slack' | 'pagerduty' | 'webhook' | '';
+    name: string;
+    email?: string;
+    slack_channel?: string;
+    webhook_url?: string;
+  }
+
+  const [newChannel, setNewChannel] = useState<NewChannelForm>({
+    type: '',
+    name: '',
+  });
+
+  const handleAddChannel = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newChannel.type || !newChannel.name) {
+      setErrorMessage('Channel type and name are required');
+      return;
+    }
+
+    const config: Record<string, string> = {};
+    if (newChannel.type === 'email' && newChannel.email) {
+      config.email = newChannel.email;
+    } else if (newChannel.type === 'slack' && newChannel.slack_channel) {
+      config.slack_channel = newChannel.slack_channel;
+    } else if (newChannel.type === 'webhook' && newChannel.webhook_url) {
+      config.webhook_url = newChannel.webhook_url;
+    } else {
+      setErrorMessage('Please provide the required configuration for this channel type');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await createChannel({
+        type: newChannel.type,
+        name: newChannel.name,
+        config,
+        enabled: true,
+      });
+      setSuccessMessage('Notification channel created successfully');
+      setShowNewChannelForm(false);
+      setNewChannel({ type: '', name: '' });
+    } catch (err) {
+      const error = err as any;
+      setErrorMessage(error.message || 'Failed to create channel');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeleteChannel = async (channelId: string) => {
+    setSubmitting(true);
+    try {
+      await deleteChannel(channelId);
+      setSuccessMessage('Channel deleted successfully');
+      setDeleteChannelConfirm(null);
+    } catch (err) {
+      const error = err as any;
+      setErrorMessage(error.message || 'Failed to delete channel');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleTestChannel = async (channelId: string) => {
+    setTestingChannelId(channelId);
+    try {
+      await testChannel(channelId);
+      setSuccessMessage('Channel test sent successfully');
+    } catch (err) {
+      const error = err as any;
+      setErrorMessage(error.message || 'Failed to test channel');
+    } finally {
+      setTestingChannelId(null);
+    }
   };
 
   const userColumns: Column<AdminUser>[] = [
@@ -649,9 +705,10 @@ export const SettingsAdmin: React.FC = () => {
                 <div className="flex gap-2">
                   <button
                     type="submit"
-                    className="px-4 py-2 bg-pg-blue text-white rounded-lg hover:bg-pg-blue/90 transition-colors text-sm font-medium"
+                    disabled={submitting}
+                    className="px-4 py-2 bg-pg-blue text-white rounded-lg hover:bg-pg-blue/90 disabled:bg-pg-slate/50 transition-colors text-sm font-medium"
                   >
-                    Generate Token
+                    {submitting ? 'Generating...' : 'Generate Token'}
                   </button>
                   <button
                     type="button"
@@ -669,63 +726,120 @@ export const SettingsAdmin: React.FC = () => {
           <div className="bg-white rounded-lg shadow p-6 mb-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-pg-dark">API Tokens</h3>
-              <button
-                onClick={() => setShowNewTokenForm(!showNewTokenForm)}
-                className="flex items-center gap-2 px-4 py-2 bg-pg-blue text-white rounded-lg hover:bg-pg-blue/90 transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                Generate Token
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => fetchTokens()}
+                  disabled={tokensLoading}
+                  className="px-4 py-2 border border-pg-slate/20 text-pg-dark rounded-lg hover:bg-pg-slate/5 transition-colors text-sm font-medium disabled:opacity-50"
+                  title="Refresh tokens list"
+                >
+                  <RotateCw className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setShowNewTokenForm(!showNewTokenForm)}
+                  className="flex items-center gap-2 px-4 py-2 bg-pg-blue text-white rounded-lg hover:bg-pg-blue/90 transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  Generate Token
+                </button>
+              </div>
             </div>
-            <DataTable
-              columns={tokenColumns}
-              data={mockTokens}
-              searchable={true}
-              emptyMessage="No API tokens found"
-            />
+            {tokensLoading ? (
+              <div className="text-center py-8">
+                <p className="text-pg-slate">Loading tokens...</p>
+              </div>
+            ) : (
+              <>
+                <DataTable
+                  columns={tokenColumns}
+                  data={tokens.map((token) => ({
+                    ...token,
+                    created_at: token.created_at ? new Date(token.created_at) : new Date(),
+                    last_used: token.last_used ? new Date(token.last_used) : null,
+                    expires_at: token.expires_at ? new Date(token.expires_at) : null,
+                  }))}
+                  searchable={true}
+                  emptyMessage="No API tokens found"
+                />
+              </>
+            )}
           </div>
 
-          {/* Token Display */}
+          {/* Token Display and Management */}
           <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold text-pg-dark mb-4">Token Details</h3>
-            <div className="space-y-3">
-              {mockTokens.map((token) => (
-                <div key={token.id} className="flex items-center justify-between p-4 bg-pg-slate/5 rounded-lg">
-                  <div>
-                    <h4 className="font-medium text-pg-dark">{token.name}</h4>
-                    <p className="text-xs text-pg-slate">ID: {token.id}</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type={visibleTokens.has(token.id) ? 'text' : 'password'}
-                      value={token.token}
-                      readOnly
-                      className="px-3 py-2 bg-white border border-pg-slate/20 rounded text-sm font-mono w-64"
-                    />
-                    <button
-                      onClick={() => toggleTokenVisibility(token.id)}
-                      className="p-2 hover:bg-pg-slate/10 rounded transition-colors"
-                    >
-                      {visibleTokens.has(token.id) ? (
-                        <EyeOff className="w-4 h-4 text-pg-slate" />
+            <h3 className="text-lg font-semibold text-pg-dark mb-4">Token Management</h3>
+            {tokensLoading ? (
+              <div className="text-center py-8">
+                <p className="text-pg-slate">Loading tokens...</p>
+              </div>
+            ) : tokens.length === 0 ? (
+              <p className="text-pg-slate text-center py-8">No API tokens created yet</p>
+            ) : (
+              <div className="space-y-3">
+                {tokens.map((token) => (
+                  <div key={token.id} className="flex items-center justify-between p-4 bg-pg-slate/5 rounded-lg">
+                    <div>
+                      <h4 className="font-medium text-pg-dark">{token.name}</h4>
+                      <p className="text-xs text-pg-slate">ID: {token.id}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type={visibleTokens.has(token.id) ? 'text' : 'password'}
+                        value={token.token}
+                        readOnly
+                        className="px-3 py-2 bg-white border border-pg-slate/20 rounded text-sm font-mono w-64"
+                      />
+                      <button
+                        onClick={() => toggleTokenVisibility(token.id)}
+                        className="p-2 hover:bg-pg-slate/10 rounded transition-colors"
+                      >
+                        {visibleTokens.has(token.id) ? (
+                          <EyeOff className="w-4 h-4 text-pg-slate" />
+                        ) : (
+                          <Eye className="w-4 h-4 text-pg-slate" />
+                        )}
+                      </button>
+                      <button
+                        onClick={() => copyToClipboard(token.token, token.id)}
+                        className="p-2 hover:bg-pg-slate/10 rounded transition-colors"
+                      >
+                        {copiedId === token.id ? (
+                          <Check className="w-4 h-4 text-pg-success" />
+                        ) : (
+                          <Copy className="w-4 h-4 text-pg-slate" />
+                        )}
+                      </button>
+                      {deleteConfirm === token.id ? (
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-pg-danger font-medium">Delete?</span>
+                          <button
+                            onClick={() => handleDeleteToken(token.id)}
+                            disabled={submitting}
+                            className="px-2 py-1 bg-pg-danger text-white rounded text-xs hover:bg-pg-danger/90 disabled:opacity-50"
+                          >
+                            {submitting ? '...' : 'Yes'}
+                          </button>
+                          <button
+                            onClick={() => setDeleteConfirm(null)}
+                            className="px-2 py-1 border border-pg-slate/20 text-pg-dark rounded text-xs hover:bg-pg-slate/5"
+                          >
+                            No
+                          </button>
+                        </div>
                       ) : (
-                        <Eye className="w-4 h-4 text-pg-slate" />
+                        <button
+                          onClick={() => setDeleteConfirm(token.id)}
+                          className="px-3 py-1 text-pg-danger border border-pg-danger/20 rounded text-xs hover:bg-pg-danger/5 transition-colors flex items-center gap-1"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                          Delete
+                        </button>
                       )}
-                    </button>
-                    <button
-                      onClick={() => copyToClipboard(token.token, token.id)}
-                      className="p-2 hover:bg-pg-slate/10 rounded transition-colors"
-                    >
-                      {copiedId === token.id ? (
-                        <Check className="w-4 h-4 text-pg-success" />
-                      ) : (
-                        <Copy className="w-4 h-4 text-pg-slate" />
-                      )}
-                    </button>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -733,134 +847,224 @@ export const SettingsAdmin: React.FC = () => {
       {/* Notifications Tab */}
       {activeTab === 'notifications' && (
         <div className="space-y-6">
-          {mockNotifications.map((channel) => (
-            <div key={channel.id} className="bg-white rounded-lg shadow p-6">
-              <div className="flex items-start justify-between mb-4">
-                <div>
-                  <h3 className="text-lg font-semibold text-pg-dark flex items-center gap-2">
-                    {channel.type === 'email' && <Bell className="w-5 h-5 text-pg-blue" />}
-                    {channel.type === 'slack' && <Bell className="w-5 h-5 text-pg-blue" />}
-                    {channel.type === 'pagerduty' && <AlertTriangle className="w-5 h-5 text-pg-warning" />}
-                    {channel.type === 'webhook' && <SettingsIcon className="w-5 h-5 text-pg-slate" />}
-                    {channel.name}
-                  </h3>
-                  <p className="text-xs text-pg-slate mt-1">{channel.type.toUpperCase()}</p>
+          {/* Channels List */}
+          {channelsLoading ? (
+            <div className="text-center py-8">
+              <p className="text-pg-slate">Loading notification channels...</p>
+            </div>
+          ) : (channels || []).length === 0 ? (
+            <div className="bg-white rounded-lg shadow p-6 text-center">
+              <p className="text-pg-slate">No notification channels configured yet</p>
+            </div>
+          ) : (
+            (channels || []).map((channel: any) => (
+              <div key={channel.id} className="bg-white rounded-lg shadow p-6">
+                <div className="flex items-start justify-between mb-4">
+                  <div>
+                    <h3 className="text-lg font-semibold text-pg-dark flex items-center gap-2">
+                      {channel.type === 'email' && <Bell className="w-5 h-5 text-pg-blue" />}
+                      {channel.type === 'slack' && <Bell className="w-5 h-5 text-pg-blue" />}
+                      {channel.type === 'pagerduty' && <AlertTriangle className="w-5 h-5 text-pg-warning" />}
+                      {channel.type === 'webhook' && <SettingsIcon className="w-5 h-5 text-pg-slate" />}
+                      {channel.name}
+                    </h3>
+                    <p className="text-xs text-pg-slate mt-1">{channel.type.toUpperCase()}</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    {channel.test_status && (
+                      <StatusBadge
+                        status={
+                          channel.test_status === 'success'
+                            ? 'success'
+                            : channel.test_status === 'failed'
+                              ? 'error'
+                              : 'warning'
+                        }
+                        label={channel.test_status.toUpperCase()}
+                        size="sm"
+                      />
+                    )}
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" checked={channel.enabled} readOnly className="rounded" />
+                      <span className="text-sm text-pg-slate">
+                        {channel.enabled ? 'Enabled' : 'Disabled'}
+                      </span>
+                    </label>
+                  </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  {channel.test_status && (
-                    <StatusBadge
-                      status={
-                        channel.test_status === 'success'
-                          ? 'success'
-                          : channel.test_status === 'failed'
-                            ? 'error'
-                            : 'warning'
-                      }
-                      label={channel.test_status.toUpperCase()}
-                      size="sm"
-                    />
+
+                <div className="bg-pg-slate/5 rounded p-4 mb-4">
+                  {channel.type === 'email' && (
+                    <div>
+                      <p className="text-sm text-pg-slate">
+                        <strong>Email:</strong> {channel.config?.email}
+                      </p>
+                    </div>
                   )}
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" checked={channel.enabled} readOnly className="rounded" />
-                    <span className="text-sm text-pg-slate">
-                      {channel.enabled ? 'Enabled' : 'Disabled'}
-                    </span>
-                  </label>
+                  {channel.type === 'slack' && (
+                    <div>
+                      <p className="text-sm text-pg-slate">
+                        <strong>Channel:</strong> {channel.config?.slack_channel}
+                      </p>
+                    </div>
+                  )}
+                  {channel.type === 'webhook' && (
+                    <div>
+                      <p className="text-sm text-pg-slate font-mono text-xs break-all">
+                        {channel.config?.webhook_url}
+                      </p>
+                    </div>
+                  )}
                 </div>
-              </div>
 
-              <div className="bg-pg-slate/5 rounded p-4 mb-4">
-                {channel.type === 'email' && (
-                  <div>
-                    <p className="text-sm text-pg-slate">
-                      <strong>Email:</strong> {channel.config.email}
-                    </p>
-                  </div>
-                )}
-                {channel.type === 'slack' && (
-                  <div>
-                    <p className="text-sm text-pg-slate">
-                      <strong>Channel:</strong> {channel.config.slack_channel}
-                    </p>
-                  </div>
-                )}
-                {channel.type === 'webhook' && (
-                  <div>
-                    <p className="text-sm text-pg-slate font-mono text-xs break-all">
-                      {channel.config.webhook_url}
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex gap-2">
-                <button className="px-4 py-2 border border-pg-slate/20 text-pg-dark rounded-lg hover:bg-pg-slate/5 transition-colors text-sm font-medium">
-                  Test Connection
-                </button>
-                <button className="px-4 py-2 border border-pg-slate/20 text-pg-dark rounded-lg hover:bg-pg-slate/5 transition-colors text-sm font-medium">
-                  Edit
-                </button>
-                {deleteConfirm === channel.id ? (
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-pg-danger font-medium">Delete?</span>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleTestChannel(channel.id)}
+                    disabled={testingChannelId === channel.id}
+                    className="px-4 py-2 border border-pg-slate/20 text-pg-dark rounded-lg hover:bg-pg-slate/5 transition-colors text-sm font-medium disabled:opacity-50"
+                  >
+                    {testingChannelId === channel.id ? 'Testing...' : 'Test Connection'}
+                  </button>
+                  {deleteChannelConfirm === channel.id ? (
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-pg-danger font-medium">Delete?</span>
+                      <button
+                        onClick={() => handleDeleteChannel(channel.id)}
+                        disabled={submitting}
+                        className="px-3 py-1 bg-pg-danger text-white rounded text-sm hover:bg-pg-danger/90 transition-colors disabled:opacity-50"
+                      >
+                        {submitting ? '...' : 'Delete'}
+                      </button>
+                      <button
+                        onClick={() => setDeleteChannelConfirm(null)}
+                        className="px-3 py-1 border border-pg-slate/20 text-pg-dark rounded text-sm hover:bg-pg-slate/5 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
                     <button
-                      onClick={() => {
-                        console.log('Deleting:', channel.id);
-                        setDeleteConfirm(null);
-                      }}
-                      className="px-3 py-1 bg-pg-danger text-white rounded text-sm hover:bg-pg-danger/90 transition-colors"
+                      onClick={() => setDeleteChannelConfirm(channel.id)}
+                      className="px-4 py-2 text-pg-danger border border-pg-danger/20 rounded-lg hover:bg-pg-danger/5 transition-colors flex items-center gap-2 text-sm font-medium"
                     >
+                      <Trash2 className="w-4 h-4" />
                       Delete
                     </button>
-                    <button
-                      onClick={() => setDeleteConfirm(null)}
-                      className="px-3 py-1 border border-pg-slate/20 text-pg-dark rounded text-sm hover:bg-pg-slate/5 transition-colors"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => setDeleteConfirm(channel.id)}
-                    className="px-4 py-2 text-pg-danger border border-pg-danger/20 rounded-lg hover:bg-pg-danger/5 transition-colors flex items-center gap-2 text-sm font-medium"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                    Delete
-                  </button>
-                )}
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
 
-          {/* Add New Channel */}
-          <div className="bg-white rounded-lg shadow p-6 border-l-4 border-pg-blue">
-            <h3 className="text-lg font-semibold text-pg-dark mb-4">Add Notification Channel</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-              <div>
-                <label className="block text-sm font-medium text-pg-dark mb-2">Channel Type</label>
-                <select className="w-full px-3 py-2 border border-pg-slate/20 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pg-blue">
-                  <option>Select a type</option>
-                  <option>Email</option>
-                  <option>Slack</option>
-                  <option>PagerDuty</option>
-                  <option>Webhook</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-pg-dark mb-2">Name</label>
-                <input
-                  type="text"
-                  placeholder="e.g., Team Alerts"
-                  className="w-full px-3 py-2 border border-pg-slate/20 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pg-blue"
-                />
-              </div>
+          {/* Add New Channel Form */}
+          {showNewChannelForm && (
+            <div className="bg-white rounded-lg shadow p-6 border-l-4 border-pg-blue">
+              <h3 className="text-lg font-semibold text-pg-dark mb-4">Add Notification Channel</h3>
+              <form onSubmit={handleAddChannel}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label className="block text-sm font-medium text-pg-dark mb-2">Channel Type</label>
+                    <select
+                      value={newChannel.type}
+                      onChange={(e) => setNewChannel({ ...newChannel, type: e.target.value as any })}
+                      className="w-full px-3 py-2 border border-pg-slate/20 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pg-blue"
+                      required
+                    >
+                      <option value="">Select a type</option>
+                      <option value="email">Email</option>
+                      <option value="slack">Slack</option>
+                      <option value="pagerduty">PagerDuty</option>
+                      <option value="webhook">Webhook</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-pg-dark mb-2">Name</label>
+                    <input
+                      type="text"
+                      placeholder="e.g., Team Alerts"
+                      value={newChannel.name}
+                      onChange={(e) => setNewChannel({ ...newChannel, name: e.target.value })}
+                      className="w-full px-3 py-2 border border-pg-slate/20 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pg-blue"
+                      required
+                    />
+                  </div>
+                </div>
+
+                {/* Conditional fields based on channel type */}
+                {newChannel.type === 'email' && (
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-pg-dark mb-2">Email Address</label>
+                    <input
+                      type="email"
+                      placeholder="alerts@company.com"
+                      value={newChannel.email || ''}
+                      onChange={(e) => setNewChannel({ ...newChannel, email: e.target.value })}
+                      className="w-full px-3 py-2 border border-pg-slate/20 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pg-blue"
+                      required
+                    />
+                  </div>
+                )}
+
+                {newChannel.type === 'slack' && (
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-pg-dark mb-2">Slack Channel</label>
+                    <input
+                      type="text"
+                      placeholder="#alerts"
+                      value={newChannel.slack_channel || ''}
+                      onChange={(e) => setNewChannel({ ...newChannel, slack_channel: e.target.value })}
+                      className="w-full px-3 py-2 border border-pg-slate/20 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pg-blue"
+                      required
+                    />
+                  </div>
+                )}
+
+                {newChannel.type === 'webhook' && (
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-pg-dark mb-2">Webhook URL</label>
+                    <input
+                      type="url"
+                      placeholder="https://api.example.com/webhooks"
+                      value={newChannel.webhook_url || ''}
+                      onChange={(e) => setNewChannel({ ...newChannel, webhook_url: e.target.value })}
+                      className="w-full px-3 py-2 border border-pg-slate/20 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pg-blue"
+                      required
+                    />
+                  </div>
+                )}
+
+                <div className="flex gap-2">
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="px-4 py-2 bg-pg-blue text-white rounded-lg hover:bg-pg-blue/90 disabled:bg-pg-slate/50 transition-colors text-sm font-medium"
+                  >
+                    {submitting ? 'Adding...' : 'Add Channel'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowNewChannelForm(false)}
+                    className="px-4 py-2 border border-pg-slate/20 text-pg-dark rounded-lg hover:bg-pg-slate/5 transition-colors text-sm font-medium"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
             </div>
-            <div className="flex gap-2">
-              <button className="px-4 py-2 bg-pg-blue text-white rounded-lg hover:bg-pg-blue/90 transition-colors text-sm font-medium">
-                Add Channel
+          )}
+
+          {/* Add New Channel Button */}
+          {!showNewChannelForm && (
+            <div className="bg-white rounded-lg shadow p-6">
+              <button
+                onClick={() => setShowNewChannelForm(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-pg-blue text-white rounded-lg hover:bg-pg-blue/90 transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                Add Notification Channel
               </button>
             </div>
-          </div>
+          )}
         </div>
       )}
     </PageWrapper>

@@ -42,23 +42,53 @@ const server = http.createServer((req, res) => {
 
   // API proxy - forward API requests to backend
   if (pathname.startsWith('/api')) {
-    const apiUrl = `${API_PROTOCOL}://${API_HOST}:${API_PORT}${pathname}${req.url.includes('?') ? '?' + req.url.split('?')[1] : ''}`;
+    const queryString = req.url.includes('?') ? '?' + req.url.split('?')[1] : '';
+    const apiPath = `${pathname}${queryString}`;
 
-    const proxyReq = (API_PROTOCOL === 'https' ? https : http).get(apiUrl, {
-      headers: req.headers,
-      method: req.method
+    const proxyReq = (API_PROTOCOL === 'https' ? https : http).request({
+      hostname: API_HOST,
+      port: API_PORT,
+      path: apiPath,
+      method: req.method,
+      headers: {
+        ...req.headers,
+        'host': `${API_HOST}:${API_PORT}`
+      }
     }, (proxyRes) => {
       res.writeHead(proxyRes.statusCode, proxyRes.headers);
-      proxyRes.pipe(res);
+      proxyRes.on('data', (chunk) => {
+        if (!res.destroyed) {
+          res.write(chunk);
+        }
+      });
+      proxyRes.on('end', () => {
+        if (!res.destroyed) {
+          res.end();
+        }
+      });
     });
 
     proxyReq.on('error', (err) => {
       console.error('Proxy error:', err);
-      res.writeHead(502, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Bad Gateway', message: err.message }));
+      if (!res.headersSent) {
+        res.writeHead(502, { 'Content-Type': 'application/json' });
+      }
+      if (!res.destroyed) {
+        res.end(JSON.stringify({ error: 'Bad Gateway', message: err.message }));
+      }
     });
 
-    req.pipe(proxyReq);
+    req.on('data', (chunk) => {
+      proxyReq.write(chunk);
+    });
+    req.on('end', () => {
+      proxyReq.end();
+    });
+    req.on('error', (err) => {
+      console.error('Request error:', err);
+      proxyReq.destroy();
+    });
+
     return;
   }
 

@@ -341,6 +341,49 @@ export const SettingsAdmin: React.FC = () => {
       width: '140px',
       render: (value) => <span className="text-sm text-pg-slate">{formatDateTime(value as Date)}</span>,
     },
+    {
+      key: 'id' as keyof AdminUser,
+      label: 'Actions',
+      width: '180px',
+      render: (_, row) => (
+        <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+          {deleteUserConfirm === String(row.id) ? (
+            <>
+              <button
+                onClick={() => handleDeleteUser(row.id)}
+                disabled={submitting}
+                className="px-2 py-1 bg-pg-danger text-white rounded text-xs hover:bg-pg-danger/90 disabled:opacity-50"
+              >
+                {submitting ? '...' : 'Confirm'}
+              </button>
+              <button
+                onClick={() => setDeleteUserConfirm(null)}
+                className="px-2 py-1 border border-pg-slate/20 text-pg-dark rounded text-xs hover:bg-pg-slate/5"
+              >
+                Cancel
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={() => setResetPasswordConfirm(String(row.id))}
+                className="flex items-center gap-1 px-2 py-1 text-pg-warning border border-pg-warning/20 rounded text-xs hover:bg-pg-warning/5"
+              >
+                <RotateCw className="w-3 h-3" />
+                Reset
+              </button>
+              <button
+                onClick={() => setDeleteUserConfirm(String(row.id))}
+                className="flex items-center gap-1 px-2 py-1 text-pg-danger border border-pg-danger/20 rounded text-xs hover:bg-pg-danger/5"
+              >
+                <Trash2 className="w-3 h-3" />
+                Delete
+              </button>
+            </>
+          )}
+        </div>
+      ),
+    },
   ];
 
   const tokenColumns: Column<ApiToken>[] = [
@@ -374,6 +417,40 @@ export const SettingsAdmin: React.FC = () => {
         <span className="text-sm text-pg-slate">
           {value ? formatDateTime(value as Date) : 'Never'}
         </span>
+      ),
+    },
+    {
+      key: 'id' as keyof ApiToken,
+      label: 'Actions',
+      width: '150px',
+      render: (_, row) => (
+        <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+          {deleteTokenConfirm === row.id ? (
+            <>
+              <button
+                onClick={() => handleDeleteToken(row.id)}
+                disabled={submitting}
+                className="px-2 py-1 bg-pg-danger text-white rounded text-xs hover:bg-pg-danger/90 disabled:opacity-50"
+              >
+                {submitting ? '...' : 'Confirm'}
+              </button>
+              <button
+                onClick={() => setDeleteTokenConfirm(null)}
+                className="px-2 py-1 border border-pg-slate/20 text-pg-dark rounded text-xs hover:bg-pg-slate/5"
+              >
+                Cancel
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={() => setDeleteTokenConfirm(row.id)}
+              className="flex items-center gap-1 px-2 py-1 text-pg-danger border border-pg-danger/20 rounded text-xs hover:bg-pg-danger/5"
+            >
+              <Trash2 className="w-3 h-3" />
+              Delete
+            </button>
+          )}
+        </div>
       ),
     },
   ];

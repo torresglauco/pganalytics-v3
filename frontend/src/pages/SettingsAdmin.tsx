@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import {
   Plus,
   Trash2,
@@ -46,6 +47,7 @@ interface NotificationChannel {
 }
 
 export const SettingsAdmin: React.FC = () => {
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState<'users' | 'tokens' | 'notifications'>('users');
   const [showNewUserForm, setShowNewUserForm] = useState(false);
   const [showNewTokenForm, setShowNewTokenForm] = useState(false);
@@ -59,6 +61,15 @@ export const SettingsAdmin: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [testingChannelId, setTestingChannelId] = useState<string | null>(null);
+
+  // Set active tab based on current route
+  useEffect(() => {
+    if (location.pathname === '/users') {
+      setActiveTab('users');
+    } else if (location.pathname === '/settings') {
+      setActiveTab('tokens');
+    }
+  }, [location.pathname]);
 
   // Use the useUsers hook
   const { users, loading, error, fetchUsers, createUser, deleteUser, resetPassword } = useUsers();

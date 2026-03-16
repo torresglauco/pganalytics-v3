@@ -17,9 +17,9 @@ export const PageWrapper: React.FC<PageWrapperProps> = ({
   children,
 }) => {
   return (
-    <div className="flex-1 overflow-auto bg-pg-light">
+    <div className="w-full bg-pg-light">
       {/* Page Header */}
-      <div className="bg-white border-b border-pg-slate/10 sticky top-16 z-30">
+      <div className="bg-white border-b border-pg-slate/10">
         {/* Breadcrumbs */}
         {breadcrumbs && breadcrumbs.length > 0 && (
           <div className="px-6 py-2 flex items-center gap-2 text-sm">
@@ -47,11 +47,11 @@ export const PageWrapper: React.FC<PageWrapperProps> = ({
       </div>
 
       {/* Page Content */}
-      <main className="p-6">
+      <div className="p-6">
         <div className="max-w-7xl mx-auto">
           {children}
         </div>
-      </main>
+      </div>
     </div>
   );
 };

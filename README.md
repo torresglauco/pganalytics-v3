@@ -1,53 +1,51 @@
-# pgAnalytics v3.2.0 - Production-Ready PostgreSQL Monitoring
+# 🦉 pgAnalytics v3.3.0
 
-A modern, scalable PostgreSQL monitoring and analytics platform with machine learning optimization, enterprise deployment, and distributed collectors.
+**PostgreSQL Database Observability & Monitoring Platform**
 
-**Status**: ✅ Production Ready | v3.2.0 | Ready for Deployment This Week
+pgAnalytics is a comprehensive observability platform designed to monitor, analyze, and optimize PostgreSQL databases in production environments. Real-time metrics, intelligent alerting, and deep performance insights—all in one unified dashboard.
 
-## CI/CD Status
+**Status**: ✅ Production Ready | v3.3.0
 
-[![E2E Tests](https://github.com/torresglauco/pganalytics-v3/actions/workflows/e2e-tests.yml/badge.svg)](https://github.com/torresglauco/pganalytics-v3/actions/workflows/e2e-tests.yml)
-[![Frontend Code Quality](https://github.com/torresglauco/pganalytics-v3/actions/workflows/frontend-quality.yml/badge.svg)](https://github.com/torresglauco/pganalytics-v3/actions/workflows/frontend-quality.yml)
-[![Backend Tests](https://github.com/torresglauco/pganalytics-v3/actions/workflows/backend-tests.yml/badge.svg)](https://github.com/torresglauco/pganalytics-v3/actions/workflows/backend-tests.yml)
-[![Security Scanning](https://github.com/torresglauco/pganalytics-v3/actions/workflows/security.yml/badge.svg)](https://github.com/torresglauco/pganalytics-v3/actions/workflows/security.yml)
+## 🎯 Key Features
 
-## Key Highlights
+### 📊 **Real-Time Monitoring**
+- Live database metrics and health indicators
+- Connection pool monitoring and management
+- Query performance tracking and analysis
+- Transaction monitoring and deadlock detection
+- Replication lag monitoring
 
-- **🚀 High-Performance Backend**: Go REST API with Swagger docs (400+ lines)
-- **📊 Distributed Collectors**: C/C++ agents with TLS 1.3 + mTLS (3,440+ lines)
-- **🧠 ML-Based Optimization**: Python service for query optimization and anomaly detection (2,376+ lines)
-- **📈 Time-Series Storage**: TimescaleDB for efficient metrics storage
-- **🎨 Grafana Integration**: Pre-built dashboards for visualization
-- **🔐 Enterprise Security**: JWT tokens, mutual TLS, encrypted credentials
-- **✅ Comprehensive Testing**: 272 tests with 100% pass rate (>70% coverage)
-- **📚 Complete Documentation**: 56,000+ lines of guides and API references
+### 🚨 **Intelligent Alerting**
+- Configurable alert rules with severity levels
+- Incident grouping and root cause analysis
+- Multi-channel notifications (Email, Slack, webhooks)
+- Alert suppression rules and maintenance windows
+- AI-powered optimization suggestions
 
-## Project Status
+### 🔍 **Deep Performance Analysis**
+- Slow query detection and optimization hints
+- Table bloat analysis and vacuum recommendations
+- Index usage and fragmentation analysis
+- Lock contention and blocking transaction detection
+- Cache hit ratio optimization
 
-| Aspect | Status | Details |
-|--------|--------|---------|
-| Implementation | ✅ Complete | All 4 phases + 11 sub-phases delivered |
-| Testing | ✅ Complete | 272 tests passing (100% success) |
-| Load Testing | ✅ Complete | 500+ collectors validated |
-| Security | ✅ Complete | Enterprise-grade (TLS 1.3 + JWT) |
-| Documentation | ✅ Complete | 56,000+ lines of guides |
-| **Overall** | **✅ PRODUCTION READY** | **95/100 Readiness Score** |
+### 🛠️ **Collector Management**
+- Multi-database monitoring across infrastructure
+- Lightweight C/C++ collectors with minimal overhead
+- Auto-registration and self-healing capabilities
+- Real-time metric collection and aggregation
 
-## Quick Links
+### 👥 **Team & Access Control**
+- Role-based access control (Admin, User, Viewer)
+- API token generation for programmatic access
+- User management and password reset
+- Audit logging for compliance
 
-**Start Here:**
-- **[DEPLOYMENT_START_HERE.md](DEPLOYMENT_START_HERE.md)** - 5-minute deployment overview (read this first!)
-- **[QUICK_REFERENCE.md](QUICK_REFERENCE.md)** - Quick start guide and FAQ
-- **[SETUP.md](SETUP.md)** - Development environment setup
-
-**Configuration (Choose One):**
-- **[DEPLOYMENT_CONFIG_TEMPLATE_OPEN.md](DEPLOYMENT_CONFIG_TEMPLATE_OPEN.md)** - **Infrastructure-agnostic configuration** (works with AWS, on-prem, Kubernetes, Docker, hybrid) ⭐ START HERE
-- **[DEPLOYMENT_CONFIG_TEMPLATE.md](DEPLOYMENT_CONFIG_TEMPLATE.md)** - Full template with all 81 parameters documented
-- **[DEPLOYMENT_CONFIG_ENTERPRISE_SCALE.md](DEPLOYMENT_CONFIG_ENTERPRISE_SCALE.md)** - For massive distributed deployments (hundreds of RDS + thousands of EC2)
-
-**For Production Deployment:**
-- **[DEPLOYMENT_PLAN_v3.2.0.md](DEPLOYMENT_PLAN_v3.2.0.md)** - Complete 4-phase deployment plan (Pre-Deployment → Staging → Production → Monitoring)
-- **[PHASE1_EXECUTION_CHECKLIST_V2.md](PHASE1_EXECUTION_CHECKLIST_V2.md)** - Step-by-step Phase 1 procedures with checklist
+### 📈 **Data & Visualization**
+- TimescaleDB-backed time-series storage
+- Interactive dashboards and charts
+- Custom metric views and drill-downs
+- Export capabilities for reporting
 - **[ENTERPRISE_INSTALLATION.md](ENTERPRISE_INSTALLATION.md)** - Multi-server installation guide (separate PostgreSQL, API, Collectors, Grafana)
 - **[docs/COLLECTOR_REGISTRATION_GUIDE.md](docs/COLLECTOR_REGISTRATION_GUIDE.md)** - Collector registration and JWT authentication
 

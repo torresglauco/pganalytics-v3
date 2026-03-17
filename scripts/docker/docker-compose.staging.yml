@@ -1,0 +1,118 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: pganalytics-staging-db
+    environment:
+      POSTGRES_DB: pganalytics_staging
+      POSTGRES_USER: pganalytics
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-staging-password}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_staging_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pganalytics -d pganalytics_staging"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - pganalytics-staging
+
+  # Backend API
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: pganalytics-staging-api
+    env_file: .env.staging
+    environment:
+      DATABASE_URL: postgresql://pganalytics:${DB_PASSWORD:-staging-password}@postgres:5432/pganalytics_staging?sslmode=disable
+      TIMESCALE_URL: postgresql://pganalytics:${DB_PASSWORD:-staging-password}@postgres:5432/pganalytics_staging?sslmode=disable
+      API_PORT: 8000
+      JWT_SECRET: ${JWT_SECRET:-staging-secret-key}
+      LOG_LEVEL: info
+      ENVIRONMENT: staging
+    ports:
+      - "8000:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - pganalytics-staging
+    volumes:
+      - ./backend/logs:/var/log/pganalytics
+
+  # Frontend
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        VITE_API_URL: http://localhost:8000
+    container_name: pganalytics-staging-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - api
+    networks:
+      - pganalytics-staging
+
+  # Redis (optional, for future caching)
+  redis:
+    image: redis:7-alpine
+    container_name: pganalytics-staging-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_staging_data:/data
+    networks:
+      - pganalytics-staging
+
+  # Prometheus for metrics
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: pganalytics-staging-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.staging.yml:/etc/prometheus/prometheus.yml
+      - prometheus_staging_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    networks:
+      - pganalytics-staging
+
+  # Grafana for dashboards
+  grafana:
+    image: grafana/grafana:latest
+    container_name: pganalytics-staging-grafana
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-staging-admin}
+    volumes:
+      - grafana_staging_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+    depends_on:
+      - prometheus
+    networks:
+      - pganalytics-staging
+
+volumes:
+  postgres_staging_data:
+  redis_staging_data:
+  prometheus_staging_data:
+  grafana_staging_data:
+
+networks:
+  pganalytics-staging:
+    driver: bridge

@@ -23,66 +23,85 @@ Be respectful and constructive in all interactions. We are committed to providin
 
 ### Prerequisites
 
-- **Go 1.22+** - Backend API development
-- **Node.js 18+** - Frontend development
-- **Docker 20.10+** - Running services locally
-- **C++17 compiler** - Collector modifications
-- **PostgreSQL 16+** - Database testing
+- **[Docker](https://docs.docker.com/get-docker/) 20.10+** - Running services locally
+- **[mise](https://mise.jdx.dev/getting-started.html)** - Runtime and task management
 
-### Clone the Repository
+> mise installs e gerencia automaticamente as versões corretas de Node.js e Go. Nao precisa instalar manualmente.
+
+### Setup inicial
 
 ```bash
+# Clone the repo
 git clone https://github.com/torresglauco/pganalytics-v3.git
 cd pganalytics-v3
+
+# Install runtimes (Node.js 18, Go 1.24)
+mise install
+
+# Bootstrap the project (idempotent, safe to re-run)
+mise run setup
+
+# Start all services
+mise run dev
 ```
+
+O `mise run setup` vai:
+1. Verificar pre-requisitos (Docker, Node.js, Go)
+2. Criar `.env` a partir do `.env.example` (se nao existir)
+3. Gerar certificados TLS de desenvolvimento (se nao existirem)
+4. Instalar dependencias do frontend (`npm install`)
 
 ## Development Environment
 
-### Backend Setup
+### Comandos do dia a dia
+
+| Comando | O que faz |
+|---------|-----------|
+| `mise run dev` | Sobe todos os servicos via Docker Compose |
+| `mise run dev-frontend` | Inicia frontend com hot reload (Vite) |
+| `mise run down` | Para todos os servicos |
+| `mise run logs` | Acompanha logs de todos os servicos |
+| `mise run ps` | Mostra status dos servicos |
+| `mise run test` | Roda testes do frontend |
+| `mise run lint` | Roda linters do frontend |
+| `mise run typecheck` | Verifica tipos TypeScript |
+| `mise run reset` | Apaga volumes e recomeca do zero |
+
+### Access Points
+
+Apos `mise run dev`:
+
+| Servico | URL | Credenciais |
+|---------|-----|-------------|
+| Frontend | http://localhost:3000 | - |
+| Backend API | http://localhost:8080 | - |
+| Grafana | http://localhost:3001 | admin / Th101327!!! |
+| PostgreSQL | localhost:5432 | postgres / pganalytics |
+| TimescaleDB | localhost:5433 | postgres / pganalytics |
+
+### Backend (sem Docker)
 
 ```bash
-# Install Go dependencies
 cd backend
 go mod download
-
-# Run tests
-go test ./...
-
-# Start API locally
 go run cmd/pganalytics-api/main.go
-
-# Access Swagger UI
-# http://localhost:8080/swagger
 ```
 
-### Frontend Setup
+### Frontend (sem Docker, com hot reload)
 
 ```bash
-# Install dependencies
-cd frontend
-npm install
-
-# Start dev server
-npm run dev
-
-# Run tests
-npm test
-
-# Build for production
-npm run build
+# Requer que o backend esteja rodando (via Docker ou local)
+mise run dev-frontend
 ```
 
-### Using Docker Compose
+### Resetando o ambiente
+
+Se precisar comecar do zero (limpar bancos, volumes, etc.):
 
 ```bash
-# Start all services
-docker-compose up -d
-
-# Check logs
-docker-compose logs -f api
-
-# Stop services
-docker-compose down
+mise run reset
+mise run setup
+mise run dev
 ```
 
 ## Git Workflow
@@ -505,22 +524,11 @@ naming conventions.
    git rebase origin/main
    ```
 
-2. **Run all tests**
+2. **Run all checks**
    ```bash
-   # Backend
-   cd backend && go test ./... && cd ..
-
-   # Frontend
-   cd frontend && npm test && npm run lint && npm run type-check && cd ..
-   ```
-
-3. **Check for linting issues**
-   ```bash
-   # Backend
-   cd backend && golangci-lint run ./... && cd ..
-
-   # Frontend
-   cd frontend && npm run lint && cd ..
+   mise run test
+   mise run lint
+   mise run typecheck
    ```
 
 ### PR Title & Description
@@ -646,7 +654,7 @@ Before submitting code with security implications:
 
 ## Helpful Resources
 
-- [SETUP.md](SETUP.md) - Development environment setup
+- [README.md](README.md) - Quick start and project overview
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) - System architecture
 - [docs/API_SECURITY_REFERENCE.md](docs/API_SECURITY_REFERENCE.md) - API guidelines
 - [GitHub Issues](https://github.com/torresglauco/pganalytics-v3/issues) - Bug reports and features

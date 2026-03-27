@@ -55,68 +55,76 @@ pgAnalytics is a comprehensive observability platform designed to monitor, analy
 - **[docs/REPLICATION_COLLECTOR_GUIDE.md](docs/REPLICATION_COLLECTOR_GUIDE.md)** - PostgreSQL replication metrics
 - **[SECURITY.md](SECURITY.md)** - Security requirements and best practices
 
-## Quick Start (Demo Environment)
+## Quick Start
 
 ### Prerequisites
-- Docker 20.10+
-- Docker Compose 2.0+
-- Make
+- [Docker](https://docs.docker.com/get-docker/) 20.10+
+- [mise](https://mise.jdx.dev/getting-started.html)
 
-### Run Demo
+### Setup
+
 ```bash
-# Clone and setup
+# Clone the repo
 git clone https://github.com/torresglauco/pganalytics-v3.git
 cd pganalytics-v3
 
-# Start all services
-docker-compose up -d
+# Install runtimes (Node.js, Go)
+mise install
 
-# Check services
-curl http://localhost:8080/api/v1/health      # Backend API
-curl http://localhost:3000/api/health         # Grafana
+# Bootstrap the project (idempotent, safe to re-run)
+mise run setup
+
+# Start all services
+mise run dev
 ```
 
+### Available Commands
+
+| Command | Description |
+|---------|-------------|
+| `mise run setup` | Bootstrap project (install deps, generate .env, TLS certs) |
+| `mise run dev` | Start all services via Docker Compose |
+| `mise run dev-frontend` | Start frontend with hot reload (Vite) |
+| `mise run down` | Stop all services |
+| `mise run logs` | Follow logs from all services |
+| `mise run reset` | Remove all data and start fresh |
+| `mise run test` | Run frontend tests |
+| `mise run lint` | Run frontend linters |
+| `mise run ps` | Show service status |
+
 ### Access Points
+- **Frontend**: http://localhost:3000
 - **Backend API**: http://localhost:8080
-- **API Swagger UI**: http://localhost:8080/swagger
-- **Grafana**: http://localhost:3000 (admin/admin)
+- **Grafana**: http://localhost:3001 (admin/Th101327!!!)
 - **PostgreSQL**: localhost:5432 (postgres/pganalytics)
 
 ## Project Structure
 
 ```
 pganalytics-v3/
+├── mise.toml                   # Runtimes (Node, Go) + dev tasks
+├── .env.example                # Environment variables template
+├── docker-compose.yml          # Local development services
+│
 ├── backend/                    # Go backend API
 │   ├── cmd/pganalytics-api/    # API server entry point
 │   ├── internal/               # Core packages
-│   │   ├── api/               # HTTP handlers
-│   │   ├── auth/              # JWT + mTLS
-│   │   ├── collector/         # Collector management
-│   │   ├── metrics/           # Metrics ingestion
-│   │   ├── storage/           # Database layer
-│   │   └── timescale/         # TimescaleDB setup
-│   ├── migrations/            # Database migrations
-│   └── tests/                 # Integration tests
+│   ├── migrations/             # Database migrations
+│   └── tests/                  # Integration tests
+│
+├── frontend/                   # React + Vite + TypeScript UI
+│   ├── src/                    # Source code
+│   ├── package.json            # Dependencies
+│   └── vite.config.ts          # Vite configuration
 │
 ├── collector/                  # C/C++ distributed collector
-│   ├── src/                   # Source files
-│   ├── include/               # Headers
-│   ├── tests/                 # Unit + integration tests
-│   └── CMakeLists.txt         # Build configuration
+│   ├── src/                    # Source files
+│   ├── include/                # Headers
+│   └── tests/                  # Unit + integration tests
 │
-├── grafana/                    # Grafana dashboards
-│   ├── dashboards/            # Pre-built dashboards
-│   └── datasources/           # Data source configs
-│
-├── docs/                       # Documentation
-│   ├── ARCHITECTURE.md
-│   ├── API.md
-│   ├── SECURITY.md
-│   ├── DEPLOYMENT.md
-│   └── EXAMPLES.md
-│
-└── docker-compose.yml         # Demo environment
-
+├── grafana/                    # Grafana dashboards & provisioning
+├── scripts/                    # Setup and utility scripts
+└── docs/                       # Documentation
 ```
 
 ## Key Features
@@ -146,25 +154,40 @@ pganalytics-v3/
 
 ## Development
 
-### Building Backend
+All development tasks are managed via [mise](https://mise.jdx.dev). Run `mise tasks` to see all available commands.
+
+```bash
+# Start everything
+mise run dev
+
+# Frontend with hot reload (requires backend running)
+mise run dev-frontend
+
+# Run tests and linters
+mise run test
+mise run lint
+mise run typecheck
+
+# View logs and service status
+mise run logs
+mise run ps
+
+# Reset everything (removes databases, volumes)
+mise run reset
+```
+
+### Building Backend (standalone)
 ```bash
 cd backend
 go build -o pganalytics-api ./cmd/pganalytics-api
 ```
 
-### Building Collector
+### Building Collector (standalone)
 ```bash
 cd collector
 mkdir build && cd build
 cmake ..
 make
-```
-
-### Running Tests
-```bash
-make test-backend       # Go tests
-make test-collector     # C++ tests
-make test-integration   # E2E tests (requires docker-compose)
 ```
 
 ## Configuration
@@ -249,9 +272,10 @@ See [docs/SECURITY.md](docs/SECURITY.md) for detailed security guidelines.
 
 ## Deployment
 
-### Quick Start (Development)
+### Development
 ```bash
-docker-compose up -d
+mise run setup    # first time only
+mise run dev      # start all services
 ```
 
 ### Production Deployment

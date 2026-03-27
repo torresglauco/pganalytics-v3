@@ -150,7 +150,7 @@ services:
     environment:
       GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD: Th101327!!!
-      GF_INSTALL_PLUGINS: "grafana-piechart-panel,grafana-worldmap-panel"
+      GF_INSTALL_PLUGINS: ""
       GF_USERS_ALLOW_SIGN_UP: "false"
     ports:
       - "3001:3000"

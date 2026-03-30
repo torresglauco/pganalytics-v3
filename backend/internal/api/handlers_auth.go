@@ -173,7 +173,8 @@ func (s *Server) handleOAuthLogin(c *gin.Context) {
 		return
 	}
 
-	oauthConn, err := auth.NewOAuthConnector("http://localhost:8080", providerConfigs)
+	redirectURL := fmt.Sprintf("%s/api/v1/auth/oauth/callback", s.config.APIBaseURL)
+	oauthConn, err := auth.NewOAuthConnector(redirectURL, providerConfigs)
 	if err != nil {
 		s.logger.Error("Failed to create OAuth connector", zap.Error(err))
 		errResp := apperrors.ServiceUnavailable("OAuth initialization failed", "")
@@ -236,7 +237,8 @@ func (s *Server) handleOAuthCallback(c *gin.Context) {
 		return
 	}
 
-	oauthConn, err := auth.NewOAuthConnector("http://localhost:8080", providerConfigs)
+	redirectURL := fmt.Sprintf("%s/api/v1/auth/oauth/callback", s.config.APIBaseURL)
+	oauthConn, err := auth.NewOAuthConnector(redirectURL, providerConfigs)
 	if err != nil {
 		s.logger.Error("Failed to create OAuth connector", zap.Error(err))
 		errResp := apperrors.ServiceUnavailable("OAuth initialization failed", "")
@@ -330,7 +332,7 @@ func (s *Server) handleSAMLMetadata(c *gin.Context) {
 		KeyPath:  s.config.SAMLKeyPath,
 		IDPURL:   s.config.SAMLIDPMetadataURL,
 		EntityID: s.config.SAMLEntityID,
-		RootURL:  "http://localhost:8080",
+		RootURL:  s.config.APIBaseURL,
 	})
 	if err != nil {
 		s.logger.Error("Failed to create SAML connector", zap.Error(err))
@@ -390,7 +392,7 @@ func (s *Server) handleSAMLACS(c *gin.Context) {
 		KeyPath:  s.config.SAMLKeyPath,
 		IDPURL:   s.config.SAMLIDPMetadataURL,
 		EntityID: s.config.SAMLEntityID,
-		RootURL:  "http://localhost:8080",
+		RootURL:  s.config.APIBaseURL,
 	})
 	if err != nil {
 		s.logger.Error("Failed to create SAML connector", zap.Error(err))

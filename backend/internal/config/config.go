@@ -12,6 +12,8 @@ type Config struct {
 	Port        int
 	Environment string
 	LogLevel    string
+	APIBaseURL  string // e.g., "https://api.example.com" for OAuth/SAML callbacks
+	FrontendURL string // e.g., "https://app.example.com" for frontend redirects
 
 	// Databases
 	DatabaseURL  string
@@ -115,6 +117,8 @@ func Load() *Config {
 		Port:                   getIntEnv("PORT", 8080),
 		Environment:            getEnv("ENVIRONMENT", "development"),
 		LogLevel:               getEnv("LOG_LEVEL", "info"),
+		APIBaseURL:             getEnv("API_BASE_URL", "http://localhost:8080"),
+		FrontendURL:            getEnv("FRONTEND_URL", "http://localhost:3000"),
 		DatabaseURL:            getEnv("DATABASE_URL", ""),
 		TimescaleURL:           getEnv("TIMESCALE_URL", ""),
 		JWTSecret:              getEnv("JWT_SECRET", "default-insecure-secret"),
@@ -231,6 +235,14 @@ func (c *Config) Validate() error {
 	}
 	if c.TLSEnabled && (c.TLSCertPath == "" || c.TLSKeyPath == "") {
 		return NewConfigError("TLS_CERT and TLS_KEY must be set when TLS_ENABLED is true")
+	}
+	if c.IsProduction() {
+		if c.APIBaseURL == "" || c.APIBaseURL == "http://localhost:8080" {
+			return NewConfigError("API_BASE_URL must be set to a valid production URL, not localhost")
+		}
+		if c.FrontendURL == "" || c.FrontendURL == "http://localhost:3000" {
+			return NewConfigError("FRONTEND_URL must be set to a valid production URL, not localhost")
+		}
 	}
 	return nil
 }

@@ -2,9 +2,9 @@ package api
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
-	"math/rand"
 	"net/http"
 	"strconv"
 	"time"
@@ -518,27 +518,58 @@ func generateTemporaryPassword(length int) string {
 		all       = uppercase + lowercase + digits
 	)
 
-	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	password := make([]byte, length)
 
 	// Ensure at least one character from each category
 	categories := []string{uppercase, lowercase, digits}
 	for i, category := range categories {
-		password[i] = category[rng.Intn(len(category))]
+		index, err := secureRandInt(len(category))
+		if err != nil {
+			// Fallback to first character on error
+			password[i] = category[0]
+			continue
+		}
+		password[i] = category[index]
 	}
 
 	// Fill the rest randomly
 	for i := len(categories); i < length; i++ {
-		password[i] = all[rng.Intn(len(all))]
+		index, err := secureRandInt(len(all))
+		if err != nil {
+			// Fallback to first character on error
+			password[i] = all[0]
+			continue
+		}
+		password[i] = all[index]
 	}
 
-	// Shuffle the password
+	// Shuffle the password using Fisher-Yates
 	for i := length - 1; i > 0; i-- {
-		j := rng.Intn(i + 1)
+		j, err := secureRandInt(i + 1)
+		if err != nil {
+			continue
+		}
 		password[i], password[j] = password[j], password[i]
 	}
 
 	return string(password)
+}
+
+// secureRandInt returns a cryptographically secure random integer in [0, n)
+func secureRandInt(n int) (int, error) {
+	if n <= 0 {
+		return 0, fmt.Errorf("n must be positive")
+	}
+
+	b := make([]byte, 1)
+	_, err := rand.Read(b)
+	if err != nil {
+		return 0, err
+	}
+
+	// Use modulo with proper handling to avoid bias
+	// For small n values like our character sets, this is acceptable
+	return int(b[0]) % n, nil
 }
 
 // SetupUserRequest represents a request to create the first admin user

@@ -103,7 +103,7 @@ func NewServer(
 		rateLimiter:         rateLimiter,
 		secretManager:       secretManager,
 		sessionManager:      sessionManager,
-		wsManager:           services.NewConnectionManager(),
+		wsManager:           services.NewConnectionManager(logger),
 		conditionHandler:    conditionHandler,
 		silenceHandler:      silenceHandler,
 		escalationHandler:   escalationHandler,

@@ -1,7 +1,11 @@
 package auth
 
 import (
+	"context"
 	"testing"
+	"time"
+
+	"go.uber.org/zap"
 )
 
 // TestNewOAuthConnector tests OAuth connector initialization
@@ -314,5 +318,293 @@ func BenchmarkGetAuthCodeURL(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_, _ = connector.GetAuthCodeURL(OAuthProviderGoogle, "test-state")
+	}
+}
+
+// TestCircuitBreakerInitialization tests circuit breaker initialization
+func TestCircuitBreakerInitialization(t *testing.T) {
+	logger := zap.NewNop()
+	connector, err := NewOAuthConnectorWithLogger(
+		"http://localhost:8080",
+		[]OAuthProviderConfig{
+			{
+				Name:         "google",
+				ClientID:     "test-id",
+				ClientSecret: "test-secret",
+			},
+		},
+		logger,
+	)
+
+	if err != nil {
+		t.Fatalf("NewOAuthConnectorWithLogger() error = %v, want nil", err)
+	}
+
+	if connector.circuitBreaker == nil {
+		t.Errorf("circuitBreaker is nil, want non-nil")
+	}
+
+	if connector.timeout != 10*time.Second {
+		t.Errorf("timeout = %v, want 10s", connector.timeout)
+	}
+
+	if connector.circuitBreaker.State() != string(OAuthStateClosed) {
+		t.Errorf("initial state = %s, want %s", connector.circuitBreaker.State(), OAuthStateClosed)
+	}
+}
+
+// TestCircuitBreakerOpenAfterFailures tests circuit breaker opens after N failures
+func TestCircuitBreakerOpenAfterFailures(t *testing.T) {
+	logger := zap.NewNop()
+	connector, _ := NewOAuthConnectorWithLogger(
+		"http://localhost:8080",
+		[]OAuthProviderConfig{},
+		logger,
+	)
+
+	// Record 5 failures (threshold)
+	for i := 0; i < 5; i++ {
+		connector.circuitBreaker.RecordFailure()
+	}
+
+	if !connector.circuitBreaker.IsOpen() {
+		t.Errorf("circuit is not open after 5 failures, state = %s", connector.circuitBreaker.State())
+	}
+}
+
+// TestCircuitBreakerClosesAfterSuccesses tests circuit breaker closes after recovery
+func TestCircuitBreakerClosesAfterSuccesses(t *testing.T) {
+	logger := zap.NewNop()
+	connector, _ := NewOAuthConnectorWithLogger(
+		"http://localhost:8080",
+		[]OAuthProviderConfig{},
+		logger,
+	)
+
+	// Open circuit by recording failures
+	for i := 0; i < 5; i++ {
+		connector.circuitBreaker.RecordFailure()
+	}
+
+	if !connector.circuitBreaker.IsOpen() {
+		t.Fatal("circuit should be open")
+	}
+
+	// Trigger half-open by waiting (simulate timeout)
+	connector.circuitBreaker.mu.Lock()
+	connector.circuitBreaker.lastFailureTime = time.Now().Add(-40 * time.Second)
+	connector.circuitBreaker.mu.Unlock()
+
+	// Circuit should transition to half-open
+	_ = connector.circuitBreaker.IsOpen()
+
+	// Record successes to close it
+	for i := 0; i < 3; i++ {
+		connector.circuitBreaker.RecordSuccess()
+	}
+
+	if connector.circuitBreaker.State() != string(OAuthStateClosed) {
+		t.Errorf("state = %s after recovery, want %s", connector.circuitBreaker.State(), OAuthStateClosed)
+	}
+}
+
+// TestExchangeCodeForTokenCircuitBreaker tests token exchange with circuit breaker
+func TestExchangeCodeForTokenCircuitBreaker(t *testing.T) {
+	logger := zap.NewNop()
+	connector, _ := NewOAuthConnectorWithLogger(
+		"http://localhost:8080",
+		[]OAuthProviderConfig{
+			{
+				Name:         "google",
+				ClientID:     "test-id",
+				ClientSecret: "test-secret",
+			},
+		},
+		logger,
+	)
+
+	// Open the circuit
+	for i := 0; i < 5; i++ {
+		connector.circuitBreaker.RecordFailure()
+	}
+
+	// Try to exchange code - should fail due to open circuit
+	_, err := connector.ExchangeCodeForToken(context.Background(), OAuthProviderGoogle, "test-code")
+
+	if err == nil {
+		t.Errorf("ExchangeCodeForToken() error = nil, want error for open circuit")
+	}
+
+	if err.Error() != "OAuth provider google temporarily unavailable (circuit open)" {
+		t.Errorf("ExchangeCodeForToken() error message incorrect: %v", err)
+	}
+}
+
+// TestRefreshTokenCircuitBreaker tests token refresh with circuit breaker
+func TestRefreshTokenCircuitBreaker(t *testing.T) {
+	logger := zap.NewNop()
+	connector, _ := NewOAuthConnectorWithLogger(
+		"http://localhost:8080",
+		[]OAuthProviderConfig{
+			{
+				Name:         "google",
+				ClientID:     "test-id",
+				ClientSecret: "test-secret",
+			},
+		},
+		logger,
+	)
+
+	// Open the circuit
+	for i := 0; i < 5; i++ {
+		connector.circuitBreaker.RecordFailure()
+	}
+
+	// Try to refresh token - should fail due to open circuit
+	ctx := context.Background()
+	_, err := connector.RefreshToken(ctx, OAuthProviderGoogle, nil)
+
+	if err == nil {
+		t.Errorf("RefreshToken() error = nil, want error for open circuit")
+	}
+
+	if err.Error() != "OAuth provider google temporarily unavailable (circuit open)" {
+		t.Errorf("RefreshToken() error message incorrect: %v", err)
+	}
+}
+
+// TestGetUserInfoCircuitBreaker tests user info fetch with circuit breaker
+func TestGetUserInfoCircuitBreaker(t *testing.T) {
+	logger := zap.NewNop()
+	connector, _ := NewOAuthConnectorWithLogger(
+		"http://localhost:8080",
+		[]OAuthProviderConfig{
+			{
+				Name:         "google",
+				ClientID:     "test-id",
+				ClientSecret: "test-secret",
+			},
+		},
+		logger,
+	)
+
+	// Open the circuit
+	for i := 0; i < 5; i++ {
+		connector.circuitBreaker.RecordFailure()
+	}
+
+	// Try to get user info - should fail due to open circuit
+	ctx := context.Background()
+	_, err := connector.GetUserInfo(ctx, OAuthProviderGoogle, nil)
+
+	if err == nil {
+		t.Errorf("GetUserInfo() error = nil, want error for open circuit")
+	}
+
+	if err.Error() != "OAuth provider google temporarily unavailable (circuit open)" {
+		t.Errorf("GetUserInfo() error message incorrect: %v", err)
+	}
+}
+
+// TestCircuitBreakerWithTimeout tests context timeout is applied
+func TestCircuitBreakerWithTimeout(t *testing.T) {
+	logger := zap.NewNop()
+	connector, _ := NewOAuthConnectorWithLogger(
+		"http://localhost:8080",
+		[]OAuthProviderConfig{
+			{
+				Name:         "google",
+				ClientID:     "test-id",
+				ClientSecret: "test-secret",
+			},
+		},
+		logger,
+	)
+
+	// Test withTimeout with no existing deadline
+	ctx := context.Background()
+	newCtx, cancel := connector.withTimeout(ctx)
+	defer cancel()
+
+	if _, ok := newCtx.Deadline(); !ok {
+		t.Errorf("withTimeout() should set deadline on context")
+	}
+
+	// Test withTimeout with existing deadline (should not override)
+	ctx2, cancel2 := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel2()
+
+	newCtx2, cancel3 := connector.withTimeout(ctx2)
+	// cancel3 should be a no-op
+	cancel3()
+
+	// Both contexts should have the same deadline (the original one)
+	deadline1, _ := ctx2.Deadline()
+	deadline2, _ := newCtx2.Deadline()
+	if !deadline1.Equal(deadline2) {
+		t.Errorf("withTimeout() should not override existing deadline")
+	}
+}
+
+// TestCircuitBreakerMetrics tests circuit breaker metrics collection
+func TestCircuitBreakerMetrics(t *testing.T) {
+	logger := zap.NewNop()
+	connector, _ := NewOAuthConnectorWithLogger(
+		"http://localhost:8080",
+		[]OAuthProviderConfig{},
+		logger,
+	)
+
+	// Record some activity
+	connector.circuitBreaker.RecordSuccess()
+	connector.circuitBreaker.RecordFailure()
+
+	metrics := connector.circuitBreaker.GetMetrics()
+
+	if metrics == nil {
+		t.Errorf("GetMetrics() returned nil")
+	}
+
+	if state, ok := metrics["state"]; !ok {
+		t.Errorf("metrics missing 'state'")
+	} else if state != string(OAuthStateClosed) {
+		t.Errorf("state metric = %v, want %s", state, OAuthStateClosed)
+	}
+
+	if failureCount, ok := metrics["failure_count"]; !ok {
+		t.Errorf("metrics missing 'failure_count'")
+	} else if failureCount != 1 {
+		t.Errorf("failure_count = %v, want 1", failureCount)
+	}
+}
+
+// TestCircuitBreakerReset tests circuit breaker reset functionality
+func TestCircuitBreakerReset(t *testing.T) {
+	logger := zap.NewNop()
+	connector, _ := NewOAuthConnectorWithLogger(
+		"http://localhost:8080",
+		[]OAuthProviderConfig{},
+		logger,
+	)
+
+	// Open circuit
+	for i := 0; i < 5; i++ {
+		connector.circuitBreaker.RecordFailure()
+	}
+
+	if connector.circuitBreaker.State() != string(OAuthStateOpen) {
+		t.Fatalf("circuit should be open before reset")
+	}
+
+	// Reset
+	connector.circuitBreaker.Reset()
+
+	if connector.circuitBreaker.State() != string(OAuthStateClosed) {
+		t.Errorf("circuit state after reset = %s, want %s", connector.circuitBreaker.State(), OAuthStateClosed)
+	}
+
+	// IsOpen returns false when the circuit is closed (allowing operations)
+	if connector.circuitBreaker.IsOpen() {
+		t.Errorf("circuit should not be open after reset (should allow operations)")
 	}
 }

@@ -188,7 +188,7 @@ std::vector<PgReplicationCollector::ReplicationSlot> PgReplicationCollector::col
             restart_lsn,
             confirmed_flush_lsn,
             COALESCE(ROUND(EXTRACT(EPOCH FROM (NOW() - pg_postmaster_start_time())) * 1024 * 1024), 0) as wal_retained_mb,
-            plugin_active,
+            false as plugin_active,
             COALESCE(backend_pid, 0) as backend_pid,
             NULL as database,
             COALESCE(OCTET_LENGTH(restart_lsn::text), 0) as bytes_retained
@@ -258,7 +258,7 @@ std::vector<PgReplicationCollector::ReplicationStatus> PgReplicationCollector::c
     if (postgres_version_major_ >= 13) {
         query = R"(
             SELECT
-                server_pid,
+                pid as server_pid,
                 usename,
                 application_name,
                 state,

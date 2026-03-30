@@ -92,7 +92,7 @@ json PgLockCollector::collectActiveLocks(const std::string& dbname) {
     const char* query = R"(
         SELECT
             l.pid,
-            l.usesysid,
+            COALESCE(a.usesysid, 0) as usesysid,
             l.database,
             l.relation,
             l.page,

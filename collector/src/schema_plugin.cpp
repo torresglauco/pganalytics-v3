@@ -265,7 +265,7 @@ json PgSchemaCollector::collectIndexInfo(const std::string& dbname) {
         SELECT
             schemaname,
             relname,
-            indexname,
+            indexrelname,
             indexdef,
             idx_scan,
             idx_tup_read,
@@ -275,7 +275,7 @@ json PgSchemaCollector::collectIndexInfo(const std::string& dbname) {
                  WHEN idx_scan < 100 THEN 'RARELY_USED'
                  ELSE 'ACTIVE' END as usage_status
         FROM pg_stat_user_indexes
-        ORDER BY schemaname, relname, indexname
+        ORDER BY schemaname, relname, indexrelname
     )";
 
     PGresult* result = executeQuery(conn, query);

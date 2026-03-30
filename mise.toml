@@ -1,0 +1,88 @@
+[tools]
+node = "18"
+go = "1.24"
+
+[tasks.setup]
+description = "Bootstrap the project for local development"
+run = "bash scripts/setup.sh"
+
+[tasks.dev]
+description = "Start all services for development"
+run = """
+docker compose up --build -d
+echo ""
+echo "Waiting for services to be healthy..."
+echo ""
+timeout=120
+elapsed=0
+while [ $elapsed -lt $timeout ]; do
+  # Check backend health via HTTP (works with Docker and Podman)
+  if curl -sf http://localhost:8080/api/v1/health > /dev/null 2>&1; then
+    break
+  fi
+  sleep 3
+  elapsed=$((elapsed + 3))
+done
+
+if [ $elapsed -ge $timeout ]; then
+  echo "WARNING: Services may not be fully healthy yet."
+  echo "Check logs with: mise run logs"
+else
+  echo "==================================="
+  echo " pgAnalytics is running!"
+  echo "==================================="
+  echo ""
+  echo " Frontend:  http://localhost:3000"
+  echo " API:       http://localhost:8080"
+  echo " Grafana:   http://localhost:3001"
+  echo ""
+  echo " Use 'mise run logs' to follow logs"
+  echo " Use 'mise run down' to stop"
+  echo "==================================="
+fi
+"""
+
+[tasks.dev-frontend]
+description = "Start frontend in dev mode (hot reload)"
+dir = "frontend"
+run = "npm run dev"
+
+[tasks.down]
+description = "Stop all services"
+run = "docker compose down"
+
+[tasks.logs]
+description = "Follow logs from all services"
+run = "docker compose logs -f"
+
+[tasks.reset]
+description = "Stop services, remove volumes, and start fresh"
+run = """
+echo "This will delete all local data (databases, grafana, etc.)"
+read -p "Are you sure? [y/N] " confirm
+if [ "$confirm" = "y" ] || [ "$confirm" = "Y" ]; then
+  docker compose down -v
+  echo "Volumes removed. Run 'mise run setup && mise run dev' to start fresh."
+else
+  echo "Cancelled."
+fi
+"""
+
+[tasks.lint]
+description = "Run linters for frontend"
+dir = "frontend"
+run = "npm run lint"
+
+[tasks.test]
+description = "Run tests for frontend"
+dir = "frontend"
+run = "npm run test"
+
+[tasks.typecheck]
+description = "Run TypeScript type checking"
+dir = "frontend"
+run = "npm run type-check"
+
+[tasks.ps]
+description = "Show status of all services"
+run = "docker compose ps"

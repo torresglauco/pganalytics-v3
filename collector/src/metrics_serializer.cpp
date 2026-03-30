@@ -110,11 +110,7 @@ bool MetricsSerializer::validateMetric(const json& metric) {
         } else if (type == "pg_replication" || type == "pg_schema" || type == "pg_locks" ||
                    type == "pg_bloat" || type == "pg_cache" || type == "pg_connections" ||
                    type == "pg_extensions") {
-            // These are valid metric types - just require database field
-            if (!validateField(metric, "database", {"string"})) {
-                lastValidationError_ = type + " metric missing or invalid database field";
-                return false;
-            }
+            // These are valid metric types - database field is optional for system-wide metrics
             return true;
         } else {
             lastValidationError_ = "Unknown metric type: " + type;

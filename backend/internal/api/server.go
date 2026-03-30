@@ -1,6 +1,10 @@
 package api
 
 import (
+	"encoding/json"
+	"fmt"
+	"os"
+
 	"github.com/gin-gonic/gin"
 	"github.com/torresglauco/pganalytics-v3/backend/internal/audit"
 	"github.com/torresglauco/pganalytics-v3/backend/internal/auth"
@@ -114,6 +118,142 @@ func (s *Server) SetCacheManager(cm *cache.Manager) {
 // SetSessionManager sets the session manager for the server
 func (s *Server) SetSessionManager(sm session.ISessionManager) {
 	s.sessionManager = sm
+}
+
+// ValidateAuthConfiguration validates all enabled authentication methods at startup
+// This ensures that invalid or missing configurations fail fast before the server accepts requests
+func (s *Server) ValidateAuthConfiguration() error {
+	if s.config.LDAPEnabled {
+		if err := s.validateLDAPConfiguration(); err != nil {
+			return err
+		}
+	}
+
+	if s.config.OAuthEnabled {
+		if err := s.validateOAuthConfiguration(); err != nil {
+			return err
+		}
+	}
+
+	if s.config.SAMLEnabled {
+		if err := s.validateSAMLConfiguration(); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// validateLDAPConfiguration validates LDAP configuration
+func (s *Server) validateLDAPConfiguration() error {
+	if s.config.LDAPServerURL == "" {
+		return fmt.Errorf("LDAP enabled but server URL not configured (set LDAP_SERVER_URL)")
+	}
+
+	// Validate JSON parsing of LDAP group mappings
+	var ldapGroupMapping map[string]string
+	if err := json.Unmarshal([]byte(s.config.LDAPGroupToRoleJSON), &ldapGroupMapping); err != nil {
+		return fmt.Errorf("invalid LDAP group mapping JSON (LDAP_GROUP_TO_ROLE_MAPPING): %w", err)
+	}
+
+	if len(ldapGroupMapping) == 0 {
+		return fmt.Errorf("LDAP group mappings are empty (set LDAP_GROUP_TO_ROLE_MAPPING with valid JSON mappings)")
+	}
+
+	s.logger.Info("LDAP configuration validated",
+		zap.String("server_url", s.config.LDAPServerURL),
+		zap.Int("group_mappings", len(ldapGroupMapping)))
+
+	return nil
+}
+
+// validateOAuthConfiguration validates OAuth provider configuration
+func (s *Server) validateOAuthConfiguration() error {
+	var oauthConfigs []auth.OAuthProviderConfig
+	if err := json.Unmarshal([]byte(s.config.OAuthProvidersJSON), &oauthConfigs); err != nil {
+		return fmt.Errorf("invalid OAuth providers JSON (OAUTH_PROVIDERS): %w", err)
+	}
+
+	if len(oauthConfigs) == 0 {
+		return fmt.Errorf("OAuth enabled but no providers configured (set OAUTH_PROVIDERS with valid JSON array)")
+	}
+
+	// Validate each provider's required fields
+	for _, cfg := range oauthConfigs {
+		if cfg.Name == "" {
+			return fmt.Errorf("OAuth provider missing 'name' field")
+		}
+
+		if cfg.ClientID == "" {
+			return fmt.Errorf("OAuth provider '%s' missing ClientID (provider.client_id)", cfg.Name)
+		}
+
+		if cfg.ClientSecret == "" {
+			return fmt.Errorf("OAuth provider '%s' missing ClientSecret (provider.client_secret)", cfg.Name)
+		}
+
+		// For custom OIDC providers, validate URLs
+		if cfg.Name == "custom" || cfg.Name == "oidc" {
+			if cfg.AuthURL == "" {
+				return fmt.Errorf("OAuth custom provider '%s' missing auth_url", cfg.Name)
+			}
+			if cfg.TokenURL == "" {
+				return fmt.Errorf("OAuth custom provider '%s' missing token_url", cfg.Name)
+			}
+		}
+	}
+
+	s.logger.Info("OAuth configuration validated",
+		zap.Int("providers", len(oauthConfigs)),
+		zap.Strings("provider_names", getOAuthProviderNames(oauthConfigs)))
+
+	return nil
+}
+
+// validateSAMLConfiguration validates SAML configuration
+func (s *Server) validateSAMLConfiguration() error {
+	if s.config.SAMLCertPath == "" {
+		return fmt.Errorf("SAML enabled but certificate path not configured (set SAML_CERT_PATH)")
+	}
+
+	if s.config.SAMLKeyPath == "" {
+		return fmt.Errorf("SAML enabled but key path not configured (set SAML_KEY_PATH)")
+	}
+
+	// Verify certificate file exists
+	if _, err := os.Stat(s.config.SAMLCertPath); err != nil {
+		return fmt.Errorf("SAML certificate file not found at '%s' (SAML_CERT_PATH): %w", s.config.SAMLCertPath, err)
+	}
+
+	// Verify key file exists
+	if _, err := os.Stat(s.config.SAMLKeyPath); err != nil {
+		return fmt.Errorf("SAML key file not found at '%s' (SAML_KEY_PATH): %w", s.config.SAMLKeyPath, err)
+	}
+
+	if s.config.SAMLIDPMetadataURL == "" {
+		return fmt.Errorf("SAML enabled but IdP metadata URL not configured (set SAML_IDP_METADATA_URL)")
+	}
+
+	if s.config.SAMLEntityID == "" {
+		return fmt.Errorf("SAML enabled but entity ID not configured (set SAML_ENTITY_ID)")
+	}
+
+	s.logger.Info("SAML configuration validated",
+		zap.String("cert_path", s.config.SAMLCertPath),
+		zap.String("key_path", s.config.SAMLKeyPath),
+		zap.String("idp_metadata_url", s.config.SAMLIDPMetadataURL),
+		zap.String("entity_id", s.config.SAMLEntityID))
+
+	return nil
+}
+
+// getOAuthProviderNames returns the names of OAuth providers for logging
+func getOAuthProviderNames(configs []auth.OAuthProviderConfig) []string {
+	names := make([]string, len(configs))
+	for i, cfg := range configs {
+		names[i] = cfg.Name
+	}
+	return names
 }
 
 // RegisterRoutes registers all API routes

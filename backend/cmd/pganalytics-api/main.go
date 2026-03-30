@@ -161,6 +161,11 @@ func main() {
 	apiServer := api.NewServer(cfg, logger, postgresDB, timescaleDB, authService, jwtManager, secretManager)
 	apiServer.SetCacheManager(cacheManager)
 
+	// Validate authentication configuration before starting server
+	if err := apiServer.ValidateAuthConfiguration(); err != nil {
+		logger.Fatal("Invalid authentication configuration", zap.Error(err))
+	}
+
 	// Register routes
 	apiServer.RegisterRoutes(router)
 

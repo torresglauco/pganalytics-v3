@@ -75,7 +75,7 @@ json PgCacheHitCollector::collectTableCacheHit(const std::string& dbname) {
     const char* query = R"(
         SELECT
             schemaname,
-            tablename,
+            relname,
             heap_blks_hit,
             heap_blks_read,
             heap_blks_hit + heap_blks_read as total_heap_blks,
@@ -90,7 +90,7 @@ json PgCacheHitCollector::collectTableCacheHit(const std::string& dbname) {
             tidx_blks_read
         FROM pg_statio_user_tables
         WHERE (heap_blks_hit + heap_blks_read) > 0
-        ORDER BY schemaname, tablename
+        ORDER BY schemaname, relname
     )";
 
     PGresult* result = executeQuery(conn, query);
@@ -134,7 +134,7 @@ json PgCacheHitCollector::collectIndexCacheHit(const std::string& dbname) {
     const char* query = R"(
         SELECT
             schemaname,
-            tablename,
+            relname,
             indexrelname,
             idx_blks_hit,
             idx_blks_read,
@@ -142,7 +142,7 @@ json PgCacheHitCollector::collectIndexCacheHit(const std::string& dbname) {
             ROUND(100.0 * idx_blks_hit / NULLIF(idx_blks_hit + idx_blks_read, 0), 2) as cache_hit_ratio
         FROM pg_statio_user_indexes
         WHERE (idx_blks_hit + idx_blks_read) > 0
-        ORDER BY schemaname, tablename, indexrelname
+        ORDER BY schemaname, relname, indexrelname
     )";
 
     PGresult* result = executeQuery(conn, query);

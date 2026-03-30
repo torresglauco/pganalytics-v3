@@ -75,13 +75,13 @@ json PgBloatCollector::collectTableBloat(const std::string& dbname) {
     const char* query = R"(
         SELECT
             schemaname,
-            tablename,
+            relname,
             n_dead_tup,
             n_live_tup,
             ROUND(100.0 * n_dead_tup / NULLIF(n_live_tup + n_dead_tup, 0), 2) as dead_ratio,
-            pg_size_pretty(pg_relation_size(schemaname||'.'||tablename)) as table_size,
-            ROUND(100.0 * pg_relation_size(schemaname||'.'||tablename) * n_dead_tup /
-                NULLIF(pg_relation_size(schemaname||'.'||tablename) * (n_live_tup + n_dead_tup), 0), 2) as space_wasted_percent,
+            pg_size_pretty(pg_relation_size(schemaname||'.'||relname)) as table_size,
+            ROUND(100.0 * pg_relation_size(schemaname||'.'||relname) * n_dead_tup /
+                NULLIF(pg_relation_size(schemaname||'.'||relname) * (n_live_tup + n_dead_tup), 0), 2) as space_wasted_percent,
             last_vacuum,
             last_autovacuum,
             vacuum_count,
@@ -138,7 +138,7 @@ json PgBloatCollector::collectIndexBloat(const std::string& dbname) {
     const char* query = R"(
         SELECT
             schemaname,
-            tablename,
+            relname,
             indexname,
             idx_scan,
             idx_tup_read,

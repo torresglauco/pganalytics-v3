@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/torresglauco/pganalytics-v3/backend/internal/auth"
 	apperrors "github.com/torresglauco/pganalytics-v3/backend/pkg/errors"
 	"go.uber.org/zap"
@@ -337,9 +338,16 @@ func (s *Server) RateLimitMiddleware() gin.HandlerFunc {
 // RequestIDMiddleware adds a unique request ID for tracing
 func (s *Server) RequestIDMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// TODO: Generate or extract request ID
-		// c.Set("request_id", requestID)
-		// c.Writer.Header().Set("X-Request-ID", requestID)
+		// Generate UUID for each request
+		requestID := uuid.New().String()
+
+		// Store in context for access by handlers
+		c.Set("request_id", requestID)
+
+		// Add to response headers for client tracking
+		c.Writer.Header().Set("X-Request-ID", requestID)
+
+		// Continue with request
 		c.Next()
 	}
 }

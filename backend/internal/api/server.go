@@ -259,6 +259,7 @@ func getOAuthProviderNames(configs []auth.OAuthProviderConfig) []string {
 // RegisterRoutes registers all API routes
 func (s *Server) RegisterRoutes(router *gin.Engine) {
 	// Apply global middleware
+	router.Use(s.RequestIDMiddleware())
 	router.Use(s.SecurityHeadersMiddleware())
 
 	// Health check (no auth required)

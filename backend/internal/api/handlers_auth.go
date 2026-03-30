@@ -106,12 +106,18 @@ func (s *Server) handleLDAPLogin(c *gin.Context) {
 	// Create session
 	sess, err := s.sessionManager.CreateSession(user.ID, c.ClientIP(), c.GetHeader("User-Agent"))
 	if err != nil {
-		s.logger.Error("Failed to create session", zap.Error(err))
+		s.logger.Error("Failed to create session - authentication failed",
+			zap.Int("user_id", user.ID),
+			zap.String("ip", c.ClientIP()),
+			zap.String("method", "ldap_login"),
+			zap.Error(err))
+		errResp := apperrors.InternalServerError("Failed to create session", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
 	}
-	sessionToken := ""
-	if sess != nil {
-		sessionToken = sess.Token
-	}
+
+	// Session creation succeeded - safe to proceed
+	sessionToken := sess.Token
 
 	// Log authentication event
 	s.logAuthEvent(ctx, user.ID, "ldap_login", true, "")
@@ -285,12 +291,19 @@ func (s *Server) handleOAuthCallback(c *gin.Context) {
 	// Create session
 	sess, err := s.sessionManager.CreateSession(user.ID, c.ClientIP(), c.GetHeader("User-Agent"))
 	if err != nil {
-		s.logger.Error("Failed to create session", zap.Error(err))
+		s.logger.Error("Failed to create session - authentication failed",
+			zap.Int("user_id", user.ID),
+			zap.String("ip", c.ClientIP()),
+			zap.String("provider", req.Provider),
+			zap.String("method", "oauth_callback"),
+			zap.Error(err))
+		errResp := apperrors.InternalServerError("Failed to create session", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
 	}
-	sessionToken := ""
-	if sess != nil {
-		sessionToken = sess.Token
-	}
+
+	// Session creation succeeded - safe to proceed
+	sessionToken := sess.Token
 
 	// Log authentication event
 	s.logAuthEvent(ctx, user.ID, fmt.Sprintf("oauth_%s_login", req.Provider), true, "")
@@ -439,12 +452,18 @@ func (s *Server) handleSAMLACS(c *gin.Context) {
 	// Create session
 	sess, err := s.sessionManager.CreateSession(user.ID, c.ClientIP(), c.GetHeader("User-Agent"))
 	if err != nil {
-		s.logger.Error("Failed to create session", zap.Error(err))
+		s.logger.Error("Failed to create session - authentication failed",
+			zap.Int("user_id", user.ID),
+			zap.String("ip", c.ClientIP()),
+			zap.String("method", "saml_acs"),
+			zap.Error(err))
+		errResp := apperrors.InternalServerError("Failed to create session", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
 	}
-	sessionToken := ""
-	if sess != nil {
-		sessionToken = sess.Token
-	}
+
+	// Session creation succeeded - safe to proceed
+	sessionToken := sess.Token
 
 	// Log authentication event
 	s.logAuthEvent(ctx, user.ID, "saml_login", true, "")

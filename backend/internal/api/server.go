@@ -29,7 +29,7 @@ type Server struct {
 	cacheManager        *cache.Manager
 	rateLimiter         *RateLimiter
 	secretManager       *crypto.SecretManager
-	sessionManager      *session.SessionManager
+	sessionManager      session.ISessionManager
 	mfaManager          *auth.MFAManager
 	auditLogger         *audit.AuditLogger
 	wsManager           *services.ConnectionManager
@@ -83,6 +83,9 @@ func NewServer(
 	var escalationHandler *handlers.EscalationHandler
 	// escalationHandler = handlers.NewEscalationHandler(escalationService)
 
+	// Initialize session manager
+	sessionManager := session.NewSessionManager(nil) // Redis client to be configured
+
 	return &Server{
 		config:              cfg,
 		logger:              logger,
@@ -95,6 +98,7 @@ func NewServer(
 		cacheManager:        nil, // Set via SetCacheManager
 		rateLimiter:         rateLimiter,
 		secretManager:       secretManager,
+		sessionManager:      sessionManager,
 		wsManager:           services.NewConnectionManager(),
 		conditionHandler:    conditionHandler,
 		silenceHandler:      silenceHandler,
@@ -105,6 +109,11 @@ func NewServer(
 // SetCacheManager sets the cache manager for the server
 func (s *Server) SetCacheManager(cm *cache.Manager) {
 	s.cacheManager = cm
+}
+
+// SetSessionManager sets the session manager for the server
+func (s *Server) SetSessionManager(sm session.ISessionManager) {
+	s.sessionManager = sm
 }
 
 // RegisterRoutes registers all API routes

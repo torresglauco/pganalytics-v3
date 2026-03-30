@@ -22,6 +22,19 @@ type Session struct {
 	ExpiresAt time.Time
 }
 
+// ISessionManager defines the interface for session management
+type ISessionManager interface {
+	CreateSession(userID int, ipAddress, userAgent string) (*Session, error)
+	ValidateSession(sessionID, token string) error
+	RevokeSession(sessionID string) error
+	RevokeAllUserSessions(userID int) error
+	RefreshSession(sessionID string) error
+	GetSessionByID(sessionID string) (*Session, error)
+	GetUserSessions(userID int) ([]*Session, error)
+	GetSessionStats() (*SessionStats, error)
+	CleanupExpiredSessions() error
+}
+
 // generateSecureToken generates a cryptographically secure random token
 func generateSecureToken(length int) (string, error) {
 	bytes := make([]byte, length)

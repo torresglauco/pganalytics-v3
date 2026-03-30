@@ -3,6 +3,7 @@ package auth
 import (
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/sha256"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
@@ -119,13 +120,19 @@ func (cm *CertificateManager) GenerateCollectorCertificate(
 	}, nil
 }
 
-// computeSHA256 is a helper function (simplified for demo)
-// In production, use crypto/sha256 properly
+// ComputeCertificateThumbprint computes the SHA256 thumbprint of a certificate in DER format
+func ComputeCertificateThumbprint(certDER []byte) string {
+	return computeSHA256Hex(certDER)
+}
+
+// computeSHA256 computes SHA256 hash of data and returns the result as a byte array
 func computeSHA256(data []byte) [32]byte {
-	// This is a placeholder - proper implementation would use sha256.Sum256
-	var result [32]byte
-	copy(result[:], []byte("demo-thumbprint-hash-32chars123"))
-	return result
+	return sha256.Sum256(data)
+}
+
+// computeSHA256Hex computes SHA256 hash of data and returns it as a hex string
+func computeSHA256Hex(data []byte) string {
+	return fmt.Sprintf("%x", computeSHA256(data))
 }
 
 // ValidateCertificate validates a certificate

@@ -82,6 +82,21 @@ CREATE INDEX idx_collector_tokens_collector ON collector_tokens(collector_id);
 CREATE INDEX idx_collector_tokens_hash ON collector_tokens(token_hash);
 CREATE INDEX idx_collector_tokens_expires ON collector_tokens(expires_at);
 
+-- Collector Certificates (mTLS validation)
+CREATE TABLE collector_certificates (
+    id SERIAL PRIMARY KEY,
+    collector_id UUID NOT NULL REFERENCES collectors(id) ON DELETE CASCADE,
+    thumbprint VARCHAR(64) NOT NULL UNIQUE,
+    certificate_pem TEXT NOT NULL,
+    registered_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    expires_at TIMESTAMP WITH TIME ZONE,
+    is_active BOOLEAN DEFAULT true
+);
+CREATE INDEX idx_collector_certificates_collector ON collector_certificates(collector_id);
+CREATE INDEX idx_collector_certificates_thumbprint ON collector_certificates(thumbprint);
+CREATE INDEX idx_collector_certificates_active ON collector_certificates(is_active) WHERE is_active = true;
+CREATE INDEX idx_collector_certificates_expires ON collector_certificates(expires_at);
+
 -- Registration Secrets
 CREATE TABLE registration_secrets (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

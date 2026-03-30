@@ -635,6 +635,115 @@ func (p *PostgresDB) CreateCollectorConfig(ctx context.Context, config *models.C
 }
 
 // ============================================================================
+// COLLECTOR CERTIFICATE OPERATIONS (mTLS)
+// ============================================================================
+
+// GetCollectorByThumbprint retrieves collector ID by certificate thumbprint
+func (p *PostgresDB) GetCollectorByThumbprint(ctx context.Context, thumbprint string) (string, error) {
+	var collectorID string
+
+	err := p.db.QueryRowContext(
+		ctx,
+		`SELECT collector_id
+		 FROM pganalytics.collector_certificates
+		 WHERE thumbprint = $1 AND is_active = true
+		 LIMIT 1`,
+		thumbprint,
+	).Scan(&collectorID)
+
+	if err == sql.ErrNoRows {
+		return "", apperrors.InvalidCertificate("Certificate thumbprint not registered")
+	}
+	if err != nil {
+		return "", apperrors.DatabaseError("get collector by thumbprint", err.Error())
+	}
+
+	return collectorID, nil
+}
+
+// RegisterCertificate registers a new certificate for a collector
+func (p *PostgresDB) RegisterCertificate(ctx context.Context, collectorID string, thumbprint, certPEM string, expiresAt *time.Time) error {
+	_, err := p.db.ExecContext(
+		ctx,
+		`INSERT INTO pganalytics.collector_certificates (collector_id, thumbprint, certificate_pem, expires_at, is_active)
+		 VALUES ($1::uuid, $2, $3, $4, true)
+		 ON CONFLICT (thumbprint) DO UPDATE SET
+		   is_active = true,
+		   expires_at = EXCLUDED.expires_at,
+		   registered_at = CURRENT_TIMESTAMP`,
+		collectorID, thumbprint, certPEM, expiresAt,
+	)
+
+	if err != nil {
+		return apperrors.DatabaseError("register certificate", err.Error())
+	}
+
+	return nil
+}
+
+// ListCertificates retrieves all certificates for a collector
+func (p *PostgresDB) ListCertificates(ctx context.Context, collectorID string) ([]*models.CertificateInfo, error) {
+	rows, err := p.db.QueryContext(
+		ctx,
+		`SELECT id, collector_id, thumbprint, certificate_pem, registered_at, expires_at, is_active
+		 FROM pganalytics.collector_certificates
+		 WHERE collector_id::text = $1
+		 ORDER BY registered_at DESC`,
+		collectorID,
+	)
+
+	if err != nil {
+		return nil, apperrors.DatabaseError("list certificates", err.Error())
+	}
+	defer rows.Close()
+
+	var certificates []*models.CertificateInfo
+	for rows.Next() {
+		cert := &models.CertificateInfo{}
+		err := rows.Scan(
+			&cert.ID, &cert.CollectorID, &cert.Thumbprint, &cert.CertificatePEM,
+			&cert.RegisteredAt, &cert.ExpiresAt, &cert.IsActive,
+		)
+		if err != nil {
+			return nil, apperrors.DatabaseError("scan certificate", err.Error())
+		}
+		certificates = append(certificates, cert)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, apperrors.DatabaseError("iterate certificates", err.Error())
+	}
+
+	return certificates, nil
+}
+
+// RevokeCertificate revokes a certificate by thumbprint
+func (p *PostgresDB) RevokeCertificate(ctx context.Context, thumbprint string) error {
+	result, err := p.db.ExecContext(
+		ctx,
+		`UPDATE pganalytics.collector_certificates
+		 SET is_active = false
+		 WHERE thumbprint = $1`,
+		thumbprint,
+	)
+
+	if err != nil {
+		return apperrors.DatabaseError("revoke certificate", err.Error())
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return apperrors.DatabaseError("get rows affected", err.Error())
+	}
+
+	if rowsAffected == 0 {
+		return apperrors.NotFound("certificate", thumbprint)
+	}
+
+	return nil
+}
+
+// ============================================================================
 // API TOKEN OPERATIONS
 // ============================================================================
 

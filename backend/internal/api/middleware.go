@@ -105,12 +105,9 @@ func (s *Server) CollectorAuthMiddleware() gin.HandlerFunc {
 }
 
 // MTLSMiddleware validates mutual TLS authentication
-// TODO: Implement mTLS verification in Phase 2
 func (s *Server) MTLSMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// In production, verify client certificate from TLS connection
-		// For now, this is a placeholder
-
+		// Check if TLS connection is established
 		if c.Request.TLS == nil {
 			// No TLS connection found
 			if s.config.IsProduction() {
@@ -119,8 +116,13 @@ func (s *Server) MTLSMiddleware() gin.HandlerFunc {
 				c.Abort()
 				return
 			}
-			// Allow non-TLS in development
-		} else if len(c.Request.TLS.PeerCertificates) == 0 {
+			// Allow non-TLS in development mode
+			c.Next()
+			return
+		}
+
+		// Check if client certificate is provided
+		if len(c.Request.TLS.PeerCertificates) == 0 {
 			// No client certificate provided
 			if s.config.IsProduction() {
 				errResp := apperrors.InvalidCertificate("Client certificate required")
@@ -128,11 +130,38 @@ func (s *Server) MTLSMiddleware() gin.HandlerFunc {
 				c.Abort()
 				return
 			}
+			// Allow missing certificate in development mode
+			c.Next()
+			return
 		}
 
-		// TODO: Verify certificate authenticity
-		// TODO: Extract certificate thumbprint and verify it's registered
-		// TODO: Store collector_id in context for metrics processing
+		// Extract and validate client certificate
+		clientCert := c.Request.TLS.PeerCertificates[0]
+
+		// Compute SHA256 thumbprint of the certificate
+		thumbprint := auth.ComputeCertificateThumbprint(clientCert.Raw)
+
+		// Query database for registered thumbprint
+		collectorID, err := s.postgres.GetCollectorByThumbprint(c, thumbprint)
+		if err != nil {
+			s.logger.Warn("Certificate not recognized",
+				zap.String("thumbprint", thumbprint),
+				zap.Error(err),
+			)
+			errResp := apperrors.InvalidCertificate("Certificate not recognized")
+			c.JSON(errResp.StatusCode, errResp)
+			c.Abort()
+			return
+		}
+
+		// Store collector info in context for downstream handlers
+		c.Set("collector_id", collectorID)
+		c.Set("client_certificate", clientCert)
+
+		s.logger.Debug("Client certificate validated",
+			zap.String("collector_id", collectorID),
+			zap.String("thumbprint", thumbprint),
+		)
 
 		c.Next()
 	}

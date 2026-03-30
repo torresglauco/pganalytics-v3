@@ -1107,3 +1107,14 @@ type EscalationState struct {
 	CreatedAt          time.Time              `db:"created_at" json:"created_at"`
 	UpdatedAt          time.Time              `db:"updated_at" json:"updated_at"`
 }
+
+// CertificateInfo represents a collector's mTLS certificate
+type CertificateInfo struct {
+	ID            int        `db:"id" json:"id"`
+	CollectorID   uuid.UUID  `db:"collector_id" json:"collector_id"`
+	Thumbprint    string     `db:"thumbprint" json:"thumbprint"`
+	CertificatePEM string     `db:"certificate_pem" json:"certificate_pem,omitempty"`
+	RegisteredAt  time.Time  `db:"registered_at" json:"registered_at"`
+	ExpiresAt     *time.Time `db:"expires_at" json:"expires_at,omitempty"`
+	IsActive      bool       `db:"is_active" json:"is_active"`
+}

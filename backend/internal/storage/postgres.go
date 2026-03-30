@@ -2829,3 +2829,126 @@ func (p *PostgresDB) CreateNotification(ctx context.Context, notif *models.Notif
 
 	return notifID, nil
 }
+
+// GetPendingNotifications retrieves all pending notifications from database
+func (p *PostgresDB) GetPendingNotifications(ctx context.Context) ([]*models.Notification, error) {
+	rows, err := p.db.QueryContext(
+		ctx,
+		`SELECT id, channel_id, alert_trigger_id, status, retry_count, last_retry_at, sent_at, created_at, updated_at
+		 FROM pganalytics.notifications
+		 WHERE status = 'pending'
+		 ORDER BY created_at ASC`,
+	)
+
+	if err != nil {
+		return nil, apperrors.DatabaseError("get pending notifications", err.Error())
+	}
+	defer func() { _ = rows.Close() }()
+
+	var notifications []*models.Notification
+	for rows.Next() {
+		notif := &models.Notification{}
+
+		err := rows.Scan(
+			&notif.ID, &notif.ChannelID, &notif.AlertTriggerID, &notif.Status, &notif.RetryCount,
+			&notif.LastRetryAt, &notif.SentAt, &notif.CreatedAt, &notif.UpdatedAt,
+		)
+		if err != nil {
+			return nil, apperrors.DatabaseError("scan notification", err.Error())
+		}
+
+		notifications = append(notifications, notif)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, apperrors.DatabaseError("get pending notifications", err.Error())
+	}
+
+	return notifications, nil
+}
+
+// UpdateNotificationStatus updates the status of a notification
+func (p *PostgresDB) UpdateNotificationStatus(ctx context.Context, id int64, status string) error {
+	result, err := p.db.ExecContext(
+		ctx,
+		`UPDATE pganalytics.notifications
+		 SET status = $1, updated_at = NOW()
+		 WHERE id = $2`,
+		status, id,
+	)
+
+	if err != nil {
+		return apperrors.DatabaseError("update notification status", err.Error())
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return apperrors.DatabaseError("get rows affected", err.Error())
+	}
+
+	if rowsAffected == 0 {
+		return apperrors.DatabaseError("update notification status", "notification not found")
+	}
+
+	return nil
+}
+
+// UpdateNotificationRetry updates the retry count and timestamp for a notification
+func (p *PostgresDB) UpdateNotificationRetry(ctx context.Context, id int64, retryCount int, lastRetryAt time.Time) error {
+	result, err := p.db.ExecContext(
+		ctx,
+		`UPDATE pganalytics.notifications
+		 SET retry_count = $1, last_retry_at = $2, updated_at = NOW()
+		 WHERE id = $3`,
+		retryCount, lastRetryAt, id,
+	)
+
+	if err != nil {
+		return apperrors.DatabaseError("update notification retry", err.Error())
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return apperrors.DatabaseError("get rows affected", err.Error())
+	}
+
+	if rowsAffected == 0 {
+		return apperrors.DatabaseError("update notification retry", "notification not found")
+	}
+
+	return nil
+}
+
+// GetNotificationChannel retrieves a notification channel by ID
+func (p *PostgresDB) GetNotificationChannel(ctx context.Context, channelID int64) (*models.NotificationChannel, error) {
+	channel := &models.NotificationChannel{}
+	var configJSON string
+
+	err := p.db.QueryRowContext(
+		ctx,
+		`SELECT id, alert_id, type, config, is_active, created_at, updated_at
+		 FROM pganalytics.notification_channels
+		 WHERE id = $1`,
+		channelID,
+	).Scan(&channel.ID, &channel.AlertID, &channel.Type, &configJSON, &channel.IsActive, &channel.CreatedAt, &channel.UpdatedAt)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, apperrors.DatabaseError("get notification channel", err.Error())
+	}
+
+	// Parse JSON config
+	if configJSON != "" {
+		channel.Config = make(map[string]interface{})
+		err := json.Unmarshal([]byte(configJSON), &channel.Config)
+		if err != nil {
+			return nil, apperrors.DatabaseError("parse channel config", err.Error())
+		}
+	} else {
+		channel.Config = make(map[string]interface{})
+	}
+
+	return channel, nil
+}

@@ -9,8 +9,11 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"os"
 	"sync"
 	"time"
+
+	"go.uber.org/zap"
 )
 
 // ============================================================================
@@ -21,8 +24,10 @@ import (
 type NotificationService struct {
 	db                  *sql.DB
 	httpClient          *http.Client
+	logger              *log.Logger
 	maxRetries          int
 	retryBackoffSeconds []int // exponential backoff: [1, 2, 4, 8, 16]
+	channelTimeout      time.Duration
 
 	// Channel implementations
 	channels map[string]NotificationChannel
@@ -96,14 +101,27 @@ type NotificationDelivery struct {
 // ============================================================================
 
 // NewNotificationService creates a new notification service
-func NewNotificationService(db *sql.DB) *NotificationService {
+func NewNotificationService(db *sql.DB, logger *log.Logger) *NotificationService {
+	if logger == nil {
+		logger = log.New(os.Stderr, "[Notifications] ", log.LstdFlags)
+	}
+
+	channelTimeout := 10 * time.Second
+	if envTimeout := os.Getenv("NOTIFICATION_CHANNEL_TIMEOUT"); envTimeout != "" {
+		if d, err := time.ParseDuration(envTimeout); err == nil {
+			channelTimeout = d
+		}
+	}
+
 	service := &NotificationService{
 		db: db,
 		httpClient: &http.Client{
-			Timeout: 10 * time.Second,
+			Timeout: channelTimeout,
 		},
+		logger:              logger,
 		maxRetries:          5,
 		retryBackoffSeconds: []int{1, 2, 4, 8, 16},
+		channelTimeout:      channelTimeout,
 		channels:            make(map[string]NotificationChannel),
 		lastMetricsRecalc:   time.Now(),
 	}
@@ -116,11 +134,15 @@ func NewNotificationService(db *sql.DB) *NotificationService {
 
 // registerChannels registers all available notification channels
 func (ns *NotificationService) registerChannels() {
-	ns.channels["slack"] = NewSlackChannel(ns.httpClient)
-	ns.channels["email"] = NewEmailChannel()
-	ns.channels["webhook"] = NewWebhookChannel(ns.httpClient)
-	ns.channels["pagerduty"] = NewPagerDutyChannel(ns.httpClient)
-	ns.channels["jira"] = NewJiraChannel(ns.httpClient)
+	// Create a zap logger wrapper for channels
+	zapLogger, _ := zap.NewProduction()
+	defer zapLogger.Sync()
+
+	ns.channels["slack"] = NewSlackChannel(ns.httpClient, zapLogger, ns.channelTimeout)
+	ns.channels["email"] = NewEmailChannel(zapLogger, ns.channelTimeout)
+	ns.channels["webhook"] = NewWebhookChannel(ns.httpClient, zapLogger, ns.channelTimeout)
+	ns.channels["pagerduty"] = NewPagerDutyChannel(ns.httpClient, zapLogger, ns.channelTimeout)
+	ns.channels["jira"] = NewJiraChannel(ns.httpClient, zapLogger, ns.channelTimeout)
 }
 
 // ============================================================================

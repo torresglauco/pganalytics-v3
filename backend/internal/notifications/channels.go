@@ -7,14 +7,203 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
+
+	"go.uber.org/zap"
 )
+
+// ============================================================================
+// CIRCUIT BREAKER SUPPORT
+// ============================================================================
+
+// BaseChannel provides common functionality for all notification channels
+type BaseChannel struct {
+	circuitBreaker *CircuitBreaker
+	logger         *zap.Logger
+	timeout        time.Duration
+}
+
+// NewBaseChannel creates a new base channel with circuit breaker
+func NewBaseChannel(logger *zap.Logger, timeout time.Duration) *BaseChannel {
+	if logger == nil {
+		logger, _ = zap.NewProduction()
+	}
+	if timeout == 0 {
+		timeout = 10 * time.Second
+	}
+	return &BaseChannel{
+		circuitBreaker: NewCircuitBreaker(logger),
+		logger:         logger,
+		timeout:        timeout,
+	}
+}
+
+// CircuitBreakerState represents the state of a circuit breaker
+type CircuitBreakerState string
+
+const (
+	// StateClosed means the circuit is closed (normal operation)
+	StateClosed CircuitBreakerState = "closed"
+	// StateOpen means the circuit is open (service unavailable)
+	StateOpen CircuitBreakerState = "open"
+	// StateHalfOpen means the circuit is half-open (testing recovery)
+	StateHalfOpen CircuitBreakerState = "half-open"
+)
+
+// CircuitBreaker implements the circuit breaker pattern for notification channels
+type CircuitBreaker struct {
+	mu               sync.RWMutex
+	state            CircuitBreakerState
+	failureCount     int
+	successCount     int
+	lastFailureTime  time.Time
+	failureThreshold int
+	successThreshold int
+	timeout          time.Duration
+	logger           *zap.Logger
+}
+
+// NewCircuitBreaker creates a new circuit breaker for a notification channel
+func NewCircuitBreaker(logger *zap.Logger) *CircuitBreaker {
+	return &CircuitBreaker{
+		state:            StateClosed,
+		failureCount:     0,
+		successCount:     0,
+		failureThreshold: 5,                // Open after 5 failures
+		successThreshold: 3,                // Close after 3 successes
+		timeout:          30 * time.Second, // Try recovery after 30 seconds
+		logger:           logger,
+	}
+}
+
+// RecordSuccess records a successful call
+func (cb *CircuitBreaker) RecordSuccess() {
+	cb.mu.Lock()
+	defer cb.mu.Unlock()
+
+	switch cb.state {
+	case StateClosed:
+		// Success in closed state, reset counter
+		cb.failureCount = 0
+		cb.successCount = 0
+
+	case StateHalfOpen:
+		// Success in half-open state, increment success counter
+		cb.successCount++
+		if cb.successCount >= cb.successThreshold {
+			cb.state = StateClosed
+			cb.failureCount = 0
+			cb.successCount = 0
+			cb.logger.Info("Circuit breaker closed - service recovered")
+		}
+
+	case StateOpen:
+		// Ignore successes when open (waiting for timeout)
+	}
+}
+
+// RecordFailure records a failed call
+func (cb *CircuitBreaker) RecordFailure() {
+	cb.mu.Lock()
+	defer cb.mu.Unlock()
+
+	cb.lastFailureTime = time.Now()
+
+	switch cb.state {
+	case StateClosed:
+		// Failure in closed state, increment counter
+		cb.failureCount++
+		if cb.failureCount >= cb.failureThreshold {
+			cb.state = StateOpen
+			cb.logger.Warn("Circuit breaker opened - too many failures",
+				zap.Int("failure_count", cb.failureCount))
+		}
+
+	case StateHalfOpen:
+		// Failure in half-open state, re-open the circuit
+		cb.state = StateOpen
+		cb.failureCount = 0
+		cb.successCount = 0
+		cb.logger.Warn("Circuit breaker reopened - failure during recovery")
+
+	case StateOpen:
+		// Already open, just update timestamp
+		cb.lastFailureTime = time.Now()
+	}
+}
+
+// IsOpen checks if the circuit is open (service unavailable)
+func (cb *CircuitBreaker) IsOpen() bool {
+	cb.mu.RLock()
+	defer cb.mu.RUnlock()
+
+	if cb.state == StateClosed {
+		return false
+	}
+
+	if cb.state == StateOpen {
+		// Check if timeout has elapsed to try recovery
+		if time.Since(cb.lastFailureTime) > cb.timeout {
+			// Upgrade to half-open
+			cb.mu.RUnlock()
+			cb.mu.Lock()
+			cb.state = StateHalfOpen
+			cb.failureCount = 0
+			cb.successCount = 0
+			cb.mu.Unlock()
+			cb.mu.RLock()
+			cb.logger.Info("Circuit breaker half-open - attempting recovery")
+			return false
+		}
+		return true
+	}
+
+	// Half-open state
+	return false
+}
+
+// State returns the current state as a string
+func (cb *CircuitBreaker) State() string {
+	cb.mu.RLock()
+	defer cb.mu.RUnlock()
+	return string(cb.state)
+}
+
+// Reset resets the circuit breaker to closed state
+func (cb *CircuitBreaker) Reset() {
+	cb.mu.Lock()
+	defer cb.mu.Unlock()
+
+	cb.state = StateClosed
+	cb.failureCount = 0
+	cb.successCount = 0
+	cb.lastFailureTime = time.Time{}
+	cb.logger.Info("Circuit breaker reset to closed state")
+}
+
+// GetMetrics returns the current metrics
+func (cb *CircuitBreaker) GetMetrics() map[string]interface{} {
+	cb.mu.RLock()
+	defer cb.mu.RUnlock()
+
+	return map[string]interface{}{
+		"state":              string(cb.state),
+		"failure_count":      cb.failureCount,
+		"success_count":      cb.successCount,
+		"failure_threshold":  cb.failureThreshold,
+		"success_threshold":  cb.successThreshold,
+		"last_failure_time":  cb.lastFailureTime,
+		"time_since_failure": time.Since(cb.lastFailureTime).Seconds(),
+	}
+}
 
 // ============================================================================
 // SLACK CHANNEL
 // ============================================================================
 
 type SlackChannel struct {
+	*BaseChannel
 	httpClient *http.Client
 }
 
@@ -47,8 +236,11 @@ type SlackField struct {
 	Short bool   `json:"short"`
 }
 
-func NewSlackChannel(httpClient *http.Client) NotificationChannel {
-	return &SlackChannel{httpClient: httpClient}
+func NewSlackChannel(httpClient *http.Client, logger *zap.Logger, timeout time.Duration) NotificationChannel {
+	return &SlackChannel{
+		BaseChannel: NewBaseChannel(logger, timeout),
+		httpClient:  httpClient,
+	}
 }
 
 func (s *SlackChannel) Type() string {
@@ -69,6 +261,20 @@ func (s *SlackChannel) Validate(config ChannelConfig) error {
 }
 
 func (s *SlackChannel) Send(ctx context.Context, alert *AlertNotification, config ChannelConfig) (*DeliveryResult, error) {
+	// Check circuit breaker
+	if s.circuitBreaker.IsOpen() {
+		s.logger.Warn("Slack circuit breaker is open")
+		return &DeliveryResult{
+			Success:     false,
+			ErrorMsg:    "Slack service temporarily unavailable (circuit open)",
+			DeliveredAt: now(),
+		}, nil
+	}
+
+	// Add timeout
+	ctx, cancel := context.WithTimeout(ctx, s.timeout)
+	defer cancel()
+
 	var slackConfig SlackConfig
 	if err := json.Unmarshal(config.Config, &slackConfig); err != nil {
 		return nil, fmt.Errorf("unmarshal config: %w", err)
@@ -138,11 +344,20 @@ func (s *SlackChannel) Send(ctx context.Context, alert *AlertNotification, confi
 
 	resp, err := s.httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("send request: %w", err)
+		s.circuitBreaker.RecordFailure()
+		s.logger.Error("Slack POST failed", zap.Error(err))
+		return &DeliveryResult{
+			Success:     false,
+			ErrorMsg:    fmt.Sprintf("Slack POST failed: %v", err),
+			DeliveredAt: now(),
+		}, nil
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		s.circuitBreaker.RecordFailure()
+		s.logger.Error("Slack returned error",
+			zap.Int("status_code", resp.StatusCode))
 		return &DeliveryResult{
 			Success:     false,
 			ErrorMsg:    fmt.Sprintf("HTTP %d", resp.StatusCode),
@@ -150,6 +365,9 @@ func (s *SlackChannel) Send(ctx context.Context, alert *AlertNotification, confi
 		}, nil
 	}
 
+	// Success
+	s.circuitBreaker.RecordSuccess()
+	s.logger.Info("Slack notification delivered")
 	return &DeliveryResult{
 		Success:     true,
 		MessageID:   fmt.Sprintf("slack_%d", alert.AlertID),
@@ -193,15 +411,19 @@ func (s *SlackChannel) Test(ctx context.Context, config ChannelConfig) error {
 // EMAIL CHANNEL
 // ============================================================================
 
-type EmailChannel struct{}
+type EmailChannel struct {
+	*BaseChannel
+}
 
 type EmailConfig struct {
 	Recipients []string `json:"recipients"`
 	SMTPURL    string   `json:"smtp_url,omitempty"`
 }
 
-func NewEmailChannel() NotificationChannel {
-	return &EmailChannel{}
+func NewEmailChannel(logger *zap.Logger, timeout time.Duration) NotificationChannel {
+	return &EmailChannel{
+		BaseChannel: NewBaseChannel(logger, timeout),
+	}
 }
 
 func (e *EmailChannel) Type() string {
@@ -222,15 +444,39 @@ func (e *EmailChannel) Validate(config ChannelConfig) error {
 }
 
 func (e *EmailChannel) Send(ctx context.Context, alert *AlertNotification, config ChannelConfig) (*DeliveryResult, error) {
+	// Check circuit breaker
+	if e.circuitBreaker.IsOpen() {
+		e.logger.Warn("Email circuit breaker is open")
+		return &DeliveryResult{
+			Success:     false,
+			ErrorMsg:    "Email service temporarily unavailable (circuit open)",
+			DeliveredAt: now(),
+		}, nil
+	}
+
+	// Add timeout
+	ctx, cancel := context.WithTimeout(ctx, e.timeout)
+	defer cancel()
+
 	var emailConfig EmailConfig
 	if err := json.Unmarshal(config.Config, &emailConfig); err != nil {
 		return nil, fmt.Errorf("unmarshal config: %w", err)
 	}
 
+	if len(emailConfig.Recipients) == 0 {
+		return &DeliveryResult{
+			Success:     false,
+			ErrorMsg:    "Email recipients not configured",
+			DeliveredAt: now(),
+		}, nil
+	}
+
 	// In production, would use actual SMTP library (e.g., net/smtp)
-	// For now, simulating successful delivery
+	// For now, simulating successful delivery with circuit breaker tracking
 	// This is a placeholder - would need proper email integration
 
+	e.circuitBreaker.RecordSuccess()
+	e.logger.Info("Email notification delivered", zap.Int("recipient_count", len(emailConfig.Recipients)))
 	return &DeliveryResult{
 		Success:     true,
 		MessageID:   fmt.Sprintf("email_%d", alert.AlertID),
@@ -260,6 +506,7 @@ func (e *EmailChannel) Test(ctx context.Context, config ChannelConfig) error {
 // ============================================================================
 
 type WebhookChannel struct {
+	*BaseChannel
 	httpClient *http.Client
 }
 
@@ -283,8 +530,11 @@ type WebhookPayload struct {
 	Source    string            `json:"source"`
 }
 
-func NewWebhookChannel(httpClient *http.Client) NotificationChannel {
-	return &WebhookChannel{httpClient: httpClient}
+func NewWebhookChannel(httpClient *http.Client, logger *zap.Logger, timeout time.Duration) NotificationChannel {
+	return &WebhookChannel{
+		BaseChannel: NewBaseChannel(logger, timeout),
+		httpClient:  httpClient,
+	}
 }
 
 func (w *WebhookChannel) Type() string {
@@ -309,6 +559,20 @@ func (w *WebhookChannel) Validate(config ChannelConfig) error {
 }
 
 func (w *WebhookChannel) Send(ctx context.Context, alert *AlertNotification, config ChannelConfig) (*DeliveryResult, error) {
+	// Check circuit breaker
+	if w.circuitBreaker.IsOpen() {
+		w.logger.Warn("Webhook circuit breaker is open")
+		return &DeliveryResult{
+			Success:     false,
+			ErrorMsg:    "Webhook service temporarily unavailable (circuit open)",
+			DeliveredAt: now(),
+		}, nil
+	}
+
+	// Add timeout
+	ctx, cancel := context.WithTimeout(ctx, w.timeout)
+	defer cancel()
+
 	var webhookConfig WebhookConfig
 	if err := json.Unmarshal(config.Config, &webhookConfig); err != nil {
 		return nil, fmt.Errorf("unmarshal config: %w", err)
@@ -357,11 +621,20 @@ func (w *WebhookChannel) Send(ctx context.Context, alert *AlertNotification, con
 	// Send request
 	resp, err := w.httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("send request: %w", err)
+		w.circuitBreaker.RecordFailure()
+		w.logger.Error("Webhook POST failed", zap.Error(err))
+		return &DeliveryResult{
+			Success:     false,
+			ErrorMsg:    fmt.Sprintf("Webhook POST failed: %v", err),
+			DeliveredAt: now(),
+		}, nil
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		w.circuitBreaker.RecordFailure()
+		w.logger.Error("Webhook returned error",
+			zap.Int("status_code", resp.StatusCode))
 		return &DeliveryResult{
 			Success:     false,
 			ErrorMsg:    fmt.Sprintf("HTTP %d", resp.StatusCode),
@@ -369,6 +642,8 @@ func (w *WebhookChannel) Send(ctx context.Context, alert *AlertNotification, con
 		}, nil
 	}
 
+	w.circuitBreaker.RecordSuccess()
+	w.logger.Info("Webhook notification delivered")
 	return &DeliveryResult{
 		Success:     true,
 		MessageID:   fmt.Sprintf("webhook_%d", alert.AlertID),
@@ -399,6 +674,7 @@ func (w *WebhookChannel) Test(ctx context.Context, config ChannelConfig) error {
 // ============================================================================
 
 type PagerDutyChannel struct {
+	*BaseChannel
 	httpClient *http.Client
 }
 
@@ -408,22 +684,25 @@ type PagerDutyConfig struct {
 }
 
 type PagerDutyEvent struct {
-	RoutingKey  string         `json:"routing_key"`
-	EventAction string         `json:"event_action"`
-	Dedup       string         `json:"dedup_key"`
+	RoutingKey  string           `json:"routing_key"`
+	EventAction string           `json:"event_action"`
+	Dedup       string           `json:"dedup_key"`
 	Payload     PagerDutyPayload `json:"payload"`
 }
 
 type PagerDutyPayload struct {
-	Summary   string `json:"summary"`
-	Severity  string `json:"severity"`
-	Source    string `json:"source"`
-	Timestamp string `json:"timestamp"`
+	Summary   string          `json:"summary"`
+	Severity  string          `json:"severity"`
+	Source    string          `json:"source"`
+	Timestamp string          `json:"timestamp"`
 	Details   json.RawMessage `json:"custom_details"`
 }
 
-func NewPagerDutyChannel(httpClient *http.Client) NotificationChannel {
-	return &PagerDutyChannel{httpClient: httpClient}
+func NewPagerDutyChannel(httpClient *http.Client, logger *zap.Logger, timeout time.Duration) NotificationChannel {
+	return &PagerDutyChannel{
+		BaseChannel: NewBaseChannel(logger, timeout),
+		httpClient:  httpClient,
+	}
 }
 
 func (p *PagerDutyChannel) Type() string {
@@ -444,6 +723,20 @@ func (p *PagerDutyChannel) Validate(config ChannelConfig) error {
 }
 
 func (p *PagerDutyChannel) Send(ctx context.Context, alert *AlertNotification, config ChannelConfig) (*DeliveryResult, error) {
+	// Check circuit breaker
+	if p.circuitBreaker.IsOpen() {
+		p.logger.Warn("PagerDuty circuit breaker is open")
+		return &DeliveryResult{
+			Success:     false,
+			ErrorMsg:    "PagerDuty service temporarily unavailable (circuit open)",
+			DeliveredAt: now(),
+		}, nil
+	}
+
+	// Add timeout
+	ctx, cancel := context.WithTimeout(ctx, p.timeout)
+	defer cancel()
+
 	var pdConfig PagerDutyConfig
 	if err := json.Unmarshal(config.Config, &pdConfig); err != nil {
 		return nil, fmt.Errorf("unmarshal config: %w", err)
@@ -487,11 +780,20 @@ func (p *PagerDutyChannel) Send(ctx context.Context, alert *AlertNotification, c
 
 	resp, err := p.httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("send request: %w", err)
+		p.circuitBreaker.RecordFailure()
+		p.logger.Error("PagerDuty POST failed", zap.Error(err))
+		return &DeliveryResult{
+			Success:     false,
+			ErrorMsg:    fmt.Sprintf("PagerDuty POST failed: %v", err),
+			DeliveredAt: now(),
+		}, nil
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		p.circuitBreaker.RecordFailure()
+		p.logger.Error("PagerDuty returned error",
+			zap.Int("status_code", resp.StatusCode))
 		return &DeliveryResult{
 			Success:     false,
 			ErrorMsg:    fmt.Sprintf("HTTP %d", resp.StatusCode),
@@ -499,6 +801,8 @@ func (p *PagerDutyChannel) Send(ctx context.Context, alert *AlertNotification, c
 		}, nil
 	}
 
+	p.circuitBreaker.RecordSuccess()
+	p.logger.Info("PagerDuty notification delivered")
 	return &DeliveryResult{
 		Success:     true,
 		MessageID:   fmt.Sprintf("pd_%d", alert.AlertID),
@@ -524,6 +828,7 @@ func (p *PagerDutyChannel) Test(ctx context.Context, config ChannelConfig) error
 // ============================================================================
 
 type JiraChannel struct {
+	*BaseChannel
 	httpClient *http.Client
 }
 
@@ -540,12 +845,12 @@ type JiraCreateIssue struct {
 }
 
 type JiraIssueFields struct {
-	Project     JiraProject `json:"project"`
+	Project     JiraProject   `json:"project"`
 	IssueType   JiraIssueType `json:"issuetype"`
-	Summary     string `json:"summary"`
-	Description string `json:"description"`
-	Priority    JiraPriority `json:"priority,omitempty"`
-	Labels      []string `json:"labels,omitempty"`
+	Summary     string        `json:"summary"`
+	Description string        `json:"description"`
+	Priority    JiraPriority  `json:"priority,omitempty"`
+	Labels      []string      `json:"labels,omitempty"`
 }
 
 type JiraProject struct {
@@ -560,8 +865,11 @@ type JiraPriority struct {
 	Name string `json:"name"`
 }
 
-func NewJiraChannel(httpClient *http.Client) NotificationChannel {
-	return &JiraChannel{httpClient: httpClient}
+func NewJiraChannel(httpClient *http.Client, logger *zap.Logger, timeout time.Duration) NotificationChannel {
+	return &JiraChannel{
+		BaseChannel: NewBaseChannel(logger, timeout),
+		httpClient:  httpClient,
+	}
 }
 
 func (j *JiraChannel) Type() string {
@@ -582,6 +890,20 @@ func (j *JiraChannel) Validate(config ChannelConfig) error {
 }
 
 func (j *JiraChannel) Send(ctx context.Context, alert *AlertNotification, config ChannelConfig) (*DeliveryResult, error) {
+	// Check circuit breaker
+	if j.circuitBreaker.IsOpen() {
+		j.logger.Warn("Jira circuit breaker is open")
+		return &DeliveryResult{
+			Success:     false,
+			ErrorMsg:    "Jira service temporarily unavailable (circuit open)",
+			DeliveredAt: now(),
+		}, nil
+	}
+
+	// Add timeout
+	ctx, cancel := context.WithTimeout(ctx, j.timeout)
+	defer cancel()
+
 	var jiraConfig JiraConfig
 	if err := json.Unmarshal(config.Config, &jiraConfig); err != nil {
 		return nil, fmt.Errorf("unmarshal config: %w", err)
@@ -607,12 +929,12 @@ func (j *JiraChannel) Send(ctx context.Context, alert *AlertNotification, config
 	// Build issue
 	issue := JiraCreateIssue{
 		Fields: JiraIssueFields{
-			Project: JiraProject{Key: jiraConfig.ProjectKey},
-			IssueType: JiraIssueType{Name: jiraConfig.IssueType},
-			Summary: alert.Title,
+			Project:     JiraProject{Key: jiraConfig.ProjectKey},
+			IssueType:   JiraIssueType{Name: jiraConfig.IssueType},
+			Summary:     alert.Title,
 			Description: alert.Description,
-			Priority: JiraPriority{Name: priority},
-			Labels: []string{"pganalytics", alert.Severity},
+			Priority:    JiraPriority{Name: priority},
+			Labels:      []string{"pganalytics", alert.Severity},
 		},
 	}
 
@@ -629,11 +951,20 @@ func (j *JiraChannel) Send(ctx context.Context, alert *AlertNotification, config
 
 	resp, err := j.httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("send request: %w", err)
+		j.circuitBreaker.RecordFailure()
+		j.logger.Error("Jira POST failed", zap.Error(err))
+		return &DeliveryResult{
+			Success:     false,
+			ErrorMsg:    fmt.Sprintf("Jira POST failed: %v", err),
+			DeliveredAt: now(),
+		}, nil
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		j.circuitBreaker.RecordFailure()
+		j.logger.Error("Jira returned error",
+			zap.Int("status_code", resp.StatusCode))
 		return &DeliveryResult{
 			Success:     false,
 			ErrorMsg:    fmt.Sprintf("HTTP %d", resp.StatusCode),
@@ -641,6 +972,8 @@ func (j *JiraChannel) Send(ctx context.Context, alert *AlertNotification, config
 		}, nil
 	}
 
+	j.circuitBreaker.RecordSuccess()
+	j.logger.Info("Jira notification delivered")
 	return &DeliveryResult{
 		Success:     true,
 		MessageID:   fmt.Sprintf("jira_%d", alert.AlertID),

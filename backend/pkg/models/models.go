@@ -1118,3 +1118,24 @@ type CertificateInfo struct {
 	ExpiresAt     *time.Time `db:"expires_at" json:"expires_at,omitempty"`
 	IsActive      bool       `db:"is_active" json:"is_active"`
 }
+
+// Metric represents a metric value for an instance
+type Metric struct {
+	ID        int64     `db:"id" json:"id"`
+	InstanceID int64    `db:"instance_id" json:"instance_id"`
+	MetricName string   `db:"metric_name" json:"metric_name"`
+	Value     float64   `db:"value" json:"value"`
+	Timestamp time.Time `db:"timestamp" json:"timestamp"`
+	CreatedAt time.Time `db:"created_at" json:"created_at"`
+}
+
+// NotificationChannel represents a notification delivery channel
+type NotificationChannel struct {
+	ID        int64                  `db:"id" json:"id"`
+	AlertID   int                    `db:"alert_id" json:"alert_id"`
+	Type      string                 `db:"type" json:"type"` // email, slack, webhook, etc.
+	Config    map[string]interface{} `db:"config" json:"config"`
+	IsActive  bool                   `db:"is_active" json:"is_active"`
+	CreatedAt time.Time              `db:"created_at" json:"created_at"`
+	UpdatedAt time.Time              `db:"updated_at" json:"updated_at"`
+}

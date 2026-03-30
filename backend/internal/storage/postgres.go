@@ -2605,3 +2605,227 @@ func (p *PostgresDB) GetLogStatisticsHourly(ctx context.Context, instanceID int,
 
 	return stats, nil
 }
+
+// ============================================================================
+// ALERT OPERATIONS
+// ============================================================================
+
+// GetActiveAlertRules retrieves all enabled alert rules
+func (p *PostgresDB) GetActiveAlertRules(ctx context.Context) ([]*models.AlertRule, error) {
+	rows, err := p.db.QueryContext(
+		ctx,
+		`SELECT id, name, description, metric_type, condition_type, condition_value, severity, enabled,
+		        notification_channel, evaluation_interval, created_by, created_at, updated_at
+		 FROM pganalytics.alert_rules
+		 WHERE enabled = true
+		 ORDER BY id`,
+	)
+
+	if err != nil {
+		return nil, apperrors.DatabaseError("get active alert rules", err.Error())
+	}
+	defer func() { _ = rows.Close() }()
+
+	var alerts []*models.AlertRule
+	for rows.Next() {
+		alert := &models.AlertRule{}
+		err := rows.Scan(
+			&alert.ID, &alert.Name, &alert.Description, &alert.MetricType,
+			&alert.ConditionType, &alert.ConditionValue, &alert.Severity, &alert.Enabled,
+			&alert.NotificationChannel, &alert.EvaluationInterval, &alert.CreatedBy,
+			&alert.CreatedAt, &alert.UpdatedAt,
+		)
+		if err != nil {
+			return nil, apperrors.DatabaseError("scan alert rule", err.Error())
+		}
+		alerts = append(alerts, alert)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, apperrors.DatabaseError("get active alert rules", err.Error())
+	}
+
+	return alerts, nil
+}
+
+// GetAlertInstances retrieves instances to evaluate for a given alert
+func (p *PostgresDB) GetAlertInstances(ctx context.Context, alertID int64) ([]*models.PostgreSQLInstance, error) {
+	rows, err := p.db.QueryContext(
+		ctx,
+		`SELECT id, server_id, name, version, port, connection_string, maintenance_database,
+		        monitoring_role, is_active, last_connected, replication_role, created_at, updated_at
+		 FROM pganalytics.postgresql_instances
+		 WHERE is_active = true
+		 ORDER BY id`,
+	)
+
+	if err != nil {
+		return nil, apperrors.DatabaseError("get alert instances", err.Error())
+	}
+	defer func() { _ = rows.Close() }()
+
+	var instances []*models.PostgreSQLInstance
+	for rows.Next() {
+		instance := &models.PostgreSQLInstance{}
+		err := rows.Scan(
+			&instance.ID, &instance.ServerID, &instance.Name, &instance.Version, &instance.Port,
+			&instance.ConnectionString, &instance.MaintenanceDatabase, &instance.MonitoringRole,
+			&instance.IsActive, &instance.LastConnected, &instance.ReplicationRole,
+			&instance.CreatedAt, &instance.UpdatedAt,
+		)
+		if err != nil {
+			return nil, apperrors.DatabaseError("scan instance", err.Error())
+		}
+		instances = append(instances, instance)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, apperrors.DatabaseError("get alert instances", err.Error())
+	}
+
+	return instances, nil
+}
+
+// CreateAlertTrigger creates a new alert trigger in the database
+func (p *PostgresDB) CreateAlertTrigger(ctx context.Context, trigger *models.AlertTrigger) (int64, error) {
+	var triggerID int64
+
+	err := p.db.QueryRowContext(
+		ctx,
+		`INSERT INTO pganalytics.alert_triggers (alert_id, instance_id, triggered_at, created_at)
+		 VALUES ($1, $2, $3, $4)
+		 RETURNING id`,
+		trigger.AlertID, trigger.InstanceID, trigger.TriggeredAt, trigger.CreatedAt,
+	).Scan(&triggerID)
+
+	if err != nil {
+		return 0, apperrors.DatabaseError("create alert trigger", err.Error())
+	}
+
+	return triggerID, nil
+}
+
+// GetMostRecentTrigger retrieves the most recent trigger for an alert
+func (p *PostgresDB) GetMostRecentTrigger(ctx context.Context, alertID, instanceID int64) (*models.AlertTrigger, error) {
+	trigger := &models.AlertTrigger{}
+
+	query := `SELECT id, alert_id, instance_id, triggered_at, created_at
+	          FROM pganalytics.alert_triggers
+	          WHERE alert_id = $1`
+	args := []interface{}{alertID}
+
+	// If instanceID is provided (non-zero), filter by it
+	if instanceID > 0 {
+		query += ` AND instance_id = $2`
+		args = append(args, instanceID)
+	}
+
+	query += ` ORDER BY triggered_at DESC LIMIT 1`
+
+	err := p.db.QueryRowContext(ctx, query, args...).Scan(
+		&trigger.ID, &trigger.AlertID, &trigger.InstanceID, &trigger.TriggeredAt, &trigger.CreatedAt,
+	)
+
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+
+	if err != nil {
+		return nil, apperrors.DatabaseError("get most recent trigger", err.Error())
+	}
+
+	return trigger, nil
+}
+
+// GetLatestMetric retrieves the latest metric value for an instance
+func (p *PostgresDB) GetLatestMetric(ctx context.Context, instanceID int64, metricName string) (*models.Metric, error) {
+	metric := &models.Metric{}
+
+	err := p.db.QueryRowContext(
+		ctx,
+		`SELECT id, instance_id, metric_name, value, timestamp, created_at
+		 FROM pganalytics.metrics
+		 WHERE instance_id = $1 AND metric_name = $2
+		 ORDER BY timestamp DESC
+		 LIMIT 1`,
+		instanceID, metricName,
+	).Scan(
+		&metric.ID, &metric.InstanceID, &metric.MetricName, &metric.Value, &metric.Timestamp, &metric.CreatedAt,
+	)
+
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+
+	if err != nil {
+		return nil, apperrors.DatabaseError("get latest metric", err.Error())
+	}
+
+	return metric, nil
+}
+
+// GetAlertChannels retrieves all notification channels for an alert
+func (p *PostgresDB) GetAlertChannels(ctx context.Context, alertID int64) ([]*models.NotificationChannel, error) {
+	rows, err := p.db.QueryContext(
+		ctx,
+		`SELECT id, alert_id, type, config, is_active, created_at, updated_at
+		 FROM pganalytics.notification_channels
+		 WHERE alert_id = $1 AND is_active = true
+		 ORDER BY id`,
+		alertID,
+	)
+
+	if err != nil {
+		return nil, apperrors.DatabaseError("get alert channels", err.Error())
+	}
+	defer func() { _ = rows.Close() }()
+
+	var channels []*models.NotificationChannel
+	for rows.Next() {
+		channel := &models.NotificationChannel{}
+		var configJSON string
+
+		err := rows.Scan(
+			&channel.ID, &channel.AlertID, &channel.Type, &configJSON, &channel.IsActive,
+			&channel.CreatedAt, &channel.UpdatedAt,
+		)
+		if err != nil {
+			return nil, apperrors.DatabaseError("scan notification channel", err.Error())
+		}
+
+		// Parse JSON config
+		if configJSON != "" {
+			err := json.Unmarshal([]byte(configJSON), &channel.Config)
+			if err != nil {
+				return nil, apperrors.DatabaseError("parse channel config", err.Error())
+			}
+		}
+
+		channels = append(channels, channel)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, apperrors.DatabaseError("get alert channels", err.Error())
+	}
+
+	return channels, nil
+}
+
+// CreateNotification creates a new notification record
+func (p *PostgresDB) CreateNotification(ctx context.Context, notif *models.Notification) (int64, error) {
+	var notifID int64
+
+	err := p.db.QueryRowContext(
+		ctx,
+		`INSERT INTO pganalytics.notifications (channel_id, alert_trigger_id, status, retry_count, created_at, updated_at)
+		 VALUES ($1, $2, $3, $4, $5, $6)
+		 RETURNING id`,
+		notif.ChannelID, notif.AlertTriggerID, notif.Status, 0, notif.CreatedAt, notif.UpdatedAt,
+	).Scan(&notifID)
+
+	if err != nil {
+		return 0, apperrors.DatabaseError("create notification", err.Error())
+	}
+
+	return notifID, nil
+}

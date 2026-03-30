@@ -239,9 +239,13 @@ CREATE TABLE alert_rules (
     name VARCHAR(255) NOT NULL,
     description TEXT,
     metric_type VARCHAR(100),
-    condition VARCHAR(50),
-    threshold NUMERIC(10, 2),
+    condition_type VARCHAR(50), -- threshold, change, anomaly
+    condition_value VARCHAR(255), -- threshold value or condition parameters
+    severity VARCHAR(50), -- info, warning, critical
     enabled BOOLEAN DEFAULT true,
+    notification_channel VARCHAR(255),
+    evaluation_interval INTEGER DEFAULT 60, -- seconds between evaluations
+    created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );

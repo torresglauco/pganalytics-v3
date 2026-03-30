@@ -5,7 +5,170 @@ import (
 	"fmt"
 	"net"
 	"strings"
+	"sync"
+	"time"
+
+	"go.uber.org/zap"
 )
+
+// CircuitBreakerState represents the state of a circuit breaker
+type CircuitBreakerState string
+
+const (
+	// CircuitBreakerStateClosed means the circuit is closed (normal operation)
+	CircuitBreakerStateClosed CircuitBreakerState = "closed"
+	// CircuitBreakerStateOpen means the circuit is open (service unavailable)
+	CircuitBreakerStateOpen CircuitBreakerState = "open"
+	// CircuitBreakerStateHalfOpen means the circuit is half-open (testing recovery)
+	CircuitBreakerStateHalfOpen CircuitBreakerState = "half-open"
+)
+
+// LDAPCircuitBreaker implements the circuit breaker pattern for LDAP service resilience
+type LDAPCircuitBreaker struct {
+	mu               sync.RWMutex
+	state            CircuitBreakerState
+	failureCount     int
+	successCount     int
+	lastFailureTime  time.Time
+	failureThreshold int
+	successThreshold int
+	timeout          time.Duration
+	logger           *zap.Logger
+}
+
+// NewLDAPCircuitBreaker creates a new circuit breaker for LDAP
+func NewLDAPCircuitBreaker(logger *zap.Logger) *LDAPCircuitBreaker {
+	return &LDAPCircuitBreaker{
+		state:            CircuitBreakerStateClosed,
+		failureCount:     0,
+		successCount:     0,
+		failureThreshold: 5,                // Open after 5 failures
+		successThreshold: 3,                // Close after 3 successes
+		timeout:          30 * time.Second, // Try recovery after 30 seconds
+		logger:           logger,
+	}
+}
+
+// RecordSuccess records a successful LDAP call
+func (cb *LDAPCircuitBreaker) RecordSuccess() {
+	cb.mu.Lock()
+	defer cb.mu.Unlock()
+
+	switch cb.state {
+	case CircuitBreakerStateClosed:
+		// Success in closed state, reset counter
+		cb.failureCount = 0
+		cb.successCount = 0
+
+	case CircuitBreakerStateHalfOpen:
+		// Success in half-open state, increment success counter
+		cb.successCount++
+		if cb.successCount >= cb.successThreshold {
+			cb.state = CircuitBreakerStateClosed
+			cb.failureCount = 0
+			cb.successCount = 0
+			cb.logger.Info("LDAP circuit breaker closed - service recovered")
+		}
+
+	case CircuitBreakerStateOpen:
+		// Ignore successes when open (waiting for timeout)
+	}
+}
+
+// RecordFailure records a failed LDAP call
+func (cb *LDAPCircuitBreaker) RecordFailure() {
+	cb.mu.Lock()
+	defer cb.mu.Unlock()
+
+	cb.lastFailureTime = time.Now()
+
+	switch cb.state {
+	case CircuitBreakerStateClosed:
+		// Failure in closed state, increment counter
+		cb.failureCount++
+		if cb.failureCount >= cb.failureThreshold {
+			cb.state = CircuitBreakerStateOpen
+			cb.logger.Warn("LDAP circuit breaker opened - too many failures",
+				zap.Int("failure_count", cb.failureCount))
+		}
+
+	case CircuitBreakerStateHalfOpen:
+		// Failure in half-open state, re-open the circuit
+		cb.state = CircuitBreakerStateOpen
+		cb.failureCount = 0
+		cb.successCount = 0
+		cb.logger.Warn("LDAP circuit breaker reopened - failure during recovery")
+
+	case CircuitBreakerStateOpen:
+		// Already open, just update timestamp
+		cb.lastFailureTime = time.Now()
+	}
+}
+
+// IsOpen checks if the circuit is open (service unavailable)
+func (cb *LDAPCircuitBreaker) IsOpen() bool {
+	cb.mu.RLock()
+	defer cb.mu.RUnlock()
+
+	if cb.state == CircuitBreakerStateClosed {
+		return true
+	}
+
+	if cb.state == CircuitBreakerStateOpen {
+		// Check if timeout has elapsed to try recovery
+		if time.Since(cb.lastFailureTime) > cb.timeout {
+			// Upgrade to half-open
+			cb.mu.RUnlock()
+			cb.mu.Lock()
+			cb.state = CircuitBreakerStateHalfOpen
+			cb.failureCount = 0
+			cb.successCount = 0
+			cb.mu.Unlock()
+			cb.mu.RLock()
+			cb.logger.Info("LDAP circuit breaker half-open - attempting recovery")
+			return true
+		}
+		return false
+	}
+
+	// Half-open state
+	return true
+}
+
+// State returns the current state as a string
+func (cb *LDAPCircuitBreaker) State() string {
+	cb.mu.RLock()
+	defer cb.mu.RUnlock()
+	return string(cb.state)
+}
+
+// Reset resets the circuit breaker to closed state
+func (cb *LDAPCircuitBreaker) Reset() {
+	cb.mu.Lock()
+	defer cb.mu.Unlock()
+
+	cb.state = CircuitBreakerStateClosed
+	cb.failureCount = 0
+	cb.successCount = 0
+	cb.lastFailureTime = time.Time{}
+	cb.logger.Info("LDAP circuit breaker reset to closed state")
+}
+
+// GetMetrics returns the current metrics
+func (cb *LDAPCircuitBreaker) GetMetrics() map[string]interface{} {
+	cb.mu.RLock()
+	defer cb.mu.RUnlock()
+
+	return map[string]interface{}{
+		"state":              string(cb.state),
+		"failure_count":      cb.failureCount,
+		"success_count":      cb.successCount,
+		"failure_threshold":  cb.failureThreshold,
+		"success_threshold":  cb.successThreshold,
+		"last_failure_time":  cb.lastFailureTime,
+		"time_since_failure": time.Since(cb.lastFailureTime).Seconds(),
+	}
+}
 
 // LDAPConnector handles LDAP/Active Directory authentication
 type LDAPConnector struct {
@@ -17,6 +180,10 @@ type LDAPConnector struct {
 	groupToRoleMap  map[string]string
 	tlsConfig       *tls.Config
 	conn            interface{} // Would be *ldap.Conn in real implementation
+	circuitBreaker  *LDAPCircuitBreaker
+	logger          *zap.Logger
+	maxFailures     int           // e.g., 5 consecutive failures
+	timeout         time.Duration // e.g., 30 seconds
 }
 
 // LDAPUser represents an LDAP user
@@ -31,6 +198,10 @@ type LDAPUser struct {
 
 // NewLDAPConnector creates a new LDAP connector
 func NewLDAPConnector(serverURL, bindDN, bindPassword, userSearchBase, groupSearchBase string, groupToRoleMap map[string]string, tlsConfig *tls.Config) *LDAPConnector {
+	// Create a noop logger if none provided (for backward compatibility)
+	logger, _ := zap.NewProduction()
+	defer logger.Sync()
+
 	return &LDAPConnector{
 		serverURL:       serverURL,
 		bindDN:          bindDN,
@@ -39,6 +210,27 @@ func NewLDAPConnector(serverURL, bindDN, bindPassword, userSearchBase, groupSear
 		groupSearchBase: groupSearchBase,
 		groupToRoleMap:  groupToRoleMap,
 		tlsConfig:       tlsConfig,
+		circuitBreaker:  NewLDAPCircuitBreaker(logger),
+		logger:          logger,
+		maxFailures:     5,
+		timeout:         30 * time.Second,
+	}
+}
+
+// NewLDAPConnectorWithLogger creates a new LDAP connector with a specific logger
+func NewLDAPConnectorWithLogger(serverURL, bindDN, bindPassword, userSearchBase, groupSearchBase string, groupToRoleMap map[string]string, tlsConfig *tls.Config, logger *zap.Logger) *LDAPConnector {
+	return &LDAPConnector{
+		serverURL:       serverURL,
+		bindDN:          bindDN,
+		bindPassword:    bindPassword,
+		userSearchBase:  userSearchBase,
+		groupSearchBase: groupSearchBase,
+		groupToRoleMap:  groupToRoleMap,
+		tlsConfig:       tlsConfig,
+		circuitBreaker:  NewLDAPCircuitBreaker(logger),
+		logger:          logger,
+		maxFailures:     5,
+		timeout:         30 * time.Second,
 	}
 }
 
@@ -63,6 +255,62 @@ func (lc *LDAPConnector) AuthenticateUser(username, password string) (*LDAPUser,
 		return nil, fmt.Errorf("username and password required")
 	}
 
+	// Check if circuit is open
+	if !lc.circuitBreaker.IsOpen() {
+		lc.logger.Debug("LDAP circuit breaker is open - rejecting request")
+		return nil, fmt.Errorf("LDAP service temporarily unavailable (circuit open)")
+	}
+
+	// Attempt authentication with retry
+	user, err := lc.authenticateWithRetry(username, password)
+
+	// Record success or failure
+	if err != nil {
+		lc.circuitBreaker.RecordFailure()
+		lc.logger.Warn("LDAP authentication failed",
+			zap.String("username", username),
+			zap.Error(err))
+		return nil, fmt.Errorf("LDAP authentication failed: %w", err)
+	}
+
+	lc.circuitBreaker.RecordSuccess()
+	lc.logger.Debug("LDAP authentication successful", zap.String("username", username))
+	return user, nil
+}
+
+// authenticateWithRetry performs LDAP authentication with exponential backoff retry
+func (lc *LDAPConnector) authenticateWithRetry(username, password string) (*LDAPUser, error) {
+	var lastErr error
+	backoff := 100 * time.Millisecond
+	maxRetries := 3
+
+	for attempt := 0; attempt < maxRetries; attempt++ {
+		// Perform LDAP authentication
+		user, err := lc.authenticate(username, password)
+
+		if err == nil {
+			return user, nil // Success
+		}
+
+		lastErr = err
+		lc.logger.Debug("LDAP authentication attempt failed",
+			zap.String("username", username),
+			zap.Int("attempt", attempt+1),
+			zap.Int("max_attempts", maxRetries),
+			zap.Error(err))
+
+		// Don't sleep after last attempt
+		if attempt < maxRetries-1 {
+			time.Sleep(backoff)
+			backoff *= 2 // Exponential backoff: 100ms, 200ms, 400ms
+		}
+	}
+
+	return nil, lastErr
+}
+
+// authenticate performs a single LDAP authentication attempt
+func (lc *LDAPConnector) authenticate(username, password string) (*LDAPUser, error) {
 	// In a real implementation:
 	// 1. Bind with service account
 	// 2. Search for user by username

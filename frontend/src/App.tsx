@@ -9,6 +9,7 @@ import { ChannelsPage } from './pages/ChannelsPage'
 import { CollectorsManagement } from './pages/CollectorsManagement'
 import { SettingsAdmin } from './pages/SettingsAdmin'
 import { NotImplementedPage } from './pages/NotImplementedPage'
+import { QueryPerformancePage } from './pages/QueryPerformance'
 import { useAuthStore } from './stores/authStore'
 import { useRealtimeStore } from './stores/realtimeStore'
 import { realtimeClient } from './services/realtime'
@@ -155,6 +156,7 @@ function App() {
             <Route path="/alerts" element={<AlertsPage />} />
             <Route path="/channels" element={<ChannelsPage />} />
             <Route path="/collectors" element={<CollectorsManagement />} />
+            <Route path="/query-performance/:databaseId" element={<QueryPerformancePage />} />
             {/* Grafana redirect to external service */}
             <Route path="/grafana" element={<GrafanaRedirect />} />
             {/* Settings & Administration - Users tab */}

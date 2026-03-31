@@ -10,8 +10,8 @@ type QueryCollector struct {
 }
 
 type ExplainPlan struct {
-	NodeType string `json:"Node Type"`
-	// Additional fields...
+	NodeType  string  `json:"Node Type"`
+	TotalCost float64 `json:"Total Cost"`
 }
 
 func NewQueryCollector(db *sql.DB) *QueryCollector {

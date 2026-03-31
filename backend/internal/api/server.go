@@ -469,6 +469,12 @@ func (s *Server) RegisterRoutes(router *gin.Engine) {
 			explainRoutes.GET("/:query_hash/explain/history", s.AuthMiddleware(), s.handleGetExplainPlanHistory)
 		}
 
+		// Query Performance routes
+		performanceRoutes := api.Group("/queries")
+		{
+			performanceRoutes.GET("/:query_hash/performance", s.AuthMiddleware(), s.handleGetQueryPerformance)
+		}
+
 		// Index Recommendations routes
 		indexRecommendations := api.Group("/databases/:database_name/index-recommendations")
 		{

@@ -66,3 +66,10 @@ export interface AuthResponse {
   expires_at: string
   user: User
 }
+
+export {
+  QueryPlan,
+  QueryIssue,
+  PerformanceTimeline,
+  QueryPerformanceData,
+} from './queryPerformance'

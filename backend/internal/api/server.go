@@ -505,6 +505,16 @@ func (s *Server) RegisterRoutes(router *gin.Engine) {
 			indexAdvisor.GET("/database/:database_id/unused", s.AuthMiddleware(), s.handleGetUnusedIndexes)
 		}
 
+		// VACUUM Advisor routes (new endpoints for VACUUM recommendations)
+		vacuumAdvisor := api.Group("/vacuum-advisor")
+		{
+			vacuumAdvisor.GET("/database/:database_id/recommendations", s.AuthMiddleware(), s.handleGetVacuumRecommendations)
+			vacuumAdvisor.GET("/database/:database_id/table/:table_name", s.AuthMiddleware(), s.handleGetVacuumTableRecommendation)
+			vacuumAdvisor.GET("/database/:database_id/autovacuum-config", s.AuthMiddleware(), s.handleGetAutovacuumConfig)
+			vacuumAdvisor.POST("/recommendation/:recommendation_id/execute", s.AuthMiddleware(), s.handleExecuteVacuum)
+			vacuumAdvisor.GET("/database/:database_id/tune-suggestions", s.AuthMiddleware(), s.handleGetVacuumTuningSuggestions)
+		}
+
 		// Anomaly Detection routes
 		anomalies := api.Group("/queries")
 		{

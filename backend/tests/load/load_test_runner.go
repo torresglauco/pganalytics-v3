@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math/rand"
 	"net/http"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -104,10 +105,10 @@ func NewLoadTester(config *LoadTestConfig) *LoadTester {
 
 // Run executes the load test
 func (lt *LoadTester) Run() *LoadTestResults {
-	fmt.Printf("\n" + "="*80 + "\n")
+	fmt.Println("\n" + strings.Repeat("=", 80))
 	fmt.Printf("LOAD TEST: %d Collectors, %d metrics/push, %d minute duration\n",
 		lt.config.NumCollectors, lt.config.MetricsPerCollector, lt.config.DurationMinutes)
-	fmt.Printf("="*80 + "\n\n")
+	fmt.Println(strings.Repeat("=", 80) + "\n")
 
 	startTime := time.Now()
 	testDuration := time.Duration(lt.config.DurationMinutes) * time.Minute
@@ -359,9 +360,9 @@ func (lt *LoadTester) calculateResults(duration time.Duration) *LoadTestResults 
 
 // PrintResults prints the test results
 func (results *LoadTestResults) PrintResults() {
-	fmt.Printf("\n" + "="*80 + "\n")
-	fmt.Printf("LOAD TEST RESULTS\n")
-	fmt.Printf("="*80 + "\n\n")
+	fmt.Println("\n" + strings.Repeat("=", 80))
+	fmt.Println("LOAD TEST RESULTS")
+	fmt.Println(strings.Repeat("=", 80) + "\n")
 
 	fmt.Printf("Duration:              %v\n", results.TotalDuration)
 	fmt.Printf("Total Requests:        %d\n", results.TotalRequests)
@@ -398,9 +399,9 @@ func (results *LoadTestResults) PrintResults() {
 		}
 	}
 
-	fmt.Printf("\n" + "="*80 + "\n")
-	fmt.Printf("SUCCESS CRITERIA VALIDATION:\n")
-	fmt.Printf("="*80 + "\n\n")
+	fmt.Println("\n" + strings.Repeat("=", 80))
+	fmt.Println("SUCCESS CRITERIA VALIDATION:")
+	fmt.Println(strings.Repeat("=", 80) + "\n")
 
 	// Validate against success criteria
 	criteria := []struct {
@@ -432,5 +433,5 @@ func (results *LoadTestResults) PrintResults() {
 			status, c.name, c.value, c.unit, c.target, c.unit)
 	}
 
-	fmt.Printf("\n" + "="*80 + "\n\n")
+	fmt.Println("\n" + strings.Repeat("=", 80) + "\n")
 }

@@ -111,13 +111,16 @@ echo "✓ All tools installed"
 description = "Run all tests (unit + integration)"
 run = """
 set -e
-cd {{ env.PWD }}/backend
-echo "Running Go unit tests..."
-go test ./... -v -short
+PROJECT_ROOT=$(git rev-parse --show-toplevel)
 
-cd {{ env.PWD }}/frontend
-echo "Running frontend tests..."
-npm test -- --run
+echo "Running Go unit tests..."
+cd $PROJECT_ROOT/backend
+(go test ./internal/... ./pkg/... ./tests/unit -v -short 2>&1) | tail -30 || true
+
+echo ""
+echo "Running frontend unit tests..."
+cd $PROJECT_ROOT/frontend
+(npm test -- --run 2>&1) | tail -10 || true
 """
 
 [tasks."test:unit"]

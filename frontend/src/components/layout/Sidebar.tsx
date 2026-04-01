@@ -16,10 +16,13 @@ const navItems: NavItem[] = [
   { section: 'shortcuts', icon: '📈', label: 'Metrics', href: '/metrics' },
   { section: 'shortcuts', icon: '🚨', label: 'Alerts', href: '/alerts' },
 
-  // Main
+  // Main - Advanced Features
+  { section: 'main', icon: '⚡', label: 'Query Performance', href: '/collectors' },
+  { section: 'main', icon: '📊', label: 'Log Analysis', href: '/collectors' },
+  { section: 'main', icon: '📇', label: 'Index Advisor', href: '/collectors' },
+  { section: 'main', icon: '🧹', label: 'VACUUM Advisor', href: '/collectors' },
   { section: 'main', icon: '📁', label: 'Collectors', href: '/collectors' },
   { section: 'main', icon: '🔔', label: 'Channels', href: '/channels' },
-  { section: 'main', icon: '🔍', label: 'Index Advisor', href: '/index-advisor' },
   { section: 'main', icon: '📊', label: 'Grafana', href: '/grafana' },
 
   // Admin

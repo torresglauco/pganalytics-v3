@@ -12,6 +12,7 @@ import { NotImplementedPage } from './pages/NotImplementedPage'
 import { QueryPerformancePage } from './pages/QueryPerformance'
 import { LogAnalysisPage } from './pages/LogAnalysisPage'
 import { IndexAdvisorPage } from './pages/IndexAdvisorPage'
+import { VacuumAdvisor } from './pages/VacuumAdvisor'
 import { useAuthStore } from './stores/authStore'
 import { useRealtimeStore } from './stores/realtimeStore'
 import { realtimeClient } from './services/realtime'
@@ -161,6 +162,7 @@ function App() {
             <Route path="/query-performance/:databaseId" element={<QueryPerformancePage />} />
             <Route path="/log-analysis/:databaseId" element={<LogAnalysisPage />} />
             <Route path="/index-advisor/:databaseId" element={<IndexAdvisorPage />} />
+            <Route path="/vacuum-advisor/:databaseId" element={<VacuumAdvisor />} />
             {/* Grafana redirect to external service */}
             <Route path="/grafana" element={<GrafanaRedirect />} />
             {/* Settings & Administration - Users tab */}

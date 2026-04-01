@@ -73,3 +73,5 @@ export {
   PerformanceTimeline,
   QueryPerformanceData,
 } from './queryPerformance'
+
+export { LogEntry, LogPattern, LogAnomaly } from './logAnalysis'

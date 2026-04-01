@@ -7,3 +7,4 @@ export { useRealtime } from './useRealtime';
 export { useAlertRuleBuilder } from './useAlertRuleBuilder';
 export { useUsers } from './useUsers';
 export { useQueryPerformance } from './useQueryPerformance';
+export { useLogAnalysis } from './useLogAnalysis';

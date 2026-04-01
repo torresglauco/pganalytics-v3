@@ -25,12 +25,3 @@ func NewRootCmd(version string) *cobra.Command {
 
 	return rootCmd
 }
-
-// Stub functions - these will be implemented in later tasks
-func NewIndexCmd() *cobra.Command {
-	return &cobra.Command{Use: "index"}
-}
-
-func NewVacuumCmd() *cobra.Command {
-	return &cobra.Command{Use: "vacuum"}
-}

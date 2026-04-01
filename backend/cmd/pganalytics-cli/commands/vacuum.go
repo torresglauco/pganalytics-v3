@@ -17,13 +17,13 @@ func NewVacuumCmd() *cobra.Command {
 		Use:   "status [table]",
 		Short: "Show VACUUM and bloat status",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			fmt.Println("VACUUM Status:")
-			fmt.Println("")
-			fmt.Println("Table        | Bloat | Last Vacuum | Autovacuum | Recommended")
-			fmt.Println("-------------|-------|-------------|------------|------------")
-			fmt.Println("users        | 18%   | 2h ago      | enabled    | TUNE")
-			fmt.Println("orders       | 42%   | 5h ago      | enabled    | RUN NOW")
-			fmt.Println("posts        | 8%    | 30m ago     | enabled    | OK")
+			fmt.Fprintln(cmd.OutOrStdout(), "VACUUM Status:")
+			fmt.Fprintln(cmd.OutOrStdout(), "")
+			fmt.Fprintln(cmd.OutOrStdout(), "Table        | Bloat | Last Vacuum | Autovacuum | Recommended")
+			fmt.Fprintln(cmd.OutOrStdout(), "-------------|-------|-------------|------------|------------")
+			fmt.Fprintln(cmd.OutOrStdout(), "users        | 18%   | 2h ago      | enabled    | TUNE")
+			fmt.Fprintln(cmd.OutOrStdout(), "orders       | 42%   | 5h ago      | enabled    | RUN NOW")
+			fmt.Fprintln(cmd.OutOrStdout(), "posts        | 8%    | 30m ago     | enabled    | OK")
 
 			return nil
 		},
@@ -37,18 +37,18 @@ func NewVacuumCmd() *cobra.Command {
 			dryRun, _ := cmd.Flags().GetBool("dry-run")
 			apply, _ := cmd.Flags().GetBool("apply")
 
-			fmt.Println("Autovacuum Tuning Recommendations:")
-			fmt.Println("")
-			fmt.Println("Table | Current Setting      | Recommended | Reason")
-			fmt.Println("------|----------------------|-------------|-------")
-			fmt.Println("users | autovacuum_naptime   | 10s (was 1m) | Frequent updates")
-			fmt.Println("      | vacuum_cost_delay    | 2ms (was 0)  | Reduce I/O impact")
-			fmt.Println("      | vacuum_cost_limit    | 500 (was 200)| Faster completion")
+			fmt.Fprintln(cmd.OutOrStdout(), "Autovacuum Tuning Recommendations:")
+			fmt.Fprintln(cmd.OutOrStdout(), "")
+			fmt.Fprintln(cmd.OutOrStdout(), "Table | Current Setting      | Recommended | Reason")
+			fmt.Fprintln(cmd.OutOrStdout(), "------|----------------------|-------------|-------")
+			fmt.Fprintln(cmd.OutOrStdout(), "users | autovacuum_naptime   | 10s (was 1m) | Frequent updates")
+			fmt.Fprintln(cmd.OutOrStdout(), "      | vacuum_cost_delay    | 2ms (was 0)  | Reduce I/O impact")
+			fmt.Fprintln(cmd.OutOrStdout(), "      | vacuum_cost_limit    | 500 (was 200)| Faster completion")
 
 			if dryRun {
-				fmt.Println("\n[DRY RUN] No changes applied")
+				fmt.Fprintln(cmd.OutOrStdout(), "\n[DRY RUN] No changes applied")
 			} else if apply {
-				fmt.Println("\n✓ Settings applied successfully")
+				fmt.Fprintln(cmd.OutOrStdout(), "\n✓ Settings applied successfully")
 			}
 
 			return nil
@@ -63,12 +63,12 @@ func NewVacuumCmd() *cobra.Command {
 		Use:   "estimate [table]",
 		Short: "Estimate VACUUM duration and impact",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			fmt.Println("VACUUM Duration Estimates:")
-			fmt.Println("")
-			fmt.Println("Table | Est. Duration | I/O Impact | Downtime")
-			fmt.Println("------|---------------|------------|--------")
-			fmt.Println("users | 45 seconds    | 15% CPU    | None (concurrent)")
-			fmt.Println("orders| 2.3 minutes   | 42% CPU    | None (concurrent)")
+			fmt.Fprintln(cmd.OutOrStdout(), "VACUUM Duration Estimates:")
+			fmt.Fprintln(cmd.OutOrStdout(), "")
+			fmt.Fprintln(cmd.OutOrStdout(), "Table | Est. Duration | I/O Impact | Downtime")
+			fmt.Fprintln(cmd.OutOrStdout(), "------|---------------|------------|--------")
+			fmt.Fprintln(cmd.OutOrStdout(), "users | 45 seconds    | 15% CPU    | None (concurrent)")
+			fmt.Fprintln(cmd.OutOrStdout(), "orders| 2.3 minutes   | 42% CPU    | None (concurrent)")
 
 			return nil
 		},

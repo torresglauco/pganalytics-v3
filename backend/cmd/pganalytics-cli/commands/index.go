@@ -30,11 +30,11 @@ func NewIndexCmd() *cobra.Command {
 				tableName = args[0]
 			}
 
-			fmt.Printf("Index Recommendations for %s:\n\n", tableName)
-			fmt.Println("Table  | Columns        | Impact | Est. Size | Creation SQL")
-			fmt.Println("-------|----------------|--------|-----------|----------------")
-			fmt.Println("users  | user_id,email  | 45%    | 2.4 MB    | CREATE INDEX idx_users_email ON users(email)")
-			fmt.Println("orders | user_id,date   | 32%    | 1.8 MB    | CREATE INDEX idx_orders_user_date ON orders(user_id, created_at)")
+	fmt.Fprintf(cmd.OutOrStdout(), "Index Recommendations for %s:\n\n", tableName)
+			fmt.Fprintln(cmd.OutOrStdout(), "Table  | Columns        | Impact | Est. Size | Creation SQL")
+			fmt.Fprintln(cmd.OutOrStdout(), "-------|----------------|--------|-----------|----------------")
+			fmt.Fprintln(cmd.OutOrStdout(), "users  | user_id,email  | 45%    | 2.4 MB    | CREATE INDEX idx_users_email ON users(email)")
+			fmt.Fprintln(cmd.OutOrStdout(), "orders | user_id,date   | 32%    | 1.8 MB    | CREATE INDEX idx_orders_user_date ON orders(user_id, created_at)")
 
 			return nil
 		},
@@ -56,10 +56,10 @@ func NewIndexCmd() *cobra.Command {
 				return fmt.Errorf("--table and --columns are required")
 			}
 
-			fmt.Printf("Creating index on %s(%s)...\n", tableName, columns)
-			fmt.Println("✓ Index created successfully")
-			fmt.Println("  Creation time: 2.3 seconds")
-			fmt.Println("  Index size: 2.4 MB")
+			fmt.Fprintf(cmd.OutOrStdout(), "Creating index on %s(%s)...\n", tableName, columns)
+			fmt.Fprintln(cmd.OutOrStdout(), "✓ Index created successfully")
+			fmt.Fprintln(cmd.OutOrStdout(), "  Creation time: 2.3 seconds")
+			fmt.Fprintln(cmd.OutOrStdout(), "  Index size: 2.4 MB")
 
 			return nil
 		},
@@ -80,12 +80,12 @@ func NewIndexCmd() *cobra.Command {
 				tableName = args[0]
 			}
 
-			fmt.Printf("Index Health Report for %s:\n\n", tableName)
-			fmt.Println("Index Name              | Bloat | Used  | Size")
-			fmt.Println("------------------------|-------|-------|-------")
-			fmt.Println("idx_users_email        | 12%   | YES   | 2.4 MB")
-			fmt.Println("idx_orders_user_date   | 5%    | YES   | 1.8 MB")
-			fmt.Println("idx_deprecated_field   | 89%   | NO    | 0.8 MB (UNUSED - Consider DROP)")
+			fmt.Fprintf(cmd.OutOrStdout(), "Index Health Report for %s:\n\n", tableName)
+			fmt.Fprintln(cmd.OutOrStdout(), "Index Name              | Bloat | Used  | Size")
+			fmt.Fprintln(cmd.OutOrStdout(), "------------------------|-------|-------|-------")
+			fmt.Fprintln(cmd.OutOrStdout(), "idx_users_email        | 12%   | YES   | 2.4 MB")
+			fmt.Fprintln(cmd.OutOrStdout(), "idx_orders_user_date   | 5%    | YES   | 1.8 MB")
+			fmt.Fprintln(cmd.OutOrStdout(), "idx_deprecated_field   | 89%   | NO    | 0.8 MB (UNUSED - Consider DROP)")
 
 			return nil
 		},
@@ -99,10 +99,10 @@ func NewIndexCmd() *cobra.Command {
 		Use:   "list [table]",
 		Short: "List all indexes",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			fmt.Println("Indexes:")
-			fmt.Println("idx_users_email (users)")
-			fmt.Println("idx_orders_user_date (orders)")
-			fmt.Println("idx_posts_user_id (posts)")
+			fmt.Fprintln(cmd.OutOrStdout(), "Indexes:")
+			fmt.Fprintln(cmd.OutOrStdout(), "idx_users_email (users)")
+			fmt.Fprintln(cmd.OutOrStdout(), "idx_orders_user_date (orders)")
+			fmt.Fprintln(cmd.OutOrStdout(), "idx_posts_user_id (posts)")
 			return nil
 		},
 	}

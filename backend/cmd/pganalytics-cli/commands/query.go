@@ -26,12 +26,12 @@ func NewQueryCmd() *cobra.Command {
 			_ = client
 
 			// For MVP, return sample data
-			fmt.Println("Top Queries:")
-			fmt.Println("Query ID | Avg Latency | Call Count")
-			fmt.Println("---------|-------------|----------")
-			fmt.Println("1        | 42ms        | 2,341")
-			fmt.Println("2        | 156ms       | 541")
-			fmt.Println("3        | 23ms        | 10,234")
+			fmt.Fprintln(cmd.OutOrStdout(), "Top Queries:")
+			fmt.Fprintln(cmd.OutOrStdout(), "Query ID | Avg Latency | Call Count")
+			fmt.Fprintln(cmd.OutOrStdout(), "---------|-------------|----------")
+			fmt.Fprintln(cmd.OutOrStdout(), "1        | 42ms        | 2,341")
+			fmt.Fprintln(cmd.OutOrStdout(), "2        | 156ms       | 541")
+			fmt.Fprintln(cmd.OutOrStdout(), "3        | 23ms        | 10,234")
 
 			return nil
 		},
@@ -55,12 +55,12 @@ func NewQueryCmd() *cobra.Command {
 			client := api.NewClient(serverURL, apiKey)
 			_ = client
 
-			fmt.Printf("Query Analysis for ID: %s\n", args[0])
-			fmt.Println("Status: OK")
-			fmt.Println("Avg Latency: 42ms")
-			fmt.Println("Recommendations:")
-			fmt.Println("  - Add index on users.id")
-			fmt.Println("  - Consider partitioning by date")
+			fmt.Fprintf(cmd.OutOrStdout(), "Query Analysis for ID: %s\n", args[0])
+			fmt.Fprintln(cmd.OutOrStdout(), "Status: OK")
+			fmt.Fprintln(cmd.OutOrStdout(), "Avg Latency: 42ms")
+			fmt.Fprintln(cmd.OutOrStdout(), "Recommendations:")
+			fmt.Fprintln(cmd.OutOrStdout(), "  - Add index on users.id")
+			fmt.Fprintln(cmd.OutOrStdout(), "  - Consider partitioning by date")
 
 			return nil
 		},
@@ -78,12 +78,12 @@ func NewQueryCmd() *cobra.Command {
 
 			sql := args[0]
 
-			fmt.Printf("EXPLAIN ANALYZE\n")
-			fmt.Printf("Query: %s\n\n", sql)
-			fmt.Println("Seq Scan on users  (cost=0.00..123.45 rows=1000 width=50)")
-			fmt.Println("  Filter: (id = $1)")
-			fmt.Println("Planning time: 0.234 ms")
-			fmt.Println("Execution time: 0.512 ms")
+			fmt.Fprintf(cmd.OutOrStdout(), "EXPLAIN ANALYZE\n")
+			fmt.Fprintf(cmd.OutOrStdout(), "Query: %s\n\n", sql)
+			fmt.Fprintln(cmd.OutOrStdout(), "Seq Scan on users  (cost=0.00..123.45 rows=1000 width=50)")
+			fmt.Fprintln(cmd.OutOrStdout(), "  Filter: (id = $1)")
+			fmt.Fprintln(cmd.OutOrStdout(), "Planning time: 0.234 ms")
+			fmt.Fprintln(cmd.OutOrStdout(), "Execution time: 0.512 ms")
 
 			return nil
 		},

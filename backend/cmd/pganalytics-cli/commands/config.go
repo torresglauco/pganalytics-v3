@@ -33,7 +33,7 @@ func NewConfigCmd() *cobra.Command {
 			if err := configStore.Set(args[0], args[1]); err != nil {
 				return fmt.Errorf("failed to set config: %w", err)
 			}
-			fmt.Printf("✓ Set %s = %s\n", args[0], args[1])
+			fmt.Fprintf(cmd.OutOrStdout(), "✓ Set %s = %s\n", args[0], args[1])
 			return nil
 		},
 	}
@@ -48,7 +48,7 @@ func NewConfigCmd() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("failed to get config: %w", err)
 			}
-			fmt.Println(val)
+			fmt.Fprintln(cmd.OutOrStdout(), val)
 			return nil
 		},
 	}
@@ -60,13 +60,13 @@ func NewConfigCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			all := configStore.GetAll()
 			if len(all) == 0 {
-				fmt.Println("No configuration values set")
+				fmt.Fprintln(cmd.OutOrStdout(), "No configuration values set")
 				return nil
 			}
 
-			fmt.Println("Configuration:")
+			fmt.Fprintln(cmd.OutOrStdout(), "Configuration:")
 			for key, val := range all {
-				fmt.Printf("  %s = %s\n", key, val)
+				fmt.Fprintf(cmd.OutOrStdout(), "  %s = %s\n", key, val)
 			}
 			return nil
 		},

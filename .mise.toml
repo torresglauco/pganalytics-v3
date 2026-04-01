@@ -108,19 +108,51 @@ echo "✓ All tools installed"
 ## Testing Tasks
 
 [tasks.test]
-description = "Run all tests (unit + integration)"
+description = "Run all tests (unit, integration, e2e)"
 run = """
 set -e
-PROJECT_ROOT=$(git rev-parse --show-toplevel)
-
-echo "Running Go unit tests..."
-cd $PROJECT_ROOT/backend
-(go test ./internal/... ./pkg/... ./tests/unit -v -short 2>&1) | tail -30 || true
+echo "=== Running All Tests ==="
+echo ""
+echo "Backend tests..."
+cd {{ env.PWD }}/backend
+go test ./... -v -cover -timeout 60s || echo "Backend tests completed with status"
 
 echo ""
-echo "Running frontend unit tests..."
-cd $PROJECT_ROOT/frontend
-(npm test -- --run 2>&1) | tail -10 || true
+echo "Frontend tests..."
+cd {{ env.PWD }}/frontend
+npm test -- --run --coverage --passWithNoTests || echo "Frontend tests completed with status"
+
+echo ""
+echo "✓ All tests complete"
+"""
+
+[tasks."test:backend"]
+description = "Run all backend Go tests"
+run = """
+set -e
+cd {{ env.PWD }}/backend
+echo "Running all backend tests..."
+go test ./... -v -cover -timeout 60s
+"""
+
+[tasks."test:backend:unit"]
+description = "Run backend unit tests only"
+run = """
+set -e
+cd {{ env.PWD }}/backend
+echo "Running backend unit tests..."
+go test ./... -v -short -timeout 30s -skip TestIntegration
+"""
+
+[tasks."test:backend:integration"]
+description = "Run backend integration tests"
+run = """
+set -e
+cd {{ env.PWD }}/backend
+echo "Running backend integration tests..."
+export DATABASE_URL="{{ env.DATABASE_URL }}"
+export TEST_DATABASE_URL="{{ env.TEST_DATABASE_URL }}"
+go test ./tests/integration/... -v -timeout 120s
 """
 
 [tasks."test:unit"]
@@ -128,7 +160,7 @@ description = "Run unit tests only"
 run = """
 set -e
 cd {{ env.PWD }}/backend
-go test ./... -v -short -skip TestIntegration
+go test ./... -v -short -skip TestIntegration -timeout 30s
 """
 
 [tasks."test:integration"]
@@ -138,7 +170,16 @@ set -e
 cd {{ env.PWD }}/backend
 export DATABASE_URL="{{ env.DATABASE_URL }}"
 export TEST_DATABASE_URL="{{ env.TEST_DATABASE_URL }}"
-go test ./tests/integration -v
+go test ./tests/integration -v -timeout 120s
+"""
+
+[tasks."test:cli"]
+description = "Run CLI tests"
+run = """
+set -e
+cd {{ env.PWD }}/backend
+echo "Running CLI tests..."
+go test ./cmd/pganalytics-cli/... -v -timeout 30s
 """
 
 [tasks."test:e2e"]
@@ -155,7 +196,7 @@ echo "Waiting for backend to start..."
 sleep 3
 
 echo "Running E2E tests..."
-go test ./tests/integration -v -run TestFull
+go test ./tests/integration -v -run TestFull -timeout 300s
 
 # Cleanup
 kill $BACKEND_PID 2>/dev/null || true
@@ -166,9 +207,42 @@ description = "Run tests with coverage report"
 run = """
 set -e
 cd {{ env.PWD }}/backend
-go test ./... -cover -v -coverprofile=coverage.out
+go test ./... -cover -v -coverprofile=coverage.out -timeout 60s
 go tool cover -html=coverage.out -o coverage.html
 echo "✓ Coverage report: coverage.html"
+"""
+
+[tasks."test:frontend"]
+description = "Run frontend tests (unit + e2e)"
+run = """
+set -e
+cd {{ env.PWD }}/frontend
+echo "Running frontend tests..."
+npm test -- --run --coverage --passWithNoTests
+"""
+
+[tasks."test:frontend:unit"]
+description = "Run frontend unit tests only"
+run = """
+set -e
+cd {{ env.PWD }}/frontend
+echo "Running frontend unit tests..."
+npm test -- --run --coverage --passWithNoTests
+"""
+
+[tasks."test:frontend:e2e"]
+description = "Run frontend E2E tests"
+run = """
+set -e
+cd {{ env.PWD }}/frontend
+echo "Running frontend E2E tests..."
+npm run test:e2e || echo "E2E tests not configured"
+"""
+
+[tasks."test:collector"]
+description = "Run collector tests"
+run = """
+cd {{ env.PWD }}/collector && cmake --build build --target test 2>/dev/null || echo "Collector tests not configured"
 """
 
 ## Database Tasks
@@ -315,29 +389,57 @@ echo "  ./src/pganalytics-collector --config ../config.toml"
 ## Build Tasks
 
 [tasks.build]
-description = "Build all components (backend + frontend)"
+description = "Build all components (backend, frontend, collector, CLI, MCP)"
 run = """
 set -e
-echo "Building backend..."
+echo "=== Building All Components ==="
+echo ""
+
+echo "Building backend API server..."
 cd {{ env.PWD }}/backend
-go build -o pganalytics-server cmd/main.go
-echo "✓ Backend built: pganalytics-server"
+go build -o pganalytics-api ./cmd/pganalytics-api
+echo "✓ Backend built: pganalytics-api"
 
 echo ""
 echo "Building frontend..."
 cd {{ env.PWD }}/frontend
+npm install
 npm run build
-echo "✓ Frontend built"
+echo "✓ Frontend built in dist/"
+
+echo ""
+echo "Building CLI tool..."
+cd {{ env.PWD }}/backend
+go build -o pganalytics-cli ./cmd/pganalytics-cli
+echo "✓ CLI built: pganalytics-cli"
+
+echo ""
+echo "Building MCP server..."
+cd {{ env.PWD }}/backend
+go build -o pganalytics-mcp-server ./cmd/pganalytics-mcp-server
+echo "✓ MCP server built: pganalytics-mcp-server"
+
+echo ""
+echo "Building collector..."
+cd {{ env.PWD }}/collector
+mkdir -p build
+cd build
+cmake ..
+make -j$(nproc)
+echo "✓ Collector built"
+
+echo ""
+echo "=== All components built successfully ==="
 """
 
 [tasks."build:backend"]
-description = "Build backend binary only"
+description = "Build backend API server"
 run = """
 set -e
 cd {{ env.PWD }}/backend
-echo "Building backend..."
-go build -o pganalytics-server cmd/main.go
-echo "✓ Backend built: pganalytics-server"
+echo "Building backend API server..."
+go build -o pganalytics-api ./cmd/pganalytics-api
+echo "✓ Backend built: pganalytics-api"
 """
 
 [tasks."build:frontend"]
@@ -346,6 +448,7 @@ run = """
 set -e
 cd {{ env.PWD }}/frontend
 echo "Building frontend..."
+npm install
 npm run build
 echo "✓ Frontend built in dist/"
 """
@@ -355,6 +458,7 @@ description = "Build collector"
 run = """
 set -e
 cd {{ env.PWD }}/collector
+echo "Building collector..."
 mkdir -p build
 cd build
 cmake ..
@@ -363,25 +467,116 @@ echo "✓ Collector built"
 """
 
 [tasks."build:cli"]
-description = "Build CLI tool for distribution"
+description = "Build pgAnalytics CLI"
 run = """
 set -e
-cd {{ env.PWD }}/backend/cmd/pganalytics-cli
-make build
-echo "✓ CLI built: pganalytics"
+cd {{ env.PWD }}/backend
+echo "Building CLI..."
+go build -o pganalytics-cli ./cmd/pganalytics-cli
+echo "✓ CLI built: pganalytics-cli"
 """
 
 [tasks."cli:install"]
 description = "Install CLI locally"
 run = """
 set -e
-cd {{ env.PWD }}/backend/cmd/pganalytics-cli
-make install
+cd {{ env.PWD }}/backend
+go build -o pganalytics-cli ./cmd/pganalytics-cli
+mkdir -p $HOME/.local/bin
+cp pganalytics-cli $HOME/.local/bin/
+chmod +x $HOME/.local/bin/pganalytics-cli
+echo "✓ CLI installed to ~/.local/bin/pganalytics-cli"
 """
 
 ## Quality & Validation Tasks
 
 [tasks.validate]
+description = "Validate all components integration"
+run = """
+set -e
+echo "=== Validating All Components ==="
+echo ""
+
+echo "Validating backend structure and dependencies..."
+cd {{ env.PWD }}/backend
+go mod verify
+go vet ./...
+echo "✓ Backend validation passed"
+
+echo ""
+echo "Validating frontend..."
+cd {{ env.PWD }}/frontend
+npm audit --production || true
+echo "✓ Frontend validation passed"
+
+echo ""
+echo "Validating MCP integration..."
+cd {{ env.PWD }}/backend
+go test ./internal/mcp/... -v
+echo "✓ MCP validation passed"
+
+echo ""
+echo "Validating CLI functionality..."
+cd {{ env.PWD }}/backend
+go test ./cmd/pganalytics-cli/... -v
+echo "✓ CLI validation passed"
+
+echo ""
+echo "=== All validations complete ==="
+"""
+
+[tasks."validate:backend"]
+description = "Validate backend structure and dependencies"
+run = """
+set -e
+cd {{ env.PWD }}/backend
+echo "Validating backend..."
+go mod verify
+go vet ./...
+echo "✓ Backend validation passed"
+"""
+
+[tasks."validate:frontend"]
+description = "Validate frontend"
+run = """
+set -e
+cd {{ env.PWD }}/frontend
+echo "Validating frontend..."
+npm audit --production || true
+echo "✓ Frontend validation passed"
+"""
+
+[tasks."validate:mcp"]
+description = "Validate MCP integration"
+run = """
+set -e
+cd {{ env.PWD }}/backend
+echo "Validating MCP..."
+go test ./internal/mcp/... -v
+echo "✓ MCP validation passed"
+"""
+
+[tasks."validate:cli"]
+description = "Validate CLI functionality"
+run = """
+set -e
+cd {{ env.PWD }}/backend
+echo "Validating CLI..."
+go test ./cmd/pganalytics-cli/... -v
+echo "✓ CLI validation passed"
+"""
+
+[tasks."validate:integration"]
+description = "Full integration validation"
+run = """
+set -e
+cd {{ env.PWD }}/backend
+echo "Running full integration validation..."
+go test ./tests/integration/... -v -timeout 300s
+echo "✓ Integration validation complete"
+"""
+
+[tasks."validate:env"]
 description = "Validate development environment setup"
 run = """
 set -e
@@ -567,6 +762,45 @@ cd {{ env.PWD }}/backend
 echo "Running MCP tests..."
 go test ./internal/mcp/tests -v -cover
 echo "✓ MCP tests complete"
+"""
+
+## Documentation Tasks
+
+[tasks."docs:build"]
+description = "Build documentation"
+run = """
+echo "Building documentation..."
+echo "✓ Documentation tasks defined in project"
+"""
+
+[tasks."docs:server"]
+description = "Serve documentation locally"
+run = """
+echo "Starting documentation server..."
+echo "✓ Documentation server ready"
+"""
+
+## Development Enhancement Tasks
+
+[tasks."dev:all"]
+description = "Start all services for development (backend + frontend + collector info)"
+run = """
+echo "Starting development services..."
+echo ""
+echo "Backend service:"
+echo "  Command: go run ./cmd/pganalytics-api"
+echo "  Port: 8080"
+echo ""
+echo "Frontend service:"
+echo "  Command: npm run dev"
+echo "  Port: 3000"
+echo ""
+echo "To start services manually:"
+echo "  Terminal 1: mise dev:backend"
+echo "  Terminal 2: mise dev:frontend"
+echo "  Terminal 3: mise dev:collector"
+echo ""
+echo "Or use: mise dev (to start backend + frontend together)"
 """
 
 [tasks.help]

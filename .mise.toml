@@ -11,9 +11,9 @@ POSTGRES_USER = "postgres"
 POSTGRES_PASSWORD = "postgres"
 POSTGRES_PORT = "5432"
 
-# Go environment
-GOPATH = "{{ env.HOME }}/.go"
-GOROOT = "{{ env.HOME }}/.mise/installs/go/1.26.0"
+# Go environment (Mise sets these automatically)
+# GOPATH will default to ~/go
+# GOROOT will be set by Mise
 
 # Node environment
 NODE_ENV = "development"
@@ -32,18 +32,14 @@ SAML_ENABLED = "false"
 # Go version for backend
 go = "1.26.0"
 
-# Node version for frontend
+# Node version for frontend (npm is included with node)
 node = "20.0.0"
-npm = "10.0.0"
 
 # PostgreSQL version
-postgresql = "15"
+postgres = "15"
 
 # Optional: Redis for caching
 redis = "7"
-
-# Optional: PostgreSQL CLI tools
-postgres-contrib = "15"
 
 [tasks]
 
@@ -124,7 +120,7 @@ echo "Running frontend tests..."
 npm test -- --run
 """
 
-[tasks.test:unit]
+[tasks."test:unit"]
 description = "Run unit tests only"
 run = """
 set -e
@@ -132,7 +128,7 @@ cd {{ env.PWD }}/backend
 go test ./... -v -short -skip TestIntegration
 """
 
-[tasks.test:integration]
+[tasks."test:integration"]
 description = "Run integration tests (requires database)"
 run = """
 set -e
@@ -142,7 +138,7 @@ export TEST_DATABASE_URL="{{ env.TEST_DATABASE_URL }}"
 go test ./tests/integration -v
 """
 
-[tasks.test:e2e]
+[tasks."test:e2e"]
 description = "Run end-to-end integration tests"
 run = """
 set -e
@@ -162,7 +158,7 @@ go test ./tests/integration -v -run TestFull
 kill $BACKEND_PID 2>/dev/null || true
 """
 
-[tasks.test:coverage]
+[tasks."test:coverage"]
 description = "Run tests with coverage report"
 run = """
 set -e
@@ -174,7 +170,7 @@ echo "✓ Coverage report: coverage.html"
 
 ## Database Tasks
 
-[tasks.db:migrate]
+[tasks."db:migrate"]
 description = "Run database migrations"
 run = """
 set -e
@@ -184,7 +180,7 @@ go run cmd/main.go migrate up
 echo "✓ Migrations complete"
 """
 
-[tasks.db:migrate:down]
+[tasks."db:migrate:down"]
 description = "Rollback database migrations"
 run = """
 set -e
@@ -194,7 +190,7 @@ go run cmd/main.go migrate down
 echo "✓ Rollback complete"
 """
 
-[tasks.db:seed]
+[tasks."db:seed"]
 description = "Load test data into database"
 run = """
 set -e
@@ -203,7 +199,7 @@ psql {{ env.DATABASE_URL }} < {{ env.PWD }}/backend/seeds/development.sql
 echo "✓ Seed data loaded"
 """
 
-[tasks.db:reset]
+[tasks."db:reset"]
 description = "Reset database (delete all data and restart)"
 run = """
 set -e
@@ -218,7 +214,7 @@ go run cmd/main.go migrate up
 echo "✓ Fresh database ready"
 """
 
-[tasks.db:status]
+[tasks."db:status"]
 description = "Show database status"
 run = """
 echo "Database Status:"
@@ -279,7 +275,7 @@ echo ""
 wait
 """
 
-[tasks.dev:backend]
+[tasks."dev:backend"]
 description = "Start only backend service"
 run = """
 set -e
@@ -288,7 +284,7 @@ echo "Starting backend on port 8080..."
 go run cmd/main.go serve
 """
 
-[tasks.dev:frontend]
+[tasks."dev:frontend"]
 description = "Start only frontend service"
 run = """
 set -e
@@ -297,7 +293,7 @@ echo "Starting frontend on port 3000..."
 npm run dev
 """
 
-[tasks.dev:collector]
+[tasks."dev:collector"]
 description = "Build and run the collector"
 run = """
 set -e
@@ -331,7 +327,7 @@ npm run build
 echo "✓ Frontend built"
 """
 
-[tasks.build:backend]
+[tasks."build:backend"]
 description = "Build backend binary only"
 run = """
 set -e
@@ -341,7 +337,7 @@ go build -o pganalytics-server cmd/main.go
 echo "✓ Backend built: pganalytics-server"
 """
 
-[tasks.build:frontend]
+[tasks."build:frontend"]
 description = "Build frontend bundle only"
 run = """
 set -e
@@ -351,7 +347,7 @@ npm run build
 echo "✓ Frontend built in dist/"
 """
 
-[tasks.build:collector]
+[tasks."build:collector"]
 description = "Build collector"
 run = """
 set -e

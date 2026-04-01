@@ -9,10 +9,10 @@ import (
 )
 
 type MCPServer struct {
-	transport  *transport.StdioTransport
-	mu         sync.Mutex
-	tools      map[string]ToolHandler
-	resources  map[string]ResourceHandler
+	transport   *transport.StdioTransport
+	mu          sync.Mutex
+	tools       map[string]ToolHandler
+	resources   map[string]ResourceHandler
 	initialized bool
 }
 
@@ -161,6 +161,7 @@ func (s *MCPServer) handleToolCall(req JSONRPCRequest) JSONRPCResponse {
 }
 
 func (s *MCPServer) Run() error {
+	defer s.transport.Close()
 	decoder := json.NewDecoder(s.transport.GetReader())
 	for {
 		var req JSONRPCRequest
@@ -171,8 +172,15 @@ func (s *MCPServer) Run() error {
 		}
 
 		resp := s.HandleRequest(req)
-		respBytes, _ := json.Marshal(resp)
-		s.transport.Write(respBytes)
+		respBytes, err := json.Marshal(resp)
+		if err != nil {
+			log.Printf("Failed to marshal response: %v", err)
+			continue
+		}
+		if err := s.transport.Write(respBytes); err != nil {
+			log.Printf("Write error: %v", err)
+			break
+		}
 	}
 	return nil
 }

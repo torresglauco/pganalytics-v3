@@ -15,6 +15,7 @@ import (
 	"github.com/torresglauco/pganalytics-v3/backend/internal/session"
 	"github.com/torresglauco/pganalytics-v3/backend/internal/storage"
 	"github.com/torresglauco/pganalytics-v3/backend/internal/timescale"
+	"github.com/torresglauco/pganalytics-v3/backend/internal/services/log_analysis"
 	"github.com/torresglauco/pganalytics-v3/backend/pkg/handlers"
 	"github.com/torresglauco/pganalytics-v3/backend/pkg/services"
 	"go.uber.org/zap"
@@ -40,6 +41,7 @@ type Server struct {
 	conditionHandler    *handlers.ConditionHandler
 	silenceHandler      *handlers.SilenceHandler
 	escalationHandler   *handlers.EscalationHandler
+	logCollector        *log_analysis.LogCollector
 }
 
 // NewServer creates a new API server
@@ -90,6 +92,9 @@ func NewServer(
 	// Initialize session manager
 	sessionManager := session.NewSessionManager(nil) // Redis client to be configured
 
+	// Initialize log collector for log analysis and streaming
+	logCollector := log_analysis.NewLogCollector(postgres.GetDB())
+
 	return &Server{
 		config:              cfg,
 		logger:              logger,
@@ -107,6 +112,7 @@ func NewServer(
 		conditionHandler:    conditionHandler,
 		silenceHandler:      silenceHandler,
 		escalationHandler:   escalationHandler,
+		logCollector:        logCollector,
 	}
 }
 
@@ -375,6 +381,10 @@ func (s *Server) RegisterRoutes(router *gin.Engine) {
 			// Frontend log viewer endpoints
 			logs.GET("", s.AuthMiddleware(), s.handleGetLogs)
 			logs.GET("/:logId", s.AuthMiddleware(), s.handleGetLogDetails)
+			// Log analysis endpoints (collector logs)
+			logs.GET("/collector/:collector_id", s.AuthMiddleware(), s.handleGetCollectorLogs)
+			// WebSocket endpoint for streaming logs in real-time
+			logs.GET("/stream/:collector_id", s.handleLogStream)
 		}
 
 		// ========================================================================

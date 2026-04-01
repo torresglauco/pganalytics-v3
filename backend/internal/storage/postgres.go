@@ -109,6 +109,12 @@ func (p *PostgresDB) Close() error {
 	return p.db.Close()
 }
 
+// GetDB returns the underlying sql.DB connection
+// This is needed for services that require direct database access
+func (p *PostgresDB) GetDB() *sql.DB {
+	return p.db
+}
+
 // Health checks the database health
 func (p *PostgresDB) Health(ctx context.Context) bool {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)

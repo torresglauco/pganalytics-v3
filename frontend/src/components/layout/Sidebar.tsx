@@ -19,6 +19,7 @@ const navItems: NavItem[] = [
   // Main
   { section: 'main', icon: '📁', label: 'Collectors', href: '/collectors' },
   { section: 'main', icon: '🔔', label: 'Channels', href: '/channels' },
+  { section: 'main', icon: '🔍', label: 'Index Advisor', href: '/index-advisor' },
   { section: 'main', icon: '📊', label: 'Grafana', href: '/grafana' },
 
   // Admin

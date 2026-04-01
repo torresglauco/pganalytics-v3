@@ -27,10 +27,6 @@ func NewRootCmd(version string) *cobra.Command {
 }
 
 // Stub functions - these will be implemented in later tasks
-func NewConfigCmd() *cobra.Command {
-	return &cobra.Command{Use: "config"}
-}
-
 func NewQueryCmd() *cobra.Command {
 	return &cobra.Command{Use: "query"}
 }

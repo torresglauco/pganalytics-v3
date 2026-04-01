@@ -599,6 +599,7 @@ func (s *Server) RegisterRoutes(router *gin.Engine) {
 			// Prediction and validation (requires auth)
 			ml.POST("/predict", s.AuthMiddleware(), s.handleMLPredict)
 			ml.POST("/validate", s.AuthMiddleware(), s.handleMLValidate)
+			ml.POST("/predict-latency", s.AuthMiddleware(), s.handlePredictQueryLatency)
 
 			// Pattern detection (requires auth)
 			ml.POST("/patterns/detect", s.AuthMiddleware(), s.handleMLDetectPatterns)

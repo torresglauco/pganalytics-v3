@@ -31,7 +31,8 @@ func (ctx *HandlerContext) TableStats(params map[string]interface{}) (interface{
 			pg_total_relation_size(schemaname || '.' || tablename) as size_bytes,
 			(SELECT count(*) FROM pg_indexes WHERE tablename = t.tablename) as index_count,
 			last_autovacuum,
-			ROUND(100.0 * n_dead_tup / NULLIF(n_live_tup + n_dead_tup, 0), 2) as dead_rows_percent
+			ROUND(100.0 * n_dead_tup / NULLIF(n_live_tup + n_dead_tup, 0), 2) as dead_rows_percent,
+			ROUND(100.0 * n_dead_tup / NULLIF(n_live_tup + n_dead_tup, 0) * 0.5, 2) as table_bloat_percent
 		FROM pg_stat_user_tables t
 		WHERE tablename = $1
 	`
@@ -45,7 +46,7 @@ func (ctx *HandlerContext) TableStats(params map[string]interface{}) (interface{
 
 	for rows.Next() {
 		var s TableStats
-		if err := rows.Scan(&s.TableName, &s.RowCount, &s.SizeBytes, &s.IndexCount, &s.LastAutovacuum, &s.DeadRowsPercent); err != nil {
+		if err := rows.Scan(&s.TableName, &s.RowCount, &s.SizeBytes, &s.IndexCount, &s.LastAutovacuum, &s.DeadRowsPercent, &s.TableBloatPercent); err != nil {
 			return nil, err
 		}
 		stats = append(stats, s)

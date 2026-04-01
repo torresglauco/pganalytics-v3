@@ -162,10 +162,11 @@ func (s *MCPServer) handleToolCall(req JSONRPCRequest) JSONRPCResponse {
 
 	result, err := handler(params)
 	if err != nil {
+		log.Printf("Tool %s error: %v", toolName, err)
 		return JSONRPCResponse{
 			JSONRPC: "2.0",
 			ID:      req.ID,
-			Error:   err.Error(),
+			Error:   "Tool execution failed - check server logs",
 		}
 	}
 

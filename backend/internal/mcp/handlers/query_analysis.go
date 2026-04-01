@@ -49,8 +49,16 @@ func (ctx *HandlerContext) QueryAnalysis(params map[string]interface{}) (interfa
 		return nil, err
 	}
 
-	// Add anomaly detection logic
-	if result.MaxTimeMs > result.MeanTimeMs*5 {
+	// Initialize slices to prevent nil pointer dereferences
+	if result.Anomalies == nil {
+		result.Anomalies = make([]string, 0)
+	}
+	if result.Recommendations == nil {
+		result.Recommendations = make([]string, 0)
+	}
+
+	// Add anomaly detection logic with bounds checking
+	if result.MeanTimeMs > 0 && result.MaxTimeMs > result.MeanTimeMs*5 {
 		result.Anomalies = append(result.Anomalies, "high variance in execution time")
 		result.Recommendations = append(result.Recommendations, "investigate query performance spikes")
 	}

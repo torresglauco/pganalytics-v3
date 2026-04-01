@@ -5,6 +5,7 @@ import (
 	"log"
 	"sync"
 
+	"github.com/torresglauco/pganalytics-v3/backend/internal/mcp/handlers"
 	"github.com/torresglauco/pganalytics-v3/backend/internal/mcp/transport"
 )
 
@@ -39,6 +40,21 @@ func NewMCPServer(t *transport.StdioTransport) *MCPServer {
 		tools:     make(map[string]ToolHandler),
 		resources: make(map[string]ResourceHandler),
 	}
+}
+
+// RegisterDefaultHandlers registers all standard pgAnalytics tools
+func (s *MCPServer) RegisterDefaultHandlers(handlerCtx *handlers.HandlerContext) {
+	s.RegisterTool("table_stats", func(params map[string]interface{}) (interface{}, error) {
+		return handlerCtx.TableStats(params)
+	})
+
+	s.RegisterTool("query_analysis", func(params map[string]interface{}) (interface{}, error) {
+		return handlerCtx.QueryAnalysis(params)
+	})
+
+	s.RegisterTool("index_suggest", func(params map[string]interface{}) (interface{}, error) {
+		return handlerCtx.IndexSuggest(params)
+	})
 }
 
 func (s *MCPServer) RegisterTool(name string, handler ToolHandler) {

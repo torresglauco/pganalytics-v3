@@ -538,6 +538,37 @@ echo ""
 echo "✓ Cleanup complete"
 """
 
+[tasks."build:mcp-server"]
+description = "Build MCP server binary"
+run = """
+set -e
+cd {{ env.PWD }}/backend
+echo "Building MCP server..."
+go build -o pganalytics-mcp-server ./cmd/pganalytics-mcp-server
+echo "✓ MCP server built: backend/pganalytics-mcp-server"
+"""
+
+[tasks."install:mcp-server"]
+description = "Install MCP server binary to ~/.local/bin"
+run = """
+set -e
+cd {{ env.PWD }}/backend
+mkdir -p $HOME/.local/bin
+cp pganalytics-mcp-server $HOME/.local/bin/
+chmod +x $HOME/.local/bin/pganalytics-mcp-server
+echo "✓ MCP server installed to ~/.local/bin/pganalytics-mcp-server"
+"""
+
+[tasks."test:mcp"]
+description = "Run MCP server tests"
+run = """
+set -e
+cd {{ env.PWD }}/backend
+echo "Running MCP tests..."
+go test ./internal/mcp/tests -v -cover
+echo "✓ MCP tests complete"
+"""
+
 [tasks.help]
 description = "Show available commands"
 run = """
@@ -560,6 +591,7 @@ echo "  mise test:unit     # Run unit tests"
 echo "  mise test:integration  # Run integration tests (requires DB)"
 echo "  mise test:e2e      # Run E2E tests"
 echo "  mise test:coverage # Generate coverage report"
+echo "  mise test:mcp      # Run MCP tests"
 echo ""
 echo "Database:"
 echo "  mise db:migrate    # Run migrations"
@@ -571,6 +603,7 @@ echo "Building:"
 echo "  mise build         # Build all (backend + frontend)"
 echo "  mise build:backend # Build backend only"
 echo "  mise build:frontend # Build frontend only"
+echo "  mise build:mcp-server # Build MCP server"
 echo ""
 echo "Quality:"
 echo "  mise lint          # Run linters"
@@ -580,4 +613,5 @@ echo ""
 echo "Utilities:"
 echo "  mise logs          # Tail development logs"
 echo "  mise clean         # Clean build artifacts"
+echo "  mise install:mcp-server # Install MCP server to ~/.local/bin"
 """

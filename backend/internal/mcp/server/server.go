@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"encoding/json"
@@ -116,12 +116,18 @@ func (s *MCPServer) handleToolsList(req JSONRPCRequest) JSONRPCResponse {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	tools := make([]map[string]interface{}, 0)
+	toolsMap := make([]map[string]interface{}, 0)
 	for name := range s.tools {
-		tools = append(tools, map[string]interface{}{
+		toolsMap = append(toolsMap, map[string]interface{}{
 			"name":        name,
 			"description": "pgAnalytics tool: " + name,
 		})
+	}
+
+	// Convert to []interface{} for JSON marshaling
+	tools := make([]interface{}, len(toolsMap))
+	for i, t := range toolsMap {
+		tools[i] = t
 	}
 
 	return JSONRPCResponse{

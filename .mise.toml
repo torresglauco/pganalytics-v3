@@ -362,6 +362,23 @@ make -j$(nproc)
 echo "✓ Collector built"
 """
 
+[tasks."build:cli"]
+description = "Build CLI tool for distribution"
+run = """
+set -e
+cd {{ env.PWD }}/backend/cmd/pganalytics-cli
+make build
+echo "✓ CLI built: pganalytics"
+"""
+
+[tasks."cli:install"]
+description = "Install CLI locally"
+run = """
+set -e
+cd {{ env.PWD }}/backend/cmd/pganalytics-cli
+make install
+"""
+
 ## Quality & Validation Tasks
 
 [tasks.validate]

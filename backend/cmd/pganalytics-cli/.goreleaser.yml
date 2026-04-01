@@ -1,0 +1,28 @@
+project_name: pganalytics
+
+builds:
+  - main: main.go
+    binary: pganalytics
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+
+archives:
+  - format: tar.gz
+    format_overrides:
+      - goos: windows
+        format: zip
+
+brews:
+  - repository:
+      owner: pganalytics
+      name: homebrew-pganalytics
+    folder: Formula
+    homepage: https://pganalytics.com
+    description: PostgreSQL monitoring from the CLI

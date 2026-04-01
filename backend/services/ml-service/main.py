@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import numpy as np
 from models import LatencyModel
+from anomaly_model import AnomalyModel
 import logging
 
 app = FastAPI(title="pgAnalytics ML Service")
@@ -13,6 +14,9 @@ try:
     latency_model.load("./models")
 except Exception as e:
     logger.warning(f"Could not load pre-trained model: {e}")
+
+# Initialize anomaly detection model
+anomaly_model = AnomalyModel()
 
 class PredictionRequest(BaseModel):
     features: list[float]
@@ -37,6 +41,25 @@ def predict_latency(request: PredictionRequest) -> PredictionResponse:
         )
     except Exception as e:
         logger.error(f"Prediction error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/detect-anomaly")
+def detect_anomaly(request: PredictionRequest) -> dict:
+    """Detect if a metric reading is anomalous"""
+    try:
+        X = np.array([request.features])
+        predictions, scores = anomaly_model.detect(X)
+
+        is_anomaly = predictions[0] == -1
+        anomaly_score = float(scores[0])
+
+        return {
+            "is_anomaly": is_anomaly,
+            "anomaly_score": anomaly_score,
+            "severity": "high" if anomaly_score < -0.5 else "medium" if is_anomaly else "normal"
+        }
+    except Exception as e:
+        logger.error(f"Anomaly detection error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/health")

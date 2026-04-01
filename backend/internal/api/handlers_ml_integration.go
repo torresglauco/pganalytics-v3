@@ -391,3 +391,151 @@ func (s *Server) handleMLCircuitBreakerStatus(c *gin.Context) {
 		"timestamp": time.Now().UTC(),
 	})
 }
+
+// PredictLatencyRequest represents a request for query latency prediction
+type PredictLatencyRequest struct {
+	JoinCount     int    `json:"join_count" binding:"required"`
+	ScanType      string `json:"scan_type" binding:"required"`
+	RowCount      int    `json:"row_count" binding:"required"`
+	FilterCount   int    `json:"filter_count"`
+	SubqueryCount int    `json:"subquery_count"`
+	AggregateType string `json:"aggregate_type"`
+}
+
+// @Summary Predict Query Latency
+// @Description Predict query execution latency based on query characteristics
+// @Tags ML-Service
+// @Accept json
+// @Produce json
+// @Param request body PredictLatencyRequest true "Query latency prediction request"
+// @Success 200 {object} gin.H{"predicted_latency_ms":float64,"confidence":float64,"recommendations":[]string}
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 503 {object} models.ErrorResponse
+// @Router /api/v1/ml/predict-latency [post]
+func (s *Server) handlePredictQueryLatency(c *gin.Context) {
+	if s.mlClient == nil {
+		errResp := apperrors.ServiceUnavailable("ML service not enabled", "")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 10*time.Second)
+	defer cancel()
+
+	var req PredictLatencyRequest
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		errResp := apperrors.BadRequest("Invalid request", err.Error())
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	// Validate scan type
+	validScanTypes := map[string]bool{"seq_scan": true, "index_scan": true, "bitmap_scan": true}
+	if !validScanTypes[req.ScanType] {
+		errResp := apperrors.BadRequest("Invalid scan_type", "Must be one of: seq_scan, index_scan, bitmap_scan")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	// Validate row count
+	if req.RowCount < 0 {
+		errResp := apperrors.BadRequest("Invalid row_count", "Must be non-negative")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	// Build feature map for ML service
+	features := map[string]interface{}{
+		"join_count":     req.JoinCount,
+		"scan_type":      scanTypeValue(req.ScanType),
+		"row_count":      float64(req.RowCount) / 1000.0, // Normalize row count
+		"filter_count":   req.FilterCount,
+		"subquery_count": req.SubqueryCount,
+		"aggregate_type": aggregateTypeValue(req.AggregateType),
+	}
+
+	// Create ML prediction request
+	predReq := &ml.PredictionRequest{
+		Features:  features,
+		QueryHash: 0, // Not using query hash for this endpoint
+	}
+
+	// Get prediction from ML service
+	pred, err := s.mlClient.PredictQueryExecution(ctx, predReq)
+	if err != nil {
+		s.logger.Warn("ML latency prediction failed", zap.Error(err))
+		errResp := apperrors.ServiceUnavailable("ML prediction failed", err.Error())
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	// Generate recommendations based on latency
+	recommendations := generateLatencyRecommendations(pred.PredictedExecutionMs, &req)
+
+	c.JSON(http.StatusOK, gin.H{
+		"predicted_latency_ms": pred.PredictedExecutionMs,
+		"confidence":          pred.ConfidenceScore,
+		"recommendations":     recommendations,
+		"timestamp":           time.Now().UTC(),
+	})
+}
+
+// scanTypeValue converts scan type string to numeric feature
+func scanTypeValue(st string) float64 {
+	switch st {
+	case "seq_scan":
+		return 0.0
+	case "index_scan":
+		return 1.0
+	case "bitmap_scan":
+		return 2.0
+	default:
+		return 0.0
+	}
+}
+
+// aggregateTypeValue converts aggregate type string to numeric feature
+func aggregateTypeValue(at string) float64 {
+	switch at {
+	case "none":
+		return 0.0
+	case "sum", "count":
+		return 1.0
+	case "group_by":
+		return 2.0
+	default:
+		return 0.0
+	}
+}
+
+// generateLatencyRecommendations generates optimization recommendations based on predicted latency
+func generateLatencyRecommendations(latency float64, req *PredictLatencyRequest) []string {
+	var recs []string
+
+	if latency > 500 {
+		recs = append(recs, "High latency (>500ms): Consider adding an index on frequently filtered columns")
+	}
+
+	if latency > 1000 {
+		recs = append(recs, "Very high latency (>1000ms): Consider query optimization or table refactoring")
+	}
+
+	if req.JoinCount > 3 {
+		recs = append(recs, "Multiple joins detected: Review join order and ensure proper indexing on join keys")
+	}
+
+	if req.ScanType == "seq_scan" && req.RowCount > 10000 {
+		recs = append(recs, "Sequential scan on large table: Add an index to improve scan performance")
+	}
+
+	if req.SubqueryCount > 2 {
+		recs = append(recs, "Complex subqueries detected: Consider using CTEs or rewriting with joins for better optimization")
+	}
+
+	if len(recs) == 0 {
+		recs = append(recs, "Query performance is acceptable for current structure")
+	}
+
+	return recs
+}

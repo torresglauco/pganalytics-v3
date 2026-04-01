@@ -17,6 +17,7 @@ func NewRootCmd(version string) *cobra.Command {
 	rootCmd.AddCommand(NewQueryCmd())
 	rootCmd.AddCommand(NewIndexCmd())
 	rootCmd.AddCommand(NewVacuumCmd())
+	rootCmd.AddCommand(NewMCPCmd())
 
 	// Global flags
 	rootCmd.PersistentFlags().String("server", "http://localhost:8080", "API server URL")

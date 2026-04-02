@@ -201,7 +201,15 @@ func (s *Server) handleListUsers(c *gin.Context) {
 		users = make([]*models.User, 0)
 	}
 
-	c.JSON(http.StatusOK, users)
+	// Return paginated response
+	resp := &models.PaginatedResponse{
+		Data:       users,
+		Total:      len(users),
+		Page:       1,
+		PageSize:   len(users),
+		TotalPages: 1,
+	}
+	c.JSON(http.StatusOK, resp)
 }
 
 // @Summary Update User

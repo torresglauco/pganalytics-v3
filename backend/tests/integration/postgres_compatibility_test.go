@@ -45,13 +45,13 @@ func TestPostgresVersionCompatibility(t *testing.T) {
 	}
 }
 
-// TestSchemaIntegrity validates that all tables exist and have expected structures
-func TestSchemaIntegrity(t *testing.T) {
+// TestPostgresSchemaCompatibility validates that all tables exist and have expected structures across PostgreSQL versions
+func TestPostgresSchemaCompatibility(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping integration test in short mode")
 	}
 
-	db := setupTestDB(t)
+	db := compatSetupTestDB(t)
 	defer db.Close()
 
 	// Verify pganalytics schema exists
@@ -143,7 +143,7 @@ func TestUUIDExtension(t *testing.T) {
 		t.Skip("Skipping integration test in short mode")
 	}
 
-	db := setupTestDB(t)
+	db := compatSetupTestDB(t)
 	defer db.Close()
 
 	// Test gen_random_uuid() which is used in migrations
@@ -166,7 +166,7 @@ func TestJSONBSupport(t *testing.T) {
 		t.Skip("Skipping integration test in short mode")
 	}
 
-	db := setupTestDB(t)
+	db := compatSetupTestDB(t)
 	defer db.Close()
 
 	// Test JSONB operations used in notification_channels
@@ -191,7 +191,7 @@ func TestTimestampWithTimeZone(t *testing.T) {
 		t.Skip("Skipping integration test in short mode")
 	}
 
-	db := setupTestDB(t)
+	db := compatSetupTestDB(t)
 	defer db.Close()
 
 	var timestamp string
@@ -215,7 +215,7 @@ func TestArrayTypes(t *testing.T) {
 		t.Skip("Skipping integration test in short mode")
 	}
 
-	db := setupTestDB(t)
+	db := compatSetupTestDB(t)
 	defer db.Close()
 
 	// Test array operations used in index_recommendations
@@ -240,7 +240,7 @@ func TestBIGSERIALSupport(t *testing.T) {
 		t.Skip("Skipping integration test in short mode")
 	}
 
-	db := setupTestDB(t)
+	db := compatSetupTestDB(t)
 	defer db.Close()
 
 	// BIGSERIAL is used in all modern tables
@@ -261,7 +261,7 @@ func TestTriggerFunctionCompatibility(t *testing.T) {
 		t.Skip("Skipping integration test in short mode")
 	}
 
-	db := setupTestDB(t)
+	db := compatSetupTestDB(t)
 	defer db.Close()
 
 	// Check if update_updated_at_column function exists
@@ -289,7 +289,7 @@ func TestIndexCompatibility(t *testing.T) {
 		t.Skip("Skipping integration test in short mode")
 	}
 
-	db := setupTestDB(t)
+	db := compatSetupTestDB(t)
 	defer db.Close()
 
 	// Count indexes in pganalytics schema (partial indexes should be created successfully)
@@ -310,7 +310,7 @@ func TestConstraintCompatibility(t *testing.T) {
 		t.Skip("Skipping integration test in short mode")
 	}
 
-	db := setupTestDB(t)
+	db := compatSetupTestDB(t)
 	defer db.Close()
 
 	// Check for constraints (PRIMARY KEY, FOREIGN KEY, UNIQUE, CHECK)
@@ -334,7 +334,7 @@ func TestPostgres14Compatibility(t *testing.T) {
 		t.Skip("Skipping integration test in short mode")
 	}
 
-	db := setupTestDB(t)
+	db := compatSetupTestDB(t)
 	defer db.Close()
 
 	version := getPostgresVersion(t, db)
@@ -352,7 +352,7 @@ func TestPostgres15Compatibility(t *testing.T) {
 		t.Skip("Skipping integration test in short mode")
 	}
 
-	db := setupTestDB(t)
+	db := compatSetupTestDB(t)
 	defer db.Close()
 
 	version := getPostgresVersion(t, db)
@@ -369,7 +369,7 @@ func TestPostgres16Compatibility(t *testing.T) {
 		t.Skip("Skipping integration test in short mode")
 	}
 
-	db := setupTestDB(t)
+	db := compatSetupTestDB(t)
 	defer db.Close()
 
 	version := getPostgresVersion(t, db)
@@ -386,7 +386,7 @@ func TestPostgres17Compatibility(t *testing.T) {
 		t.Skip("Skipping integration test in short mode")
 	}
 
-	db := setupTestDB(t)
+	db := compatSetupTestDB(t)
 	defer db.Close()
 
 	version := getPostgresVersion(t, db)
@@ -403,7 +403,7 @@ func TestPostgres18Compatibility(t *testing.T) {
 		t.Skip("Skipping integration test in short mode")
 	}
 
-	db := setupTestDB(t)
+	db := compatSetupTestDB(t)
 	defer db.Close()
 
 	version := getPostgresVersion(t, db)
@@ -416,7 +416,8 @@ func TestPostgres18Compatibility(t *testing.T) {
 
 // Helper functions
 
-func setupTestDB(t *testing.T) *sql.DB {
+// compatSetupTestDB sets up a test database connection for PostgreSQL compatibility tests
+func compatSetupTestDB(t *testing.T) *sql.DB {
 	dbURL := os.Getenv("TEST_DATABASE_URL")
 	if dbURL == "" {
 		dbURL = os.Getenv("DATABASE_URL")

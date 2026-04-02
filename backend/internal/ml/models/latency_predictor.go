@@ -29,6 +29,10 @@ func NewLatencyPredictor() *LatencyPredictor {
 	}
 }
 
+func (lp *LatencyPredictor) SetMLServiceURL(url string) {
+	lp.mlServiceURL = url
+}
+
 func (lp *LatencyPredictor) Predict(features []float64) (float64, error) {
 	req := PredictionRequest{Features: features}
 	body, err := json.Marshal(req)

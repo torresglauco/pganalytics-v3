@@ -1,6 +1,7 @@
 package api
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -93,7 +94,11 @@ func NewServer(
 	sessionManager := session.NewSessionManager(nil) // Redis client to be configured
 
 	// Initialize log collector for log analysis and streaming
-	logCollector := log_analysis.NewLogCollector(postgres.GetDB())
+	var logCollectorDB *sql.DB
+	if postgres != nil {
+		logCollectorDB = postgres.GetDB()
+	}
+	logCollector := log_analysis.NewLogCollector(logCollectorDB)
 
 	return &Server{
 		config:              cfg,

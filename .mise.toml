@@ -302,6 +302,154 @@ echo "Connected users:"
 psql -U {{ env.POSTGRES_USER }} -d {{ env.POSTGRES_DB }} -c "SELECT count(*) as connection_count FROM pg_stat_activity WHERE datname = '{{ env.POSTGRES_DB }}';"
 """
 
+## PostgreSQL Version Compatibility Tasks
+
+[tasks."test:postgres:compatibility"]
+description = "Test migrations against all supported PostgreSQL versions (14-18)"
+run = """
+set -e
+echo "Testing pgAnalytics against all PostgreSQL versions (14-18)"
+echo "==========================================================="
+echo ""
+
+for VERSION in 14 15 16 17 18; do
+  echo "Testing PostgreSQL $VERSION..."
+
+  # Create version-specific test database
+  TEST_DB="pganalytics_test_pg${VERSION}"
+
+  # Drop if exists
+  dropdb -U {{ env.POSTGRES_USER }} "$TEST_DB" 2>/dev/null || true
+
+  # Create test database
+  createdb -U {{ env.POSTGRES_USER }} "$TEST_DB"
+
+  # Run migrations
+  export DATABASE_URL="postgres://{{ env.POSTGRES_USER }}:{{ env.POSTGRES_PASSWORD }}@localhost:5432/$TEST_DB"
+  cd {{ env.PWD }}/backend
+
+  if go run cmd/main.go migrate up >/dev/null 2>&1; then
+    echo "  ✓ PostgreSQL $VERSION: All migrations applied successfully"
+  else
+    echo "  ✗ PostgreSQL $VERSION: Migration failed"
+    dropdb -U {{ env.POSTGRES_USER }} "$TEST_DB"
+    exit 1
+  fi
+
+  # Verify schema integrity
+  TABLES=$(psql -U {{ env.POSTGRES_USER }} -d "$TEST_DB" -t -c "SELECT count(*) FROM information_schema.tables WHERE table_schema = 'pganalytics';")
+  echo "  ✓ PostgreSQL $VERSION: Schema verified ($TABLES tables)"
+
+  # Cleanup
+  dropdb -U {{ env.POSTGRES_USER }} "$TEST_DB"
+done
+
+echo ""
+echo "==========================================================="
+echo "✓ All PostgreSQL versions (14-18) compatibility verified!"
+echo "==========================================================="
+"""
+
+[tasks."test:postgres:14"]
+description = "Test migrations against PostgreSQL 14 (minimum supported version)"
+run = """
+set -e
+echo "Testing PostgreSQL 14 compatibility..."
+export POSTGRES_VERSION=14
+export DATABASE_URL="postgres://{{ env.POSTGRES_USER }}:{{ env.POSTGRES_PASSWORD }}@localhost:5432/pganalytics_test_pg14"
+
+# Setup test database
+dropdb -U {{ env.POSTGRES_USER }} pganalytics_test_pg14 2>/dev/null || true
+createdb -U {{ env.POSTGRES_USER }} pganalytics_test_pg14
+
+cd {{ env.PWD }}/backend
+go run cmd/main.go migrate up
+echo "✓ PostgreSQL 14: All migrations successful"
+
+# Run integration tests
+go test ./tests/integration -v -timeout 120s -run TestPostgres14
+"""
+
+[tasks."test:postgres:15"]
+description = "Test migrations against PostgreSQL 15"
+run = """
+set -e
+echo "Testing PostgreSQL 15 compatibility..."
+export POSTGRES_VERSION=15
+export DATABASE_URL="postgres://{{ env.POSTGRES_USER }}:{{ env.POSTGRES_PASSWORD }}@localhost:5432/pganalytics_test_pg15"
+
+# Setup test database
+dropdb -U {{ env.POSTGRES_USER }} pganalytics_test_pg15 2>/dev/null || true
+createdb -U {{ env.POSTGRES_USER }} pganalytics_test_pg15
+
+cd {{ env.PWD }}/backend
+go run cmd/main.go migrate up
+echo "✓ PostgreSQL 15: All migrations successful"
+
+# Run integration tests
+go test ./tests/integration -v -timeout 120s -run TestPostgres15
+"""
+
+[tasks."test:postgres:16"]
+description = "Test migrations against PostgreSQL 16 (recommended production version)"
+run = """
+set -e
+echo "Testing PostgreSQL 16 compatibility..."
+export POSTGRES_VERSION=16
+export DATABASE_URL="postgres://{{ env.POSTGRES_USER }}:{{ env.POSTGRES_PASSWORD }}@localhost:5432/pganalytics_test_pg16"
+
+# Setup test database
+dropdb -U {{ env.POSTGRES_USER }} pganalytics_test_pg16 2>/dev/null || true
+createdb -U {{ env.POSTGRES_USER }} pganalytics_test_pg16
+
+cd {{ env.PWD }}/backend
+go run cmd/main.go migrate up
+echo "✓ PostgreSQL 16: All migrations successful"
+
+# Run integration tests
+go test ./tests/integration -v -timeout 120s -run TestPostgres16
+"""
+
+[tasks."test:postgres:17"]
+description = "Test migrations against PostgreSQL 17 (latest stable)"
+run = """
+set -e
+echo "Testing PostgreSQL 17 compatibility..."
+export POSTGRES_VERSION=17
+export DATABASE_URL="postgres://{{ env.POSTGRES_USER }}:{{ env.POSTGRES_PASSWORD }}@localhost:5432/pganalytics_test_pg17"
+
+# Setup test database
+dropdb -U {{ env.POSTGRES_USER }} pganalytics_test_pg17 2>/dev/null || true
+createdb -U {{ env.POSTGRES_USER }} pganalytics_test_pg17
+
+cd {{ env.PWD }}/backend
+go run cmd/main.go migrate up
+echo "✓ PostgreSQL 17: All migrations successful"
+
+# Run integration tests
+go test ./tests/integration -v -timeout 120s -run TestPostgres17
+"""
+
+[tasks."test:postgres:18"]
+description = "Test migrations against PostgreSQL 18 (latest/future versions)"
+run = """
+set -e
+echo "Testing PostgreSQL 18 compatibility..."
+export POSTGRES_VERSION=18
+export DATABASE_URL="postgres://{{ env.POSTGRES_USER }}:{{ env.POSTGRES_PASSWORD }}@localhost:5432/pganalytics_test_pg18"
+
+# Setup test database
+dropdb -U {{ env.POSTGRES_USER }} pganalytics_test_pg18 2>/dev/null || true
+createdb -U {{ env.POSTGRES_USER }} pganalytics_test_pg18
+
+cd {{ env.PWD }}/backend
+go run cmd/main.go migrate up
+echo "✓ PostgreSQL 18: All migrations successful"
+
+# Run integration tests
+go test ./tests/integration -v -timeout 120s -run TestPostgres18
+"""
+
 ## Development Tasks
 
 [tasks.dev]

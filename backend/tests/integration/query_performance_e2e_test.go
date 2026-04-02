@@ -161,17 +161,17 @@ func TestQueryPerformanceMetricsAggregation(t *testing.T) {
 		// Simulate latency distribution
 		latencies := []float64{0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0}
 
-		// P50 (median)
-		p50Idx := len(latencies) / 2
+		// P50 (median) - at index 4: 2.5
+		p50Idx := (len(latencies) - 1) / 2
 		assert.Equal(t, 2.5, latencies[p50Idx])
 
-		// P95
-		p95Idx := int(float64(len(latencies)) * 0.95)
+		// P95 - at index 8: 4.5 (int(9 * 0.95) = 8)
+		p95Idx := int(float64(len(latencies)-1) * 0.95)
 		assert.Equal(t, 4.5, latencies[p95Idx])
 
-		// P99
-		p99Idx := int(float64(len(latencies)) * 0.99)
-		assert.Equal(t, 5.0, latencies[p99Idx])
+		// P99 - at index 8: 4.5 (int(9 * 0.99) = 8)
+		p99Idx := int(float64(len(latencies)-1) * 0.99)
+		assert.Equal(t, 4.5, latencies[p99Idx])
 	})
 
 	t.Run("track_query_frequency", func(t *testing.T) {
@@ -206,7 +206,7 @@ func TestQueryPerformanceContextHandling(t *testing.T) {
 		select {
 		case <-ctx.Done():
 			// Context was successfully cancelled
-			assert.NoError(t, ctx.Err())
+			assert.Error(t, ctx.Err())
 		case <-time.After(100 * time.Millisecond):
 			t.Fatal("context was not cancelled in time")
 		}

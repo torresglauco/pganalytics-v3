@@ -97,9 +97,11 @@ private:
     std::string collectorSecret_;
     std::string currentToken_;
     time_t tokenExpiresAt_;
+    time_t tokenGeneratedAt_ = 0;  // Track when token was generated
     std::string clientCertificate_;
     std::string clientKey_;
     mutable std::string lastError_;
+    long long tokenCounter_ = 0;  // Counter to ensure unique tokens
 
     /**
      * Encode data using HMAC-SHA256

@@ -13,9 +13,11 @@
  */
 class SenderIntegrationTest : public ::testing::Test {
 protected:
-    MockBackendServer mock_server{8443};
+    MockBackendServer mock_server{8443, false};  // Use HTTP (false) instead of HTTPS
 
     void SetUp() override {
+        // Reset mock server state
+        mock_server.reset();
         // Start mock backend before each test
         ASSERT_TRUE(mock_server.start());
         std::this_thread::sleep_for(std::chrono::milliseconds(100));

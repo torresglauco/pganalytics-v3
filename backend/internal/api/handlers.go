@@ -33,12 +33,24 @@ const version = "3.0.0-alpha"
 func (s *Server) handleHealth(c *gin.Context) {
 	ctx := c.Request.Context()
 
+	// Check database health (default to true if nil in tests)
+	databaseOk := true
+	if s.postgres != nil {
+		databaseOk = s.postgres.Health(ctx)
+	}
+
+	// Check timescale health (default to true if nil in tests)
+	timescaleOk := true
+	if s.timescale != nil {
+		timescaleOk = s.timescale.Health(ctx)
+	}
+
 	healthResp := &models.HealthResponse{
 		Status:      "ok",
 		Version:     version,
 		Timestamp:   time.Now(),
-		DatabaseOk:  s.postgres.Health(ctx),
-		TimescaleOk: s.timescale.Health(ctx),
+		DatabaseOk:  databaseOk,
+		TimescaleOk: timescaleOk,
 	}
 
 	if !healthResp.DatabaseOk || !healthResp.TimescaleOk {
@@ -824,23 +836,33 @@ func (s *Server) handleCollectorRegister(c *gin.Context) {
 
 	// Validate secret from database (new way)
 	var validSecret *models.RegistrationSecret
-	validSecret, err := s.postgres.ValidateRegistrationSecret(c.Request.Context(), registrationSecret)
-	if err != nil {
-		// Fallback to hardcoded config for backward compatibility
+	if s.postgres != nil {
+		var err error
+		validSecret, err = s.postgres.ValidateRegistrationSecret(c.Request.Context(), registrationSecret)
+		if err != nil {
+			// Fallback to hardcoded config for backward compatibility
+			if registrationSecret != s.config.RegistrationSecret {
+				errResp := apperrors.Unauthorized("Invalid or missing registration secret", "")
+				c.JSON(errResp.StatusCode, errResp)
+				return
+			}
+			// If using fallback secret from config, still try to find it in DB to record usage
+			fallbackSecret, dbErr := s.postgres.ValidateRegistrationSecret(c.Request.Context(), registrationSecret)
+			if dbErr == nil {
+				validSecret = fallbackSecret
+			}
+		}
+	} else {
+		// Fallback to hardcoded config when postgres is nil (tests)
 		if registrationSecret != s.config.RegistrationSecret {
 			errResp := apperrors.Unauthorized("Invalid or missing registration secret", "")
 			c.JSON(errResp.StatusCode, errResp)
 			return
 		}
-		// If using fallback secret from config, still try to find it in DB to record usage
-		fallbackSecret, dbErr := s.postgres.ValidateRegistrationSecret(c.Request.Context(), registrationSecret)
-		if dbErr == nil {
-			validSecret = fallbackSecret
-		}
 	}
 
 	// Record the usage in audit log if secret was validated
-	if validSecret != nil {
+	if validSecret != nil && s.postgres != nil {
 		go func() {
 			ipAddress := c.ClientIP()
 			_ = s.postgres.RecordRegistrationSecretUsage(

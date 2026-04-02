@@ -1,0 +1,192 @@
+# Docker Compose Example: pgAnalytics with Different PostgreSQL Versions
+# Use with: docker-compose -f docker-compose.postgres-versions.yml up
+#
+# This file demonstrates how to run pgAnalytics with different PostgreSQL versions.
+# All supported versions (14-18) are fully compatible with pgAnalytics v3.
+#
+# Choose one of the postgres service versions below based on your needs.
+
+version: '3.8'
+
+services:
+  # ============================================================================
+  # PostgreSQL 14 (Baseline - Minimum Supported Version)
+  # Supported until October 2026
+  # Use this for maximum compatibility with older systems
+  # ============================================================================
+  postgres-14:
+    image: postgres:14-bullseye
+    container_name: pganalytics-postgres-14
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: pganalytics
+      POSTGRES_DB: pganalytics
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_14_data:/var/lib/postgresql/data
+      - ./backend/migrations/000_complete_schema.sql:/docker-entrypoint-initdb.d/001_schema.sql:ro
+      - ./backend/migrations/001_triggers.sql:/docker-entrypoint-initdb.d/002_triggers.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    profiles:
+      - pg14
+
+  # ============================================================================
+  # PostgreSQL 15 (Enhanced Performance)
+  # Supported until October 2027
+  # Includes: ICU collations, improved JSON handling
+  # ============================================================================
+  postgres-15:
+    image: postgres:15-bullseye
+    container_name: pganalytics-postgres-15
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: pganalytics
+      POSTGRES_DB: pganalytics
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_15_data:/var/lib/postgresql/data
+      - ./backend/migrations/000_complete_schema.sql:/docker-entrypoint-initdb.d/001_schema.sql:ro
+      - ./backend/migrations/001_triggers.sql:/docker-entrypoint-initdb.d/002_triggers.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    profiles:
+      - pg15
+
+  # ============================================================================
+  # PostgreSQL 16 (RECOMMENDED FOR NEW DEPLOYMENTS)
+  # Supported until October 2028
+  # Includes: Better query planning, improved indexes, optimized JSON operations
+  # This is the default and recommended version for production deployments
+  # ============================================================================
+  postgres-16:
+    image: postgres:16-bullseye
+    container_name: pganalytics-postgres-16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: pganalytics
+      POSTGRES_DB: pganalytics
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_16_data:/var/lib/postgresql/data
+      - ./backend/migrations/000_complete_schema.sql:/docker-entrypoint-initdb.d/001_schema.sql:ro
+      - ./backend/migrations/001_triggers.sql:/docker-entrypoint-initdb.d/002_triggers.sql:ro
+      - ./postgresql.conf:/etc/postgresql/postgresql.conf:ro
+    command: -c config_file=/etc/postgresql/postgresql.conf
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    profiles:
+      - pg16
+      - default
+
+  # ============================================================================
+  # PostgreSQL 17 (Latest Stable)
+  # Supported until October 2029
+  # Includes: Performance improvements in aggregates and window functions
+  # Excellent choice for new deployments requiring latest features
+  # ============================================================================
+  postgres-17:
+    image: postgres:17-bullseye
+    container_name: pganalytics-postgres-17
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: pganalytics
+      POSTGRES_DB: pganalytics
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_17_data:/var/lib/postgresql/data
+      - ./backend/migrations/000_complete_schema.sql:/docker-entrypoint-initdb.d/001_schema.sql:ro
+      - ./backend/migrations/001_triggers.sql:/docker-entrypoint-initdb.d/002_triggers.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    profiles:
+      - pg17
+
+  # ============================================================================
+  # PostgreSQL 18 (Future-Ready)
+  # Supported until October 2030
+  # Includes: Latest optimizations and features
+  # Use for future-proof deployments
+  # ============================================================================
+  postgres-18:
+    image: postgres:18-bullseye
+    container_name: pganalytics-postgres-18
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: pganalytics
+      POSTGRES_DB: pganalytics
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_18_data:/var/lib/postgresql/data
+      - ./backend/migrations/000_complete_schema.sql:/docker-entrypoint-initdb.d/001_schema.sql:ro
+      - ./backend/migrations/001_triggers.sql:/docker-entrypoint-initdb.d/002_triggers.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    profiles:
+      - pg18
+
+volumes:
+  postgres_14_data:
+  postgres_15_data:
+  postgres_16_data:
+  postgres_17_data:
+  postgres_18_data:
+
+# ============================================================================
+# Usage Instructions
+# ============================================================================
+#
+# Run with PostgreSQL 14 (Baseline):
+#   docker-compose -f docker-compose.postgres-versions.yml --profile pg14 up
+#
+# Run with PostgreSQL 15 (Enhanced):
+#   docker-compose -f docker-compose.postgres-versions.yml --profile pg15 up
+#
+# Run with PostgreSQL 16 (Recommended):
+#   docker-compose -f docker-compose.postgres-versions.yml up
+#   OR
+#   docker-compose -f docker-compose.postgres-versions.yml --profile pg16 up
+#
+# Run with PostgreSQL 17 (Latest Stable):
+#   docker-compose -f docker-compose.postgres-versions.yml --profile pg17 up
+#
+# Run with PostgreSQL 18 (Future-Ready):
+#   docker-compose -f docker-compose.postgres-versions.yml --profile pg18 up
+#
+# ============================================================================
+# Compatibility Notes
+# ============================================================================
+#
+# PostgreSQL Version Support:
+# - All versions (14-18) are fully compatible with pgAnalytics v3
+# - No code changes required when switching versions
+# - All migrations work identically across all versions
+# - Performance characteristics vary by version (see POSTGRES_COMPATIBILITY.md)
+#
+# Upgrade Path:
+# - Existing deployments can upgrade to newer versions using PostgreSQL tools
+# - Use pg_upgrade for in-place major version upgrades
+# - Data migration is backward-compatible
+#
+# For detailed compatibility information, see: POSTGRES_COMPATIBILITY.md
+# ============================================================================

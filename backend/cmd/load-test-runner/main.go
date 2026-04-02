@@ -21,10 +21,12 @@ func main() {
 
 	flag.Parse()
 
-	fmt.Println("\n╔════════════════════════════════════════════════════════════════════════════════╗")
+	fmt.Println()
+	fmt.Println("╔════════════════════════════════════════════════════════════════════════════════╗")
 	fmt.Println("║                    pgAnalytics Phase 4 - Load Test Suite                     ║")
 	fmt.Println("║                   500+ Collectors Scalability Validation                     ║")
-	fmt.Println("╚════════════════════════════════════════════════════════════════════════════════╝\n")
+	fmt.Println("╚════════════════════════════════════════════════════════════════════════════════╝")
+	fmt.Println()
 
 	// Validate inputs
 	if *baseURL == "" {

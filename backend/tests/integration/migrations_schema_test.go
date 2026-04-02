@@ -29,7 +29,9 @@ func TestSchemaMigrations(t *testing.T) {
 
 	// Verify database connection
 	err = db.Ping()
-	require.NoError(t, err, "Failed to connect to test database")
+	if err != nil {
+		t.Skipf("Skipping test - database not available: %v", err)
+	}
 
 	ctx := context.Background()
 
@@ -337,7 +339,9 @@ func TestDataInsertionAndRetrieval(t *testing.T) {
 
 	// Verify database connection
 	err = db.Ping()
-	require.NoError(t, err)
+	if err != nil {
+		t.Skipf("Skipping test - database not available: %v", err)
+	}
 
 	ctx := context.Background()
 

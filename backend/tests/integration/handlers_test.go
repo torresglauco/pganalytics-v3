@@ -2,6 +2,7 @@ package integration
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -25,17 +26,23 @@ type TestUserStore struct {
 }
 
 func NewTestUserStore() *TestUserStore {
+	// Create password manager to hash the test password
+	pm := auth.NewPasswordManager()
+	// Hash "password123" for the test user
+	hash, _ := pm.HashPassword("password123")
+
 	return &TestUserStore{
 		users: map[string]*models.User{
 			"testuser": {
-				ID:        1,
-				Username:  "testuser",
-				Email:     "test@example.com",
-				FullName:  "Test User",
-				Role:      "user",
-				IsActive:  true,
-				CreatedAt: time.Now(),
-				UpdatedAt: time.Now(),
+				ID:           1,
+				Username:     "testuser",
+				Email:        "test@example.com",
+				PasswordHash: hash,
+				FullName:     "Test User",
+				Role:         "user",
+				IsActive:     true,
+				CreatedAt:    time.Now(),
+				UpdatedAt:    time.Now(),
 			},
 		},
 	}
@@ -146,7 +153,7 @@ func (n *NilPostgresDB) GetUserByUsername(username string) (*models.User, error)
 func (n *NilPostgresDB) GetUserByID(id int) (*models.User, error)                  { return nil, nil }
 func (n *NilPostgresDB) UpdateUserLastLogin(userID int, timestamp time.Time) error { return nil }
 func (n *NilPostgresDB) CreateCollector(collector *models.Collector) (uuid.UUID, error) {
-	return uuid.Nil, nil
+	return uuid.New(), nil
 }
 func (n *NilPostgresDB) GetCollectorByID(id uuid.UUID) (*models.Collector, error) { return nil, nil }
 func (n *NilPostgresDB) UpdateCollectorStatus(id uuid.UUID, status string) error  { return nil }
@@ -156,6 +163,12 @@ func (n *NilPostgresDB) UpdateCollectorCertificate(id uuid.UUID, thumbprint stri
 func (n *NilPostgresDB) CreateAPIToken(token *models.APIToken) (int, error)       { return 0, nil }
 func (n *NilPostgresDB) GetAPITokenByHash(hash string) (*models.APIToken, error)  { return nil, nil }
 func (n *NilPostgresDB) UpdateAPITokenLastUsed(id int, timestamp time.Time) error { return nil }
+func (n *NilPostgresDB) ValidateRegistrationSecret(ctx context.Context, secret string) (*models.RegistrationSecret, error) {
+	return nil, nil
+}
+func (n *NilPostgresDB) RecordRegistrationSecretUsage(ctx context.Context, secretID int, collectorID string, hostname string, status string, expiresAt *time.Time, ipAddress string) error {
+	return nil
+}
 
 // Helper to create test server
 func createTestServer(userStore auth.UserStore, collectorStore auth.CollectorStore, tokenStore auth.TokenStore) (*api.Server, *gin.Engine) {
@@ -185,8 +198,9 @@ func createTestServer(userStore auth.UserStore, collectorStore auth.CollectorSto
 
 	// Create config
 	cfg := &config.Config{
-		Environment: "development",
-		Port:        8080,
+		Environment:       "development",
+		Port:              8080,
+		RegistrationSecret: "test-secret",
 	}
 
 	// Create API server (note: postgres, timescale, and secretManager are nil for this test)
@@ -269,6 +283,7 @@ func TestCollectorRegisterHandler_Success(t *testing.T) {
 	body, _ := json.Marshal(registerReq)
 	req := httptest.NewRequest("POST", "/api/v1/collectors/register", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Registration-Secret", "test-secret")
 
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)

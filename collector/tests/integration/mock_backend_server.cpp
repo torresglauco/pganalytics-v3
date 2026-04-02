@@ -102,9 +102,11 @@ void MockBackendServer::serverLoop() {
             continue;
         }
 
-        // Read HTTP request
-        char buffer[65536] = {0};
-        ssize_t bytes_read = read(client_socket, buffer, sizeof(buffer) - 1);
+        // Read HTTP request (use larger buffer for large payloads)
+        const size_t BUFFER_SIZE = 16 * 1024 * 1024;  // 16 MB buffer
+        char* buffer = new char[BUFFER_SIZE];
+        memset(buffer, 0, BUFFER_SIZE);
+        ssize_t bytes_read = read(client_socket, buffer, BUFFER_SIZE - 1);
 
         if (bytes_read > 0) {
             buffer[bytes_read] = '\0';
@@ -167,12 +169,8 @@ void MockBackendServer::serverLoop() {
                 } else if (!reject_with_error_.empty()) {
                     status = 400;
                     response["error"] = reject_with_error_;
-                } else if (next_response_status_ != 200) {
-                    status = next_response_status_;
-                    response["error"] = "Server error";
-                    next_response_status_ = 200;  // Reset after use
                 } else {
-                    // Try to decompress and parse metrics
+                    // Try to decompress and parse metrics (always do this first)
                     std::string decompressed = decompressGzip(body);
 
                     if (decompressed.empty() && !body.empty()) {
@@ -198,7 +196,14 @@ void MockBackendServer::serverLoop() {
                                 last_payload_gzipped_ = !decompressed.empty();
                             }
 
-                            status = 200;
+                            // Use next_response_status if set, otherwise default to 200
+                            if (next_response_status_ != 200) {
+                                status = next_response_status_;
+                                next_response_status_ = 200;  // Reset after use
+                            } else {
+                                status = 200;
+                            }
+
                             response["status"] = "success";
                             response["metrics_inserted"] = 100;
                             response["collector_id"] = metrics_json.value("collector_id", "unknown");
@@ -258,6 +263,7 @@ void MockBackendServer::serverLoop() {
         }
 
         close(client_socket);
+        delete[] buffer;  // Clean up dynamically allocated buffer
     }
 
     close(server_socket);

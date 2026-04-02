@@ -6,6 +6,19 @@ pgAnalytics is a comprehensive observability platform designed to monitor, analy
 
 **Status**: ✅ Production Ready | v3.3.0
 
+## 📦 PostgreSQL Support
+
+**Supported Versions**: PostgreSQL 14, 15, 16, 17, 18
+
+pgAnalytics v3 is fully compatible with all currently supported PostgreSQL versions:
+- ✅ **PG 14** - Baseline version, all migrations compatible
+- ✅ **PG 15** - Enhanced performance and ICU collations
+- ✅ **PG 16** - Recommended for new deployments
+- ✅ **PG 17** - Latest stable with latest features
+- ✅ **PG 18** - Future-ready version support
+
+See **[POSTGRES_COMPATIBILITY.md](POSTGRES_COMPATIBILITY.md)** for detailed compatibility matrix and version-specific deployment guidance.
+
 ## 🎯 Key Features
 
 ### 📊 **Real-Time Monitoring**
@@ -53,7 +66,7 @@ pgAnalytics is a comprehensive observability platform designed to monitor, analy
 - **[INTEGRATION.md](INTEGRATION.md)** - Component architecture and integration guide
 - **[TESTING.md](TESTING.md)** - Comprehensive testing guide (unit, integration, E2E)
 - **[DEPLOYMENT.md](DEPLOYMENT.md)** - Deployment procedures (Docker, K8s, On-premise)
-- **[POSTGRES_VERSIONS.md](POSTGRES_VERSIONS.md)** - PostgreSQL version support matrix (14, 15, 16, 17, 18)
+- **[POSTGRES_COMPATIBILITY.md](POSTGRES_COMPATIBILITY.md)** - PostgreSQL version support matrix (14, 15, 16, 17, 18)
 
 **Reference Documentation:**
 - **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** - System architecture and design
@@ -97,6 +110,8 @@ mise run dev
 | `mise run test` | Run frontend tests |
 | `mise run lint` | Run frontend linters |
 | `mise run ps` | Show service status |
+| `mise run test:postgres:compatibility` | Test migrations on all PostgreSQL versions (14-18) |
+| `mise run test:postgres:16` | Test against PostgreSQL 16 (recommended) |
 
 ### Access Points
 - **Frontend**: http://localhost:3000

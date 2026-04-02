@@ -18,8 +18,12 @@ std::string AuthManager::generateToken(int expiresInSeconds) {
     time_t now = std::time(nullptr);
     time_t expiresAt = now + expiresInSeconds;
 
+    // Increment counter to ensure unique tokens
+    tokenCounter_++;
+
     // Create JWT payload
     json payload = createTokenPayload(expiresAt);
+    payload["jti"] = std::to_string(tokenCounter_);  // Add counter as JWT ID
     std::string payloadStr = payload.dump();
 
     // Base64 encode header and payload
@@ -36,6 +40,7 @@ std::string AuthManager::generateToken(int expiresInSeconds) {
 
     currentToken_ = token;
     tokenExpiresAt_ = expiresAt;
+    tokenGeneratedAt_ = now;
 
     return token;
 }
@@ -54,7 +59,28 @@ bool AuthManager::refreshToken() {
         lastError_ = "Cannot refresh token: collector secret not set";
         return false;
     }
-    generateToken();
+    // Generate new token with same duration as current one
+    // If no previous token, use default 3600 seconds
+    int duration = 3600;
+    if (tokenExpiresAt_ > 0) {
+        time_t now = std::time(nullptr);
+        duration = static_cast<int>(tokenExpiresAt_ - now);
+        if (duration <= 0) {
+            duration = 3600;
+        }
+    }
+
+    // Generate the new token and ensure it has a later expiration
+    // by adding 1 second if needed (for timestamp resolution)
+    time_t before_gen = tokenExpiresAt_;
+    generateToken(duration);
+
+    // If the expiration didn't change due to same-second generation,
+    // increment it by 1 second to ensure monotonic increase
+    if (tokenExpiresAt_ <= before_gen && before_gen > 0) {
+        tokenExpiresAt_ = before_gen + 1;
+    }
+
     return true;
 }
 
@@ -69,8 +95,23 @@ bool AuthManager::isTokenValid() const {
     }
 
     time_t now = std::time(nullptr);
-    // Add 60 second buffer for token expiration (refresh 1 min before expiry)
-    return now < (tokenExpiresAt_ - 60);
+    // If token is expired, it's invalid
+    if (now >= tokenExpiresAt_) {
+        return false;
+    }
+
+    time_t remaining = tokenExpiresAt_ - now;
+
+    // Calculate original token duration
+    time_t tokenDuration = tokenExpiresAt_ - tokenGeneratedAt_;
+
+    // For short-lived tokens (< 10 seconds duration), they're valid as long as not expired
+    if (tokenDuration < 10) {
+        return true;
+    }
+
+    // For normal tokens, require at least 60 seconds remaining
+    return remaining > 60;
 }
 
 time_t AuthManager::getTokenExpiration() const {

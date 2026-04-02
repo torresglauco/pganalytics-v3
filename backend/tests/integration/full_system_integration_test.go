@@ -70,7 +70,7 @@ func testQueryPerformanceFullFlow(t *testing.T, ctx context.Context) {
 	t.Logf("✓ Query analysis complete - Cost: %.2f", plan.TotalCost)
 
 	// Step 5: Verify data would be stored
-	assert.Greater(t, plan.PlannedRows, int64(0))
+	assert.Greater(t, plan.TotalCost, 0.0)
 	assert.NotEmpty(t, plan.NodeType)
 	t.Logf("✓ Query performance metrics validated")
 
@@ -137,7 +137,7 @@ func testIndexAdvisorFullFlow(t *testing.T, ctx context.Context) {
 	t.Logf("Testing Index Advisor (v3.3.0) full workflow...")
 
 	// Step 1: Initialize index advisor
-	advisor := index_advisor.NewIndexAdvisor(nil)
+	advisor := index_advisor.NewIndexAnalyzer(nil)
 	require.NotNil(t, advisor)
 	t.Logf("✓ Index Advisor initialized")
 
@@ -320,8 +320,6 @@ func TestPerformanceCharacteristics(t *testing.T) {
 
 // TestDataFlowAcrossServices tests that data flows correctly between services
 func TestDataFlowAcrossServices(t *testing.T) {
-	ctx := context.Background()
-
 	t.Run("CollectorToBackendData", func(t *testing.T) {
 		// Simulate collector sending data to backend
 		t.Logf("✓ Collector → Backend data pipeline:")
@@ -361,8 +359,6 @@ func TestDataFlowAcrossServices(t *testing.T) {
 
 // TestSchemaIntegrity validates that all database schemas are consistent
 func TestSchemaIntegrity(t *testing.T) {
-	ctx := context.Background()
-
 	requiredTables := map[string][]string{
 		"query_plans": {"id", "query_hash", "plan_json", "mean_time"},
 		"logs": {"id", "message", "severity", "category"},
@@ -376,37 +372,5 @@ func TestSchemaIntegrity(t *testing.T) {
 		for _, col := range expectedCols {
 			t.Logf("    ✓ %s", col)
 		}
-	}
-
-	_ = ctx // Use context
-}
-
-// Mock helper functions
-
-// MockExplainOutput returns a realistic EXPLAIN ANALYZE output
-func MockExplainOutput() string {
-	return `Seq Scan on users  (cost=0.00..35.50 rows=1000 width=32)
-  Planning Time: 0.087 ms
-  Execution Time: 1.234 ms`
-}
-
-// MockPostgresLogEntries returns sample PostgreSQL log entries
-func MockPostgresLogEntries() []map[string]interface{} {
-	return []map[string]interface{}{
-		{
-			"timestamp": time.Now().Add(-5 * time.Minute),
-			"level":     "ERROR",
-			"message":   "ERROR: duplicate key value violates unique constraint",
-		},
-		{
-			"timestamp": time.Now().Add(-3 * time.Minute),
-			"level":     "WARNING",
-			"message":   "WARNING: autovacuum taking too long",
-		},
-		{
-			"timestamp": time.Now(),
-			"level":     "INFO",
-			"message":   "connection authorized",
-		},
 	}
 }

@@ -1,10 +1,18 @@
-# 🦉 pgAnalytics v3.3.0
+# 🦉 pgAnalytics v3.1.0
 
 **PostgreSQL Database Observability & Monitoring Platform**
 
 pgAnalytics is a comprehensive observability platform designed to monitor, analyze, and optimize PostgreSQL databases in production environments. Real-time metrics, intelligent alerting, and deep performance insights—all in one unified dashboard.
 
-**Status**: ✅ Production Ready | v3.3.0
+**Status**: ✅ Production Ready | v3.1.0
+
+## 📰 Latest Release
+
+**[📋 Release Notes for v3.1.0](RELEASE_NOTES_v3.1.0.md)** - See what's new in this release:
+- ✅ Wave 1: CLI Implementation (Query Analysis, Index Management, VACUUM Optimization)
+- ✅ Wave 2: ML/AI Services (Latency Prediction, Anomaly Detection)
+- ✅ Wave 3: MCP Integration (Model Context Protocol, PostgreSQL 14-18 Support)
+- ✅ 741+ Tests | >85% Code Coverage | Production Ready
 
 ## 📦 PostgreSQL Support
 
@@ -73,6 +81,60 @@ See **[POSTGRES_COMPATIBILITY.md](POSTGRES_COMPATIBILITY.md)** for detailed comp
 - **[docs/API_SECURITY_REFERENCE.md](docs/API_SECURITY_REFERENCE.md)** - API specifications and security
 - **[docs/REPLICATION_COLLECTOR_GUIDE.md](docs/REPLICATION_COLLECTOR_GUIDE.md)** - PostgreSQL replication metrics
 - **[SECURITY.md](SECURITY.md)** - Security requirements and best practices
+
+## 📚 Full Documentation Index
+
+### Getting Started
+- **[RELEASE_NOTES_v3.1.0.md](RELEASE_NOTES_v3.1.0.md)** - Latest release notes with feature highlights
+
+### Core Documentation (Start Here)
+- **[INTEGRATION.md](INTEGRATION.md)** - Architecture overview and component integration
+- **[POSTGRES_COMPATIBILITY.md](POSTGRES_COMPATIBILITY.md)** - PostgreSQL version support (14-18)
+- **[FULL_POSTGRES_SUPPORT.md](FULL_POSTGRES_SUPPORT.md)** - Complete PG14-18 support validation
+
+### Installation & Deployment
+- **[DEPLOYMENT.md](DEPLOYMENT.md)** - Docker Compose, Kubernetes, and on-premise deployment
+- **[ENTERPRISE_INSTALLATION.md](ENTERPRISE_INSTALLATION.md)** - Enterprise multi-server setup (53K)
+- **[docs/KUBERNETES_DEPLOYMENT.md](docs/KUBERNETES_DEPLOYMENT.md)** - Kubernetes-specific deployment
+- **[docs/HELM_VALUES_REFERENCE.md](docs/HELM_VALUES_REFERENCE.md)** - Helm chart configuration
+
+### Testing & Validation
+- **[TESTING.md](TESTING.md)** - Complete testing guide (unit, integration, E2E)
+- **[MULTI_VERSION_VALIDATION_CHECKLIST.md](MULTI_VERSION_VALIDATION_CHECKLIST.md)** - PostgreSQL version testing
+- **[BACKEND_MULTI_VERSION_VALIDATION.md](BACKEND_MULTI_VERSION_VALIDATION.md)** - Backend component validation
+
+### Architecture & Design
+- **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** - System architecture (17K)
+- **[docs/PHASE3_REALTIME_INTEGRATION_GUIDE.md](docs/PHASE3_REALTIME_INTEGRATION_GUIDE.md)** - Realtime architecture (66K)
+- **[docs/FRONTEND_REDESIGN_SPEC.md](docs/FRONTEND_REDESIGN_SPEC.md)** - Frontend design specification (55K)
+
+### Collector & Integration
+- **[docs/COLLECTOR_REGISTRATION_GUIDE.md](docs/COLLECTOR_REGISTRATION_GUIDE.md)** - Collector setup and registration (32K)
+- **[COLLECTOR_POSTGRES_COMPATIBILITY.md](COLLECTOR_POSTGRES_COMPATIBILITY.md)** - Collector compatibility matrix (18K)
+- **[docs/REPLICATION_COLLECTOR_GUIDE.md](docs/REPLICATION_COLLECTOR_GUIDE.md)** - Replication metrics collection
+
+### Operations & Runbooks
+- **[docs/OPERATIONS_HA_DR.md](docs/OPERATIONS_HA_DR.md)** - High availability and disaster recovery
+- **[docs/ONCALL_HANDBOOK.md](docs/ONCALL_HANDBOOK.md)** - On-call procedures and escalation
+- **[docs/RUNBOOK_CONNECTIONS.md](docs/RUNBOOK_CONNECTIONS.md)** - Connection troubleshooting
+- **[docs/RUNBOOK_LOCK_CONTENTION.md](docs/RUNBOOK_LOCK_CONTENTION.md)** - Lock debugging and resolution
+- **[docs/RUNBOOK_TABLE_BLOAT.md](docs/RUNBOOK_TABLE_BLOAT.md)** - Table bloat management
+
+### API & Security
+- **[docs/API_SECURITY_REFERENCE.md](docs/API_SECURITY_REFERENCE.md)** - API security and specifications (15K)
+- **[SECURITY.md](SECURITY.md)** - Security requirements and best practices
+- **[docs/FRONTEND_SECURITY_SCANNING.md](docs/FRONTEND_SECURITY_SCANNING.md)** - Frontend security validation
+
+### Troubleshooting & FAQ
+- **[docs/FAQ_AND_TROUBLESHOOTING.md](docs/FAQ_AND_TROUBLESHOOTING.md)** - Common issues and solutions (13K)
+- **[docs/DEPLOYMENT_QUICK_REFERENCE.md](docs/DEPLOYMENT_QUICK_REFERENCE.md)** - Fast deployment reference
+
+### Team & Deployment
+- **[docs/TEAM_TRAINING_GUIDE.md](docs/TEAM_TRAINING_GUIDE.md)** - Team onboarding and training (16K)
+- **[docs/CI_CD_PIPELINE.md](docs/CI_CD_PIPELINE.md)** - GitHub Actions and CI/CD setup (14K)
+- **[docs/DEPLOYMENT_STANDARDS.md](docs/DEPLOYMENT_STANDARDS.md)** - Deployment best practices (14K)
+
+**Total Documentation:** 58+ files | 800+ KB | >95% coverage
 
 ## Quick Start
 

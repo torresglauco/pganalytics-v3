@@ -49,6 +49,12 @@ pgAnalytics is a comprehensive observability platform designed to monitor, analy
 - **[ENTERPRISE_INSTALLATION.md](ENTERPRISE_INSTALLATION.md)** - Multi-server installation guide (separate PostgreSQL, API, Collectors, Grafana)
 - **[docs/COLLECTOR_REGISTRATION_GUIDE.md](docs/COLLECTOR_REGISTRATION_GUIDE.md)** - Collector registration and JWT authentication
 
+**Complete Documentation Suite:**
+- **[INTEGRATION.md](INTEGRATION.md)** - Component architecture and integration guide
+- **[TESTING.md](TESTING.md)** - Comprehensive testing guide (unit, integration, E2E)
+- **[DEPLOYMENT.md](DEPLOYMENT.md)** - Deployment procedures (Docker, K8s, On-premise)
+- **[POSTGRES_VERSIONS.md](POSTGRES_VERSIONS.md)** - PostgreSQL version support matrix (14, 15, 16, 17, 18)
+
 **Reference Documentation:**
 - **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** - System architecture and design
 - **[docs/API_SECURITY_REFERENCE.md](docs/API_SECURITY_REFERENCE.md)** - API specifications and security

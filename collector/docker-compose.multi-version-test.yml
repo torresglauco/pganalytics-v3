@@ -1,0 +1,166 @@
+version: '3.8'
+
+# Docker Compose for Multi-Version PostgreSQL Testing
+# This configuration creates PostgreSQL instances for versions 14-18
+# allowing comprehensive testing of Collector compatibility
+
+services:
+  # PostgreSQL 14 - End of Life: November 2026
+  postgres-14:
+    image: postgres:14-alpine
+    container_name: pganalytics-postgres-14
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_INITDB_ARGS: "-c shared_preload_libraries=pg_stat_statements"
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg14_data:/var/lib/postgresql/data
+      - ./sql/:/docker-entrypoint-initdb.d/:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - pganalytics-test-network
+    labels:
+      version: "14"
+      support: "Full"
+
+  # PostgreSQL 15 - End of Life: October 2027
+  postgres-15:
+    image: postgres:15-alpine
+    container_name: pganalytics-postgres-15
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_INITDB_ARGS: "-c shared_preload_libraries=pg_stat_statements"
+    ports:
+      - "5433:5432"
+    volumes:
+      - pg15_data:/var/lib/postgresql/data
+      - ./sql/:/docker-entrypoint-initdb.d/:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - pganalytics-test-network
+    labels:
+      version: "15"
+      support: "Full"
+
+  # PostgreSQL 16 - End of Life: November 2028
+  postgres-16:
+    image: postgres:16-alpine
+    container_name: pganalytics-postgres-16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_INITDB_ARGS: "-c shared_preload_libraries=pg_stat_statements"
+    ports:
+      - "5434:5432"
+    volumes:
+      - pg16_data:/var/lib/postgresql/data
+      - ./sql/:/docker-entrypoint-initdb.d/:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - pganalytics-test-network
+    labels:
+      version: "16"
+      support: "Full"
+
+  # PostgreSQL 17 - Current stable (Released Oct 2024)
+  postgres-17:
+    image: postgres:17-alpine
+    container_name: pganalytics-postgres-17
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_INITDB_ARGS: "-c shared_preload_libraries=pg_stat_statements"
+    ports:
+      - "5435:5432"
+    volumes:
+      - pg17_data:/var/lib/postgresql/data
+      - ./sql/:/docker-entrypoint-initdb.d/:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - pganalytics-test-network
+    labels:
+      version: "17"
+      support: "Full"
+
+  # PostgreSQL 18 - Latest beta/upcoming (Development)
+  postgres-18:
+    image: postgres:18-alpine
+    container_name: pganalytics-postgres-18
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_INITDB_ARGS: "-c shared_preload_libraries=pg_stat_statements"
+    ports:
+      - "5436:5432"
+    volumes:
+      - pg18_data:/var/lib/postgresql/data
+      - ./sql/:/docker-entrypoint-initdb.d/:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - pganalytics-test-network
+    labels:
+      version: "18"
+      support: "Full"
+
+volumes:
+  pg14_data:
+    driver: local
+  pg15_data:
+    driver: local
+  pg16_data:
+    driver: local
+  pg17_data:
+    driver: local
+  pg18_data:
+    driver: local
+
+networks:
+  pganalytics-test-network:
+    driver: bridge
+
+# Usage:
+#
+# 1. Start all PostgreSQL instances:
+#    docker-compose -f docker-compose.multi-version-test.yml up -d
+#
+# 2. Wait for all instances to be ready:
+#    docker-compose -f docker-compose.multi-version-test.yml ps
+#
+# 3. Connect to each instance:
+#    psql -h localhost -p 5432 -U postgres  # PG14
+#    psql -h localhost -p 5433 -U postgres  # PG15
+#    psql -h localhost -p 5434 -U postgres  # PG16
+#    psql -h localhost -p 5435 -U postgres  # PG17
+#    psql -h localhost -p 5436 -U postgres  # PG18
+#
+# 4. Run collector tests:
+#    cd /collector
+#    cmake -B build -DBUILD_TESTS=ON
+#    cmake --build build
+#    ctest --test-dir build -V
+#
+# 5. Stop all instances:
+#    docker-compose -f docker-compose.multi-version-test.yml down -v

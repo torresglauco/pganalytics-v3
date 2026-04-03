@@ -41,6 +41,15 @@ export default {
           800: '#1e293b',
           900: '#0f172a',
         },
+
+        // Custom pgAnalytics Brand Colors
+        'pg-blue': '#2563eb',       // Primary blue
+        'pg-cyan': '#06b6d4',       // Cyan accent
+        'pg-dark': '#1e293b',       // Dark background
+        'pg-slate': '#64748b',      // Slate gray
+        'pg-success': '#10b981',    // Success green
+        'pg-warning': '#f59e0b',    // Warning amber
+        'pg-danger': '#ef4444',     // Danger red
       },
 
       // Typography

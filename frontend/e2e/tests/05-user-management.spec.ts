@@ -12,7 +12,7 @@ test.describe('User Management', () => {
 
     // Login before each test (using admin account)
     await loginPage.goto();
-    await loginPage.login('demo@pganalytics.com', 'password123');
+    await loginPage.login('admin', 'admin');
     await loginPage.expectLoggedIn();
   });
 
@@ -83,23 +83,12 @@ test.describe('User Management', () => {
     await usersPage.saveUser();
 
     // Verify success message
-    try {
-      await usersPage.expectSuccessMessage();
-    } catch {
-      console.log('No explicit success message');
-    }
+    await usersPage.expectSuccessMessage();
 
     // Verify user appears in list
-    try {
-      await usersPage.expectUserInList(testEmail);
-      const newCount = await usersPage.getUserCount();
-      expect(newCount).toBeGreaterThan(initialCount);
-    } catch {
-      // User might appear after reload
-      await page.reload();
-      await usersPage.expectLoaded();
-      await usersPage.expectUserInList(testEmail);
-    }
+    await usersPage.expectUserInList(testEmail);
+    const newCount = await usersPage.getUserCount();
+    expect(newCount).toBeGreaterThan(initialCount);
   });
 
   test('should display users list with columns', async ({ page }) => {

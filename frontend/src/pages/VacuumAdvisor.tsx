@@ -92,9 +92,10 @@ export const VacuumAdvisorPage: React.FC = () => {
     }
   };
 
+  // IMPORTANT: This return statement has MainLayout wrapper
   return (
     <MainLayout>
-      <div className="p-6 max-w-7xl mx-auto">
+      <div className="p-6 max-w-7xl mx-auto" data-testid="vacuum-advisor-inner">
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">VACUUM Advisor</h1>

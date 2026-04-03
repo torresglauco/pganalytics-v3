@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
+import { apiClient } from '../services/api';
 import {
   VacuumRecommendation,
   AutovacuumConfig,
@@ -85,15 +86,7 @@ export function useVacuumAdvisor(databaseId?: number): UseVacuumAdvisorReturn {
       setRecommendationsError(null);
 
       try {
-        const response = await fetch(
-          `/api/v1/vacuum-advisor/database/${dbId}/recommendations?limit=${limit}`
-        );
-
-        if (!response.ok) {
-          throw new Error(`Failed to fetch recommendations: ${response.statusText}`);
-        }
-
-        const data: VacuumRecommendationsResponse = await response.json();
+        const data: VacuumRecommendationsResponse = await apiClient.getVacuumRecommendations(dbId, limit);
         setRecommendations(data.recommendations || []);
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
@@ -140,15 +133,7 @@ export function useVacuumAdvisor(databaseId?: number): UseVacuumAdvisorReturn {
       setAutovacuumConfigError(null);
 
       try {
-        const response = await fetch(
-          `/api/v1/vacuum-advisor/database/${dbId}/autovacuum-config`
-        );
-
-        if (!response.ok) {
-          throw new Error(`Failed to fetch autovacuum config: ${response.statusText}`);
-        }
-
-        const data: AutovacuumConfigResponse = await response.json();
+        const data: AutovacuumConfigResponse = await apiClient.getVacuumAutovacuumConfig(dbId);
         setAutovacuumConfigs(data.configurations || []);
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
@@ -167,15 +152,7 @@ export function useVacuumAdvisor(databaseId?: number): UseVacuumAdvisorReturn {
       setTuningSuggestionsError(null);
 
       try {
-        const response = await fetch(
-          `/api/v1/vacuum-advisor/database/${dbId}/tune-suggestions`
-        );
-
-        if (!response.ok) {
-          throw new Error(`Failed to fetch tuning suggestions: ${response.statusText}`);
-        }
-
-        const data: VacuumTuningSuggestionsResponse = await response.json();
+        const data: VacuumTuningSuggestionsResponse = await apiClient.getVacuumTuningSuggestions(dbId);
         setTuningSuggestions(data.suggestions || []);
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';

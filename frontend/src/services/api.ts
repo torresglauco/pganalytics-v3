@@ -530,6 +530,50 @@ export class ApiClient {
     }
   }
 
+  async getVacuumTableRecommendation(databaseId: number, tableName: string): Promise<any> {
+    try {
+      const response = await this.client.get(
+        `/vacuum-advisor/database/${databaseId}/table/${tableName}`
+      )
+      return response.data
+    } catch (error) {
+      throw this.handleError(error)
+    }
+  }
+
+  async getVacuumAutovacuumConfig(databaseId: number): Promise<any> {
+    try {
+      const response = await this.client.get(
+        `/vacuum-advisor/database/${databaseId}/autovacuum-config`
+      )
+      return response.data
+    } catch (error) {
+      throw this.handleError(error)
+    }
+  }
+
+  async getVacuumTuningSuggestions(databaseId: number): Promise<any> {
+    try {
+      const response = await this.client.get(
+        `/vacuum-advisor/database/${databaseId}/tune-suggestions`
+      )
+      return response.data
+    } catch (error) {
+      throw this.handleError(error)
+    }
+  }
+
+  async executeVacuum(recommendationId: number): Promise<any> {
+    try {
+      const response = await this.client.post(
+        `/vacuum-advisor/recommendation/${recommendationId}/execute`
+      )
+      return response.data
+    } catch (error) {
+      throw this.handleError(error)
+    }
+  }
+
   private handleError(error: unknown): ApiError {
     if (axios.isAxiosError(error)) {
       const axiosError = error as AxiosError<ApiError>

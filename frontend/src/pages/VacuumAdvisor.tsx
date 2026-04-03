@@ -11,8 +11,10 @@ import {
 } from '../types/vacuumAdvisor';
 
 export const VacuumAdvisorPage: React.FC = () => {
+  console.log('[VacuumAdvisor] Component rendering...');
   const { databaseId } = useParams<{ databaseId: string }>();
   const numericDatabaseId = databaseId ? parseInt(databaseId, 10) : 0;
+  console.log('[VacuumAdvisor] Parameters:', { databaseId, numericDatabaseId });
   const {
     recommendations,
     recommendationsLoading,

@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
+import { useParams } from 'react-router-dom';
 import { useVacuumAdvisor } from '../hooks/useVacuumAdvisor';
+import { MainLayout } from '../components/layout/MainLayout';
 import {
   VacuumRecommendation,
   AutovacuumConfig,
@@ -8,11 +10,9 @@ import {
   VacuumSort,
 } from '../types/vacuumAdvisor';
 
-interface VacuumAdvisorPageProps {
-  databaseId: number;
-}
-
-export const VacuumAdvisorPage: React.FC<VacuumAdvisorPageProps> = ({ databaseId }) => {
+export const VacuumAdvisorPage: React.FC = () => {
+  const { databaseId } = useParams<{ databaseId: string }>();
+  const numericDatabaseId = databaseId ? parseInt(databaseId, 10) : 0;
   const {
     recommendations,
     recommendationsLoading,
@@ -28,7 +28,7 @@ export const VacuumAdvisorPage: React.FC<VacuumAdvisorPageProps> = ({ databaseId
     sort,
     setSort,
     filteredAndSortedRecommendations,
-  } = useVacuumAdvisor(databaseId);
+  } = useVacuumAdvisor(numericDatabaseId);
 
   const [selectedTab, setSelectedTab] = useState<'recommendations' | 'config' | 'tuning'>(
     'recommendations'
@@ -93,14 +93,15 @@ export const VacuumAdvisorPage: React.FC<VacuumAdvisorPageProps> = ({ databaseId
   };
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">VACUUM Advisor</h1>
-        <p className="text-gray-600 mt-2">
-          Database maintenance recommendations for table bloat prevention
-        </p>
-      </div>
+    <MainLayout>
+      <div className="p-6 max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">VACUUM Advisor</h1>
+          <p className="text-gray-600 mt-2">
+            Database maintenance recommendations for table bloat prevention
+          </p>
+        </div>
 
       {/* Summary Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
@@ -347,7 +348,8 @@ export const VacuumAdvisorPage: React.FC<VacuumAdvisorPageProps> = ({ databaseId
           )}
         </div>
       </div>
-    </div>
+      </div>
+    </MainLayout>
   );
 };
 

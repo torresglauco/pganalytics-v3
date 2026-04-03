@@ -490,6 +490,12 @@ func (s *Server) RegisterRoutes(router *gin.Engine) {
 			performanceRoutes.GET("/:query_hash/performance", s.AuthMiddleware(), s.handleGetQueryPerformance)
 		}
 
+		// Query Performance Database routes (per-database endpoint)
+		queryPerformanceRoutes := api.Group("/query-performance")
+		{
+			queryPerformanceRoutes.GET("/database/:database_id", s.AuthMiddleware(), s.handleGetDatabaseQueryPerformance)
+		}
+
 		// Index Recommendations routes
 		indexRecommendations := api.Group("/databases/:database_name/index-recommendations")
 		{

@@ -89,3 +89,15 @@ func aggregateQueryMetrics(queries interface{}, filter string) map[string]interf
 
 	return metrics
 }
+
+// handleGetDatabaseQueryPerformance returns query performance data for a specific database
+// GET /api/v1/query-performance/database/:database_id
+// Returns empty list when no data available yet
+func (s *Server) handleGetDatabaseQueryPerformance(c *gin.Context) {
+	// For now, return empty response as this endpoint is not yet fully implemented
+	// The frontend will gracefully handle the empty state
+	c.JSON(http.StatusOK, gin.H{
+		"queries": []interface{}{},
+		"timeline": []interface{}{},
+	})
+}

@@ -507,6 +507,29 @@ export class ApiClient {
     }
   }
 
+  // Query Performance endpoints
+  async getQueryPerformance(databaseId: string): Promise<any> {
+    try {
+      const response = await this.client.get(`/query-performance/database/${databaseId}`)
+      return response.data
+    } catch (error) {
+      throw this.handleError(error)
+    }
+  }
+
+  // Vacuum Advisor endpoints
+  async getVacuumRecommendations(databaseId: number, limit: number = 20): Promise<any> {
+    try {
+      const response = await this.client.get(
+        `/vacuum-advisor/database/${databaseId}/recommendations`,
+        { params: { limit } }
+      )
+      return response.data
+    } catch (error) {
+      throw this.handleError(error)
+    }
+  }
+
   private handleError(error: unknown): ApiError {
     if (axios.isAxiosError(error)) {
       const axiosError = error as AxiosError<ApiError>

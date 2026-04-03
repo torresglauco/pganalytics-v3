@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { QueryPerformanceData } from '../types/queryPerformance';
+import { apiClient } from '../services/api';
 
 export const useQueryPerformance = (databaseId: string) => {
     const [data, setData] = useState<QueryPerformanceData | null>(null);
@@ -9,9 +10,7 @@ export const useQueryPerformance = (databaseId: string) => {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const response = await fetch(`/api/v1/query-performance/database/${databaseId}`);
-                if (!response.ok) throw new Error('Failed to fetch');
-                const json = await response.json();
+                const json = await apiClient.getQueryPerformance(databaseId);
                 setData(json);
             } catch (err) {
                 setError(err instanceof Error ? err.message : 'Unknown error');
@@ -20,7 +19,9 @@ export const useQueryPerformance = (databaseId: string) => {
             }
         };
 
-        fetchData();
+        if (databaseId) {
+            fetchData();
+        }
     }, [databaseId]);
 
     return { data, loading, error };

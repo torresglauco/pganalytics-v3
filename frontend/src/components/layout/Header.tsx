@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import clsx from 'clsx'
 import { useAuthStore } from '../../stores/authStore'
 import { useThemeStore } from '../../stores/themeStore'
@@ -6,6 +7,7 @@ import { useNotificationStore } from '../../stores/notificationStore'
 import { Button } from '../ui/Button'
 
 export const Header: React.FC = () => {
+  const navigate = useNavigate()
   const [searchOpen, setSearchOpen] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
 
@@ -92,7 +94,13 @@ export const Header: React.FC = () => {
                     {user?.email}
                   </p>
                 </div>
-                <button className="w-full text-left px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors">
+                <button
+                  onClick={() => {
+                    navigate('/settings')
+                    setUserMenuOpen(false)
+                  }}
+                  className="w-full text-left px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors"
+                >
                   Settings
                 </button>
                 <button

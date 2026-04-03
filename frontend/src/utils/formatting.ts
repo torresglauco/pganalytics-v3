@@ -16,7 +16,8 @@ export function formatDuration(milliseconds: number): string {
   return `${(milliseconds / 60000).toFixed(2)}m`;
 }
 
-export function formatNumber(num: number, decimals = 0): string {
+export function formatNumber(num: number | null | undefined, decimals = 0): string {
+  if (num === null || num === undefined) return 'N/A';
   return num.toLocaleString('en-US', {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
@@ -35,8 +36,10 @@ export function getHealthBgColor(score: number): string {
   return 'bg-pg-danger/10';
 }
 
-export function formatDateTime(date: Date | string): string {
+export function formatDateTime(date: Date | string | null | undefined): string {
+  if (!date) return 'N/A';
   const d = typeof date === 'string' ? new Date(date) : date;
+  if (isNaN(d.getTime())) return 'N/A';
   return d.toLocaleString('en-US', {
     month: 'short',
     day: 'numeric',
@@ -46,8 +49,10 @@ export function formatDateTime(date: Date | string): string {
   });
 }
 
-export function formatTime(date: Date | string): string {
+export function formatTime(date: Date | string | null | undefined): string {
+  if (!date) return 'N/A';
   const d = typeof date === 'string' ? new Date(date) : date;
+  if (isNaN(d.getTime())) return 'N/A';
   return d.toLocaleTimeString('en-US', {
     hour: '2-digit',
     minute: '2-digit',
@@ -55,8 +60,10 @@ export function formatTime(date: Date | string): string {
   });
 }
 
-export function getRelativeTime(date: Date | string): string {
+export function getRelativeTime(date: Date | string | null | undefined): string {
+  if (!date) return 'N/A';
   const d = typeof date === 'string' ? new Date(date) : date;
+  if (isNaN(d.getTime())) return 'N/A';
   const now = new Date();
   const diffMs = now.getTime() - d.getTime();
   const diffMin = Math.floor(diffMs / 60000);
@@ -74,7 +81,8 @@ export function getRelativeTime(date: Date | string): string {
 /**
  * Alias for getRelativeTime
  */
-export function formatTimeAgo(date: Date | string | number): string {
+export function formatTimeAgo(date: Date | string | number | null | undefined): string {
+  if (!date) return 'N/A';
   if (typeof date === 'number') {
     return getRelativeTime(new Date(date));
   }

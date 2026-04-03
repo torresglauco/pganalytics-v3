@@ -27,3 +27,7 @@ dist-ssr
 
 # Build
 *.tsbuildinfo
+
+# Playwright E2E Tests
+test-results/
+playwright-report/

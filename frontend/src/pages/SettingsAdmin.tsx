@@ -83,7 +83,7 @@ export const SettingsAdmin: React.FC = () => {
 
   const [newUser, setNewUser] = useState({
     email: '',
-    name: '',
+    full_name: '',
     username: '',
     password: '',
     role: 'viewer' as 'admin' | 'user' | 'viewer',
@@ -126,8 +126,8 @@ export const SettingsAdmin: React.FC = () => {
 
   const handleAddUser = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newUser.email || !newUser.name) {
-      setErrorMessage('Email and name are required');
+    if (!newUser.email) {
+      setErrorMessage('Email is required');
       return;
     }
 
@@ -135,14 +135,14 @@ export const SettingsAdmin: React.FC = () => {
     try {
       await createUser({
         email: newUser.email,
-        name: newUser.name,
+        full_name: newUser.full_name || newUser.username || newUser.email,
         username: newUser.username || newUser.email,
         password: newUser.password || 'TempPassword123!',
         role: newUser.role,
       });
       setSuccessMessage('User created successfully');
       setShowNewUserForm(false);
-      setNewUser({ email: '', name: '', username: '', password: '', role: 'viewer' as 'admin' | 'user' | 'viewer' });
+      setNewUser({ email: '', full_name: '', username: '', password: '', role: 'viewer' as 'admin' | 'user' | 'viewer' });
     } catch (err) {
       const error = err as any;
       setErrorMessage(error.message || 'Failed to create user');
@@ -296,12 +296,12 @@ export const SettingsAdmin: React.FC = () => {
 
   const userColumns: Column<AdminUser>[] = [
     {
-      key: 'name',
+      key: 'full_name',
       label: 'User',
       sortable: true,
       render: (value, row) => (
         <div className="space-y-1">
-          <div className="font-medium text-pg-dark">{String(value)}</div>
+          <div className="font-medium text-pg-dark">{String(value || row.username || 'N/A')}</div>
           <div className="text-xs text-pg-slate">{row.email}</div>
         </div>
       ),
@@ -488,10 +488,9 @@ export const SettingsAdmin: React.FC = () => {
                     <input
                       type="text"
                       placeholder="John Doe"
-                      value={newUser.name}
-                      onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
+                      value={newUser.full_name}
+                      onChange={(e) => setNewUser({ ...newUser, full_name: e.target.value })}
                       className="w-full px-3 py-2 border border-pg-slate/20 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pg-blue"
-                      required
                     />
                   </div>
                   <div>

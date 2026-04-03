@@ -5,8 +5,8 @@ import type { ApiError } from '../types'
 export interface AdminUser {
   id: string | number
   email: string
-  name?: string
   username?: string
+  full_name?: string
   role: 'admin' | 'viewer' | 'operator'
   is_active?: boolean
   status?: 'active' | 'inactive'
@@ -17,7 +17,7 @@ export interface AdminUser {
 
 export interface CreateUserData {
   email: string
-  name: string
+  full_name?: string
   username?: string
   password?: string
   role: 'admin' | 'viewer' | 'operator'

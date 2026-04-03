@@ -140,7 +140,13 @@ func (s *Server) handleCreateUser(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
 
-	newUser, err := s.postgres.CreateUserWithRole(ctx, req.Username, req.Email, passwordHash, req.FullName, req.Role)
+	// Use username as full name if not provided
+	fullName := req.FullName
+	if fullName == "" {
+		fullName = req.Username
+	}
+
+	newUser, err := s.postgres.CreateUserWithRole(ctx, req.Username, req.Email, passwordHash, fullName, req.Role)
 	if err != nil {
 		s.logger.Error("Failed to create user",
 			zap.String("username", req.Username),
@@ -659,7 +665,11 @@ func (s *Server) handleSetupFirstUser(c *gin.Context) {
 	}
 
 	// Create first admin user
-	newUser, err := s.postgres.CreateUserWithRole(ctx, req.Username, req.Email, passwordHash, req.FullName, "admin")
+	fullName := req.FullName
+	if fullName == "" {
+		fullName = req.Username
+	}
+	newUser, err := s.postgres.CreateUserWithRole(ctx, req.Username, req.Email, passwordHash, fullName, "admin")
 	if err != nil {
 		s.logger.Error("Failed to create first user",
 			zap.String("username", req.Username),

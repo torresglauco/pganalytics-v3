@@ -39,7 +39,12 @@ func (s *Server) handleGetIndexAdvisorRecommendations(c *gin.Context) {
 	recommendations, err := s.postgres.GetIndexRecommendations(ctx, databaseID, limit)
 	if err != nil {
 		s.logger.Warn("Failed to get index recommendations", zap.Error(err), zap.String("database_id", databaseID))
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve recommendations"})
+		// Return empty list instead of error - recommendations may not be available for this database yet
+		c.JSON(http.StatusOK, gin.H{
+			"database_id":      databaseID,
+			"recommendations":  []interface{}{},
+			"count":            0,
+		})
 		return
 	}
 

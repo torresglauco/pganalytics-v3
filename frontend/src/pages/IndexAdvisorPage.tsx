@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 import { MainLayout } from '../components/layout/MainLayout'
 import { RecommendationCard, IndexRecommendation } from '../components/IndexAdvisor/RecommendationCard'
 import { LoadingSpinner } from '../components/ui/LoadingSpinner'
+import { apiClient } from '../services/api'
 
 export const IndexAdvisorPage: React.FC = () => {
   const { databaseId } = useParams<{ databaseId: string }>()
@@ -20,13 +21,7 @@ export const IndexAdvisorPage: React.FC = () => {
     try {
       setLoading(true)
       setError(null)
-      const response = await fetch(`/api/v1/index-advisor/database/${databaseId}/recommendations`)
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch recommendations: ${response.statusText}`)
-      }
-
-      const data = await response.json()
+      const data = await apiClient.getIndexRecommendations(databaseId)
       setRecommendations(data.recommendations || [])
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred'
@@ -43,19 +38,7 @@ export const IndexAdvisorPage: React.FC = () => {
 
   const handleCreateIndex = async (id: number) => {
     try {
-      const response = await fetch(
-        `/api/v1/index-advisor/recommendation/${id}/create`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        }
-      )
-
-      if (!response.ok) {
-        throw new Error(`Failed to create index: ${response.statusText}`)
-      }
+      await apiClient.createIndexFromRecommendation(id)
 
       // Update the recommendation status to 'created'
       setRecommendations((prevRecs) =>

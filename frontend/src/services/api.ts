@@ -483,6 +483,30 @@ export class ApiClient {
     }
   }
 
+  // Index Advisor endpoints
+  async getIndexRecommendations(databaseId: string, limit: number = 20): Promise<any> {
+    try {
+      const response = await this.client.get(
+        `/index-advisor/database/${databaseId}/recommendations`,
+        { params: { limit } }
+      )
+      return response.data
+    } catch (error) {
+      throw this.handleError(error)
+    }
+  }
+
+  async createIndexFromRecommendation(recommendationId: number): Promise<any> {
+    try {
+      const response = await this.client.post(
+        `/index-advisor/recommendation/${recommendationId}/create`
+      )
+      return response.data
+    } catch (error) {
+      throw this.handleError(error)
+    }
+  }
+
   private handleError(error: unknown): ApiError {
     if (axios.isAxiosError(error)) {
       const axiosError = error as AxiosError<ApiError>

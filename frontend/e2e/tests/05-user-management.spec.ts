@@ -53,15 +53,16 @@ test.describe('User Management', () => {
     const saveBtn = page.locator('button').filter({ hasText: /Save|Create/i }).last();
     await saveBtn.click();
 
-    // Should show validation error or keep form visible
+    // ✅ UPDATED: Properly validate that form is still visible or error is shown
+    // No silent error catching - test will fail if validation doesn't work
     const form = page.locator('form, [role="dialog"]').first();
     const error = page.locator('.alert-danger, [data-testid="error"], input:invalid').first();
 
-    try {
-      await expect(error.or(form)).toBeVisible({ timeout: 3000 });
-    } catch {
-      console.log('Email validation verified');
-    }
+    // ✅ At least one must be visible
+    const isFormVisible = await form.isVisible();
+    const isErrorVisible = await error.isVisible();
+
+    expect(isFormVisible || isErrorVisible).toBe(true);
   });
 
   test('should create user successfully', async ({ page }) => {

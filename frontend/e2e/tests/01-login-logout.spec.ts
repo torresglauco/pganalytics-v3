@@ -27,8 +27,8 @@ test.describe('Login/Logout Flow', () => {
   test('should login with valid credentials', async ({ page }) => {
     await loginPage.goto();
 
-    // Use test credentials (these should be seeded in test database)
-    await loginPage.login('demo@pganalytics.com', 'password123');
+    // ✅ Use correct admin credentials
+    await loginPage.login('admin', 'admin');
 
     // Verify redirect to dashboard
     await loginPage.expectLoggedIn();
@@ -45,21 +45,23 @@ test.describe('Login/Logout Flow', () => {
     await loginPage.fillPassword('wrongpassword');
     await loginPage.clickLogin();
 
-    // Verify error message appears
-    try {
-      await loginPage.expectErrorMessage();
-    } catch {
-      // Some implementations might not show explicit error
-      // Check that we're still on login page instead
-      expect(page.url()).toContain('/login');
-    }
+    // ✅ UPDATED: Properly verify error handling
+    // Either we should see an error message OR we should still be on login page
+    // (implementation might show error or just prevent redirect)
+    await page.waitForLoadState('networkidle');
+
+    const hasErrorMessage = await page.locator('[data-testid="error"], .alert-danger, .error').first().isVisible({ timeout: 2000 }).catch(() => false);
+    const onLoginPage = page.url().includes('/login');
+
+    // At least one of these must be true
+    expect(hasErrorMessage || onLoginPage).toBe(true);
   });
 
   test('should logout and redirect to login page', async ({ page }) => {
     await loginPage.goto();
 
-    // First login
-    await loginPage.login('demo@pganalytics.com', 'password123');
+    // ✅ First login with correct credentials
+    await loginPage.login('admin', 'admin');
     await loginPage.expectLoggedIn();
 
     // Then logout
@@ -80,9 +82,9 @@ test.describe('Login/Logout Flow', () => {
   test('should show loading state during login', async ({ page }) => {
     await loginPage.goto();
 
-    // Fill credentials
-    await loginPage.fillEmail('demo@pganalytics.com');
-    await loginPage.fillPassword('password123');
+    // ✅ Fill correct credentials
+    await loginPage.fillEmail('admin');
+    await loginPage.fillPassword('admin');
 
     // Click login and check for loading state
     await loginPage.clickLogin();
@@ -98,8 +100,8 @@ test.describe('Login/Logout Flow', () => {
   test('should maintain session after page reload', async ({ page }) => {
     await loginPage.goto();
 
-    // Login
-    await loginPage.login('demo@pganalytics.com', 'password123');
+    // ✅ Login with correct credentials
+    await loginPage.login('admin', 'admin');
     await loginPage.expectLoggedIn();
 
     // Reload page
@@ -113,8 +115,8 @@ test.describe('Login/Logout Flow', () => {
   test('should clear session on logout', async ({ page }) => {
     await loginPage.goto();
 
-    // Login
-    await loginPage.login('demo@pganalytics.com', 'password123');
+    // ✅ Login with correct credentials
+    await loginPage.login('admin', 'admin');
     await loginPage.expectLoggedIn();
 
     // Logout

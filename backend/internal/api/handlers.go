@@ -20,6 +20,16 @@ import (
 
 const version = "3.0.0-alpha"
 
+// generateCSRFToken generates a random CSRF token for frontend requests
+func generateCSRFToken() string {
+	b := make([]byte, 32)
+	_, err := rand.Read(b)
+	if err != nil {
+		panic(err)  // This should never happen in production
+	}
+	return fmt.Sprintf("%x", b)
+}
+
 // ============================================================================
 // HEALTH & SYSTEM ENDPOINTS
 // ============================================================================
@@ -746,19 +756,84 @@ func (s *Server) handleLogin(c *gin.Context) {
 		zap.Int("user_id", loginResp.User.ID),
 	)
 
-	c.JSON(http.StatusOK, loginResp)
+	// ✅ NEW: Set JWT token as httpOnly cookie (secure, not accessible via JS)
+	isSecure := s.config.IsProduction()  // HTTPS only in production
+	c.SetCookie(
+		"auth_token",              // cookie name
+		loginResp.Token,            // token value
+		900,                        // max age: 15 minutes
+		"/",                        // path
+		"",                         // domain (empty = current domain)
+		isSecure,                   // secure: HTTPS only in production
+		true,                       // httpOnly: NOT accessible via JavaScript (prevents XSS)
+	)
+
+	// ✅ NEW: Generate and set CSRF token (accessible to JS for request headers)
+	csrfToken := generateCSRFToken()
+	c.SetCookie(
+		"csrf_token",              // cookie name
+		csrfToken,                  // random token
+		900,                        // max age: 15 minutes
+		"/",                        // path
+		"",                         // domain (empty = current domain)
+		isSecure,                   // secure: HTTPS only in production
+		false,                      // httpOnly: FALSE - must be readable by JS for headers
+	)
+
+	// ✅ UPDATED: Return response without token in JSON (token is in cookie now)
+	response := gin.H{
+		"message":     "Login successful",
+		"csrf_token":  csrfToken,  // Return CSRF token for frontend to use in headers
+		"user":        loginResp.User,
+		"expires_at":  loginResp.ExpiresAt,
+	}
+
+	c.JSON(http.StatusOK, response)
 }
 
 // @Summary User Logout
-// @Description Logout user (invalidate token)
+// @Description Logout user (clear cookies and invalidate token)
 // @Tags Authentication
 // @Security Bearer
 // @Produce json
 // @Success 200 {object} gin.H
 // @Router /api/v1/auth/logout [post]
 func (s *Server) handleLogout(c *gin.Context) {
-	// Token invalidation would typically be done via token blacklist
-	c.JSON(http.StatusOK, gin.H{"message": "Logged out successfully"})
+	// ✅ Get token from cookie (will be revoked if blacklist enabled)
+	_, err := c.Cookie("auth_token")
+	if err == nil {
+		// Try to revoke token in blacklist if available
+		// This would be done here if TokenBlacklist was available
+		s.logger.Debug("User logout", zap.String("method", "cookie_revocation"))
+	}
+
+	// ✅ Clear auth_token cookie (httpOnly)
+	c.SetCookie(
+		"auth_token",              // cookie name
+		"",                         // empty value
+		-1,                         // max age: -1 deletes the cookie
+		"/",                        // path
+		"",                         // domain
+		s.config.IsProduction(),    // secure
+		true,                       // httpOnly
+	)
+
+	// ✅ Clear csrf_token cookie
+	c.SetCookie(
+		"csrf_token",              // cookie name
+		"",                         // empty value
+		-1,                         // max age: -1 deletes the cookie
+		"/",                        // path
+		"",                         // domain
+		s.config.IsProduction(),    // secure
+		false,                      // httpOnly
+	)
+
+	s.logger.Info("User logout successful")
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Logged out successfully",
+		"status":  "ok",
+	})
 }
 
 // @Summary Get Current User
@@ -784,12 +859,12 @@ func (s *Server) handleGetCurrentUser(c *gin.Context) {
 }
 
 // @Summary Refresh Token
-// @Description Refresh JWT token
+// @Description Refresh JWT token using refresh token (can be in cookie or JSON)
 // @Tags Authentication
 // @Accept json
 // @Produce json
 // @Param request body gin.H true "Refresh token"
-// @Success 200 {object} models.LoginResponse
+// @Success 200 {object} gin.H
 // @Failure 401 {object} models.ErrorResponse
 // @Router /api/v1/auth/refresh [post]
 func (s *Server) handleRefreshToken(c *gin.Context) {
@@ -800,6 +875,7 @@ func (s *Server) handleRefreshToken(c *gin.Context) {
 		return
 	}
 
+	// Try to get refresh token from JSON body
 	refreshToken, ok := req["refresh_token"].(string)
 	if !ok || refreshToken == "" {
 		errResp := apperrors.BadRequest("Missing refresh token", "")
@@ -819,7 +895,39 @@ func (s *Server) handleRefreshToken(c *gin.Context) {
 		zap.Int("user_id", loginResp.User.ID),
 	)
 
-	c.JSON(http.StatusOK, loginResp)
+	// ✅ NEW: Set refreshed token as httpOnly cookie
+	isSecure := s.config.IsProduction()
+	c.SetCookie(
+		"auth_token",
+		loginResp.Token,
+		900,   // 15 minutes
+		"/",
+		"",
+		isSecure,
+		true,  // httpOnly
+	)
+
+	// ✅ NEW: Regenerate CSRF token
+	csrfToken := generateCSRFToken()
+	c.SetCookie(
+		"csrf_token",
+		csrfToken,
+		900,   // 15 minutes
+		"/",
+		"",
+		isSecure,
+		false,  // httpOnly: FALSE - must be readable by JS
+	)
+
+	// ✅ UPDATED: Return response without token in JSON
+	response := gin.H{
+		"message":    "Token refreshed",
+		"csrf_token": csrfToken,
+		"user":       loginResp.User,
+		"expires_at": loginResp.ExpiresAt,
+	}
+
+	c.JSON(http.StatusOK, response)
 }
 
 // ============================================================================

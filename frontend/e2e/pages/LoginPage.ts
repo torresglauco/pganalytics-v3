@@ -32,13 +32,16 @@ export class LoginPage {
     // Click login button
     await this.page.locator(this.loginButton).first().click();
 
-    // Wait for navigation or success
-    try {
-      await this.page.waitForURL('/dashboard', { timeout: 10000 });
-    } catch {
-      // Try waiting for success element instead
-      await this.page.locator('[data-testid="dashboard"]').first().waitFor({ timeout: 5000 });
-    }
+    // ✅ UPDATED: Wait for either URL change OR dashboard element
+    // (no silent failures - test will fail if neither happens)
+    await this.page.waitForFunction(
+      () => {
+        const isDashboardUrl = window.location.pathname.includes('/dashboard');
+        const isDashboardElement = document.querySelector('[data-testid="dashboard"]') !== null;
+        return isDashboardUrl || isDashboardElement;
+      },
+      { timeout: 10000 }
+    );
   }
 
   async logout() {
@@ -57,25 +60,28 @@ export class LoginPage {
   }
 
   async expectLoggedIn() {
-    try {
-      await this.page.waitForURL('/dashboard', { timeout: 5000 });
-    } catch {
-      // Alternative: check for dashboard element
-      await expect(this.page.locator('[data-testid="dashboard"]').first()).toBeVisible({
-        timeout: 5000,
-      });
-    }
+    // ✅ UPDATED: Wait for either URL or element (no silent failures)
+    await this.page.waitForFunction(
+      () => {
+        const isDashboardUrl = window.location.pathname.includes('/dashboard');
+        const isDashboardElement = document.querySelector('[data-testid="dashboard"]') !== null;
+        return isDashboardUrl || isDashboardElement;
+      },
+      { timeout: 5000 }
+    );
   }
 
   async expectLoggedOut() {
-    try {
-      await this.page.waitForURL('/login', { timeout: 5000 });
-    } catch {
-      // Alternative: check for login form
-      await expect(this.page.locator(this.loginButton).first()).toBeVisible({
-        timeout: 5000,
-      });
-    }
+    // ✅ UPDATED: Wait for either URL or element (no silent failures)
+    await this.page.waitForFunction(
+      () => {
+        const isLoginUrl = window.location.pathname.includes('/login');
+        const isLoginForm = document.querySelector('button:has-text("Sign In")') !== null ||
+                           document.querySelector('button:has-text("Login")') !== null;
+        return isLoginUrl || isLoginForm;
+      },
+      { timeout: 5000 }
+    );
   }
 
   async expectErrorMessage() {

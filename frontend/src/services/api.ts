@@ -20,14 +20,21 @@ export class ApiClient {
       headers: {
         'Content-Type': 'application/json',
       },
+      // ✅ NEW: Enable sending cookies with requests (httpOnly auth_token)
+      withCredentials: true,
     })
 
-    // Add request interceptor for auth token
+    // ✅ UPDATED: Add request interceptor for CSRF token (not auth token)
     this.client.interceptors.request.use((config) => {
-      const token = localStorage.getItem('auth_token')
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`
+      // Get CSRF token from cookie and add to request headers
+      const csrfToken = this.getCsrfTokenFromCookie()
+      if (csrfToken && this.isMethodThatNeedsCsrf(config.method)) {
+        config.headers['X-CSRF-Token'] = csrfToken
       }
+
+      // ❌ REMOVED: No longer read from localStorage
+      // The auth_token is now sent automatically via cookies (withCredentials: true)
+
       return config
     })
 
@@ -36,12 +43,36 @@ export class ApiClient {
       (response) => response,
       (error) => {
         if (error.response?.status === 401) {
-          localStorage.removeItem('auth_token')
+          // ✅ UPDATED: Don't need to remove localStorage (no longer using it)
+          // Server will clear cookies on logout
           window.location.href = '/login'
         }
         return Promise.reject(error)
       }
     )
+  }
+
+  // ✅ NEW: Helper to get CSRF token from cookie
+  private getCsrfTokenFromCookie(): string | null {
+    const name = 'csrf_token='
+    const decodedCookie = decodeURIComponent(document.cookie)
+    const cookieArray = decodedCookie.split(';')
+
+    for (let cookie of cookieArray) {
+      cookie = cookie.trim()
+      if (cookie.indexOf(name) === 0) {
+        return cookie.substring(name.length, cookie.length)
+      }
+    }
+    return null
+  }
+
+  // ✅ NEW: Check if request method needs CSRF protection
+  private isMethodThatNeedsCsrf(method?: string): boolean {
+    if (!method) return false
+    const method_lower = method.toLowerCase()
+    // CSRF protection needed for state-changing operations
+    return ['post', 'put', 'delete', 'patch'].includes(method_lower)
   }
 
   async registerCollector(

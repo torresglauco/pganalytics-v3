@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"crypto/md5"
 	"fmt"
 	"strings"
 	"time"
@@ -146,10 +145,9 @@ func (as *AuthService) RegisterCollector(req *models.CollectorRegisterRequest) (
 		return nil, apperrors.BadRequest("Invalid collector data", "Name and hostname are required")
 	}
 
-	// Generate deterministic UUID based on hostname to prevent duplicates
-	// This ensures the same collector always gets the same ID
-	hostHash := md5.Sum([]byte(req.Hostname))
-	collectorID := uuid.NewSHA1(uuid.Nil, hostHash[:])
+	// Generate random UUID v4 for collector ID
+	// This ensures each collector registration gets a unique, random ID
+	collectorID := uuid.New()
 
 	// Create or get collector with deterministic ID
 	collector := &models.Collector{

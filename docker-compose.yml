@@ -4,9 +4,9 @@ services:
     image: postgres:16-bullseye
     container_name: pganalytics-postgres
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: pganalytics
-      POSTGRES_DB: pganalytics
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me-in-production}
+      POSTGRES_DB: ${POSTGRES_DB:-pganalytics}
     ports:
       - "5432:5432"
     volumes:
@@ -30,9 +30,9 @@ services:
     container_name: pganalytics-timescale
     init: true
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: pganalytics
-      POSTGRES_DB: metrics
+      POSTGRES_USER: ${TIMESCALE_USER:-postgres}
+      POSTGRES_PASSWORD: ${TIMESCALE_PASSWORD:-${POSTGRES_PASSWORD:-change-me-in-production}}
+      POSTGRES_DB: ${TIMESCALE_DB:-metrics}
     ports:
       - "5433:5432"
     volumes:
@@ -53,17 +53,19 @@ services:
       dockerfile: backend/Dockerfile
     container_name: pganalytics-backend
     environment:
-      DATABASE_URL: "postgres://postgres:pganalytics@postgres:5432/pganalytics?sslmode=disable"
-      TIMESCALE_URL: "postgres://postgres:pganalytics@timescale:5432/metrics?sslmode=disable"
-      JWT_SECRET: "demo-secret-key-change-in-production"
+      # Use sslmode=disable for Docker Compose (internal network)
+      # In production, use sslmode=require or sslmode=verify-full
+      DATABASE_URL: "${DATABASE_URL:-postgres://postgres:${POSTGRES_PASSWORD:-change-me-in-production}@postgres:5432/pganalytics?sslmode=disable}"
+      TIMESCALE_URL: "${TIMESCALE_URL:-postgres://postgres:${TIMESCALE_PASSWORD:-${POSTGRES_PASSWORD:-change-me-in-production}}@timescale:5432/metrics?sslmode=disable}"
+      JWT_SECRET: "${JWT_SECRET:-change-me-in-production-use-openssl-rand}"
       JWT_EXPIRATION: "900"  # 15 minutes
-      ENCRYPTION_KEY: "WkSMJvo2wKQ1FuceaE2yW2lEyxKIcJ1wfbrcNUOGUkE="  # 32-byte AES-256 key (base64 encoded)
+      ENCRYPTION_KEY: "${ENCRYPTION_KEY:-change-me-in-production-32-bytes-base64}"
       TLS_CERT: "/etc/pganalytics/tls/server.crt"
       TLS_KEY: "/etc/pganalytics/tls/server.key"
       LOG_LEVEL: "debug"
       PORT: "8080"
-      REGISTRATION_SECRET: "${REGISTRATION_SECRET:-demo-registration-secret-change-in-production}"
-      SETUP_ENDPOINT_ENABLED: "true"
+      REGISTRATION_SECRET: "${REGISTRATION_SECRET:-change-me-in-production-use-openssl-rand}"
+      SETUP_ENDPOINT_ENABLED: "${SETUP_ENDPOINT_ENABLED:-false}"
     ports:
       - "8080:8080"
     depends_on:

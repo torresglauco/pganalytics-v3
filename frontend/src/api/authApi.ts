@@ -28,16 +28,22 @@ const apiCall = async <T,>(
     'Content-Type': 'application/json',
   };
 
-  const token = localStorage.getItem('access_token');
-  if (token) {
-    defaultHeaders['Authorization'] = `Bearer ${token}`;
+  // ✅ UPDATED: Add CSRF token for state-changing requests
+  if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method.toUpperCase())) {
+    const csrfToken = getCsrfTokenFromCookie();
+    if (csrfToken) {
+      defaultHeaders['X-CSRF-Token'] = csrfToken;
+    }
   }
+
+  // ❌ REMOVED: No longer read from localStorage
+  // The auth_token is now sent automatically via cookies (credentials: 'include')
 
   const response = await fetch(url, {
     method,
     headers: { ...defaultHeaders, ...headers },
     body: body ? JSON.stringify(body) : undefined,
-    credentials: 'include',
+    credentials: 'include',  // ✅ This sends cookies automatically
   });
 
   if (!response.ok) {
@@ -48,16 +54,39 @@ const apiCall = async <T,>(
   return response.json();
 };
 
+// ✅ NEW: Helper to extract CSRF token from cookie
+const getCsrfTokenFromCookie = (): string | null => {
+  const name = 'csrf_token=';
+  const decodedCookie = decodeURIComponent(document.cookie);
+  const cookieArray = decodedCookie.split(';');
+
+  for (let cookie of cookieArray) {
+    cookie = cookie.trim();
+    if (cookie.indexOf(name) === 0) {
+      return cookie.substring(name.length, cookie.length);
+    }
+  }
+  return null;
+};
+
 // Auth API calls
 export const authApi = {
   // Local authentication
   loginLocal: async (credentials: LocalLoginRequest): Promise<Session> => {
-    const response = await apiCall<{ session: Session }>(
+    // ✅ UPDATED: Response now includes user and csrf_token (token is in httpOnly cookie)
+    const response = await apiCall<{ message: string; user: User; csrf_token: string; expires_at: string }>(
       'POST',
       '/auth/login',
       credentials
     );
-    return response.session;
+
+    // Return session-like object
+    return {
+      user: response.user,
+      token: '', // Token is in httpOnly cookie, not returned here
+      csrfToken: response.csrf_token,
+      expiresAt: new Date(response.expires_at),
+    } as Session;
   },
 
   // LDAP authentication
@@ -151,11 +180,18 @@ export const authApi = {
 
   // Session
   refreshSession: async (): Promise<Session> => {
-    const response = await apiCall<{ session: Session }>(
+    // ✅ UPDATED: Response now includes user and csrf_token
+    const response = await apiCall<{ message: string; user: User; csrf_token: string; expires_at: string }>(
       'POST',
       '/auth/refresh'
     );
-    return response.session;
+
+    return {
+      user: response.user,
+      token: '', // Token is in httpOnly cookie, not returned here
+      csrfToken: response.csrf_token,
+      expiresAt: new Date(response.expires_at),
+    } as Session;
   },
 
   validateSession: async (): Promise<User> => {

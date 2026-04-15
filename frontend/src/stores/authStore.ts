@@ -20,21 +20,26 @@ interface AuthState {
 
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
-  token: localStorage.getItem('auth_token') || null,
-  isAuthenticated: !!localStorage.getItem('auth_token'),
+  // ❌ REMOVED: localStorage.getItem('auth_token')
+  // ✅ NEW: Token is now in httpOnly cookie, not in localStorage
+  token: null,
+  isAuthenticated: false,
   isLoading: false,
   error: null,
 
   setUser: (user) => set({ user }),
   setToken: (token) => {
-    localStorage.setItem('auth_token', token)
-    set({ token, isAuthenticated: true })
+    // ❌ REMOVED: localStorage.setItem('auth_token', token)
+    // ✅ NEW: Token is stored in httpOnly cookie by backend
+    // Frontend only tracks that user is authenticated
+    set({ token: '', isAuthenticated: true })
   },
   setAuthenticated: (isAuthenticated) => set({ isAuthenticated }),
   setLoading: (isLoading) => set({ isLoading }),
   setError: (error) => set({ error }),
   logout: () => {
-    localStorage.removeItem('auth_token')
+    // ❌ REMOVED: localStorage.removeItem('auth_token')
+    // ✅ NEW: Backend clears httpOnly cookie on logout
     set({
       user: null,
       token: null,

@@ -3,6 +3,8 @@ package api
 import (
 	"fmt"
 	"net/http"
+	"os"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -11,19 +13,25 @@ import (
 	"go.uber.org/zap"
 )
 
-// AuthMiddleware validates JWT tokens
+// AuthMiddleware validates JWT tokens (from header OR cookie)
 func (s *Server) AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Get Authorization header
-		authHeader := c.GetHeader("Authorization")
+		var token string
+		var err error
 
-		// Extract token using helper
-		token, err := auth.ExtractTokenFromHeader(authHeader)
-		if err != nil {
-			errResp := apperrors.ToAppError(err)
-			c.JSON(errResp.StatusCode, errResp)
-			c.Abort()
-			return
+		// ✅ NEW: Try to get token from Authorization header first
+		authHeader := c.GetHeader("Authorization")
+		token, err = auth.ExtractTokenFromHeader(authHeader)
+
+		// ✅ NEW: If not in header, try to get from httpOnly cookie
+		if err != nil || token == "" {
+			token, err = c.Cookie("auth_token")
+			if err != nil {
+				errResp := apperrors.ToAppError(apperrors.Unauthorized("Missing authentication token", ""))
+				c.JSON(errResp.StatusCode, errResp)
+				c.Abort()
+				return
+			}
 		}
 
 		// Validate JWT token
@@ -254,13 +262,20 @@ func (s *Server) LoggingMiddleware() gin.HandlerFunc {
 	}
 }
 
-// CORSMiddleware adds CORS headers
+// CORSMiddleware adds CORS headers with origin whitelist
 func (s *Server) CORSMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
-		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+		origin := c.Request.Header.Get("Origin")
+
+		// Check if origin is allowed
+		if s.isOriginAllowed(origin) {
+			c.Writer.Header().Set("Access-Control-Allow-Origin", origin)
+			c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+		}
+
 		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
 		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT, DELETE, PATCH")
+		c.Writer.Header().Set("Access-Control-Max-Age", "86400")
 
 		if c.Request.Method == "OPTIONS" {
 			c.AbortWithStatus(http.StatusNoContent)
@@ -269,6 +284,30 @@ func (s *Server) CORSMiddleware() gin.HandlerFunc {
 
 		c.Next()
 	}
+}
+
+// isOriginAllowed checks if the origin is in the whitelist
+func (s *Server) isOriginAllowed(origin string) bool {
+	allowedOrigins := []string{
+		"http://localhost:3000",      // Development frontend
+		"http://localhost:5173",      // Vite development
+		"http://127.0.0.1:3000",      // Alternative localhost
+		"http://127.0.0.1:5173",      // Alternative Vite
+	}
+
+	// Allow from environment variable for production
+	if envAllowed := os.Getenv("ALLOWED_ORIGINS"); envAllowed != "" {
+		for _, allowed := range strings.Split(envAllowed, ",") {
+			allowedOrigins = append(allowedOrigins, strings.TrimSpace(allowed))
+		}
+	}
+
+	for _, allowed := range allowedOrigins {
+		if allowed == origin {
+			return true
+		}
+	}
+	return false
 }
 
 // SecurityHeadersMiddleware adds security headers

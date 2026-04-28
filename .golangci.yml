@@ -1,0 +1,35 @@
+run:
+  timeout: 5m
+  modules-download-mode: readonly
+
+linters:
+  enable:
+    - errcheck      # Check for unchecked errors
+    - gosimple      # Simplify code
+    - govet         # Report suspicious constructs
+    - ineffassign   # Detect unused assignments
+    - staticcheck   # Go static analysis
+    - unused        # Find unused code
+    - bodyclose     # Check HTTP response body is closed
+    - gosec         # Security checks
+    - gofmt         # Check formatting
+    - goimports     # Check imports
+    - misspell      # Find misspelled words
+    - revive        # General purpose linter
+    - sqlclosecheck # Check sql.Rows and sql.Stmt are closed
+
+linters-settings:
+  gosec:
+    excludes:
+      - G104 # Audit errors (will be handled by errcheck)
+  errcheck:
+    check-type-assertions: true
+    check-blank: true
+  govet:
+    enable-all: true
+
+issues:
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - errcheck

@@ -14,7 +14,7 @@ Requirements for Testing & Validation milestone. Focuses on comprehensive test c
 - [x] **TEST-03**: Collector endpoints tested with boundary validation (invalid IDs, missing fields, SQL injection attempts)
 - [x] **TEST-04**: Instance endpoints tested with various PostgreSQL versions and configuration combinations
 - [x] **TEST-05**: User management endpoints tested with permission boundaries (admin vs regular user)
-- [ ] **TEST-06**: All HTTP status codes (200, 400, 401, 403, 404, 500) tested for appropriate endpoints
+- [x] **TEST-06**: All HTTP status codes (200, 400, 401, 403, 404, 500) tested for appropriate endpoints
 
 ### Database Testing
 
@@ -84,7 +84,7 @@ Deferred to future release. Tracked but not in current roadmap.
 | TEST-03 | Phase 2 | Complete |
 | TEST-04 | Phase 2 | Complete |
 | TEST-05 | Phase 2 | Complete |
-| TEST-06 | Phase 2 | Pending |
+| TEST-06 | Phase 2 | Complete |
 | TEST-07 | Phase 3 | Pending |
 | TEST-08 | Phase 3 | Pending |
 | TEST-09 | Phase 3 | Pending |

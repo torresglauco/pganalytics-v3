@@ -108,11 +108,11 @@ Deferred to future release. Tracked but not in current roadmap.
 | TEST-21 | Phase 2 | Pending |
 
 **Coverage:**
-- v1.1 requirements: 21 total
-- Mapped to phases: 21
+- v1.1 requirements: 27 total
+- Mapped to phases: 27
 - Unmapped: 0 ✓
 
 ---
 
 *Requirements defined: 2026-04-28*
-*Last updated: 2026-04-28 after Phase 1 completion - Milestone v1.1 scope*
+*Last updated: 2026-04-28 after ROADMAP.md creation - corrected requirement count*

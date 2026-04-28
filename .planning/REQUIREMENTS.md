@@ -9,10 +9,10 @@ Requirements for Testing & Validation milestone. Focuses on comprehensive test c
 
 ### Backend Integration Testing
 
-- [ ] **TEST-01**: All API endpoints have integration tests covering happy path and error cases
+- [x] **TEST-01**: All API endpoints have integration tests covering happy path and error cases
 - [x] **TEST-02**: Authentication boundary tests validate token validation, expiration, and revocation
 - [x] **TEST-03**: Collector endpoints tested with boundary validation (invalid IDs, missing fields, SQL injection attempts)
-- [ ] **TEST-04**: Instance endpoints tested with various PostgreSQL versions and configuration combinations
+- [x] **TEST-04**: Instance endpoints tested with various PostgreSQL versions and configuration combinations
 - [ ] **TEST-05**: User management endpoints tested with permission boundaries (admin vs regular user)
 - [ ] **TEST-06**: All HTTP status codes (200, 400, 401, 403, 404, 500) tested for appropriate endpoints
 
@@ -79,10 +79,10 @@ Deferred to future release. Tracked but not in current roadmap.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| TEST-01 | Phase 2 | Pending |
+| TEST-01 | Phase 2 | Complete |
 | TEST-02 | Phase 2 | Complete |
 | TEST-03 | Phase 2 | Complete |
-| TEST-04 | Phase 2 | Pending |
+| TEST-04 | Phase 2 | Complete |
 | TEST-05 | Phase 2 | Pending |
 | TEST-06 | Phase 2 | Pending |
 | TEST-07 | Phase 3 | Pending |

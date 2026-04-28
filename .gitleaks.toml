@@ -1,0 +1,39 @@
+title = "pgAnalytics Gitleaks Configuration"
+
+[extend]
+# Use the default gitleaks configuration as base
+useDefault = true
+
+# Global allowlist for paths that contain test fixtures, documentation, and examples
+[allowlist]
+description = "global allow list"
+paths = [
+    '''tests/''',
+    '''test/''',
+    '''_test\.go''',
+    '''.planning/''',
+    '''API_QUICK_REFERENCE\.md''',
+    '''PHASE_.*\.md''',
+    '''WEEK.*\.md''',
+    '''config/.*\.example''',
+    '''config/.*\.sample''',
+    '''collector/config\.toml\.sample''',
+    '''\.sample''',
+    '''mock-''',
+    '''e2e''',
+    '''fixtures''',
+    '''docs/''',
+    '''README''',
+    '''EXAMPLE''',
+    '''\.example$''',  # All example files
+    '''\.md$''',  # All markdown files (documentation)
+    '''\.txt$''',  # All text files (documentation/logs)
+    '''docker-compose.*\.yml''',  # All docker-compose files (dev/test)
+    '''\.env\.example''',  # Example env files
+    '''\.env\.staging''',  # Staging env files (dev/test)
+    '''frontend/src/''',  # Frontend source (test tokens in admin pages)
+    '''scripts/''',  # Deployment scripts with test tokens
+    '''tls/''',  # Demo TLS certificates (in .gitignore)
+    '''.claude/''',  # Claude settings with test tokens
+    '''.worktrees/''',  # Git worktrees
+]

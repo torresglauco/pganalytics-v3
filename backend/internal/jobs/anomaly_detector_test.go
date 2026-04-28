@@ -11,31 +11,31 @@ import (
 // TestAnomalyDetectionBaseline tests baseline calculation
 func TestAnomalyDetectionBaseline(t *testing.T) {
 	tests := []struct {
-		name      string
-		values    []float64
-		threshold float64
-		wantMean  float64
+		name       string
+		values     []float64
+		threshold  float64
+		wantMean   float64
 		wantStdDev float64
 	}{
 		{
-			name:      "normal distribution",
-			values:    []float64{10, 12, 11, 10, 12, 11, 10, 12},
-			threshold: 2.5,
-			wantMean:  11.0,
+			name:       "normal distribution",
+			values:     []float64{10, 12, 11, 10, 12, 11, 10, 12},
+			threshold:  2.5,
+			wantMean:   11.0,
 			wantStdDev: 0.9,
 		},
 		{
-			name:      "single value",
-			values:    []float64{5},
-			threshold: 2.5,
-			wantMean:  5.0,
+			name:       "single value",
+			values:     []float64{5},
+			threshold:  2.5,
+			wantMean:   5.0,
 			wantStdDev: 0.0,
 		},
 		{
-			name:      "two values",
-			values:    []float64{5, 15},
-			threshold: 2.5,
-			wantMean:  10.0,
+			name:       "two values",
+			values:     []float64{5, 15},
+			threshold:  2.5,
+			wantMean:   10.0,
 			wantStdDev: 7.07,
 		},
 	}
@@ -101,9 +101,9 @@ func TestZScoreCalculation(t *testing.T) {
 // TestSeverityClassification tests severity assignment based on Z-score
 func TestSeverityClassification(t *testing.T) {
 	tests := []struct {
-		name     string
-		zScore   float64
-		wantSev  string
+		name    string
+		zScore  float64
+		wantSev string
 	}{
 		{
 			name:    "critical",
@@ -183,10 +183,10 @@ func TestAnomalyDetectionMetrics(t *testing.T) {
 // TestPercentileCalculation tests percentile computation for baselines
 func TestPercentileCalculation(t *testing.T) {
 	tests := []struct {
-		name     string
-		values   []float64
+		name       string
+		values     []float64
 		percentile float64
-		want     float64
+		want       float64
 	}{
 		{
 			name:       "p50 median",

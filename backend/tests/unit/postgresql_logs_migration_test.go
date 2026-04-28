@@ -285,7 +285,7 @@ func TestGetPostgresqlLogsByLevel(t *testing.T) {
 		log := &models.PostgreSQLLog{
 			CollectorID:  collectorID,
 			InstanceID:   instanceID,
-			LogTimestamp: time.Now().Add(time.Duration(-(i+3)) * time.Hour),
+			LogTimestamp: time.Now().Add(time.Duration(-(i + 3)) * time.Hour),
 			LogLevel:     "ERROR",
 			LogMessage:   "Error message",
 		}
@@ -430,15 +430,15 @@ func TestErrorCodeStorage(t *testing.T) {
 	instanceID := createTestInstance(t, db, collectorID)
 
 	log := &models.PostgreSQLLog{
-		CollectorID:   collectorID,
-		InstanceID:    instanceID,
-		LogTimestamp:  time.Now(),
-		LogLevel:      "ERROR",
-		LogMessage:    "Test error",
-		ErrorCode:     stringPtr("42P01"),
-		ErrorDetail:   stringPtr("Relation not found"),
-		ErrorHint:     stringPtr("Check table exists"),
-		ErrorContext:  stringPtr("During query execution"),
+		CollectorID:  collectorID,
+		InstanceID:   instanceID,
+		LogTimestamp: time.Now(),
+		LogLevel:     "ERROR",
+		LogMessage:   "Test error",
+		ErrorCode:    stringPtr("42P01"),
+		ErrorDetail:  stringPtr("Relation not found"),
+		ErrorHint:    stringPtr("Check table exists"),
+		ErrorContext: stringPtr("During query execution"),
 	}
 
 	result, err := db.InsertPostgresqlLog(ctx, log)

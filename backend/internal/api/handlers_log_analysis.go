@@ -170,4 +170,3 @@ func (s *Server) handleLogStream(c *gin.Context) {
 		}
 	}
 }
-

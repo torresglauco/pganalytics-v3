@@ -177,9 +177,9 @@ func TestQueryPerformanceMetricsAggregation(t *testing.T) {
 	t.Run("track_query_frequency", func(t *testing.T) {
 		// Simulate query execution frequency tracking
 		queryFrequency := map[string]int{
-			"SELECT * FROM users":     150,
-			"SELECT * FROM orders":    120,
-			"SELECT * FROM products":  80,
+			"SELECT * FROM users":    150,
+			"SELECT * FROM orders":   120,
+			"SELECT * FROM products": 80,
 		}
 
 		totalQueries := 0

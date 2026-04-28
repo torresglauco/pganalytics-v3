@@ -14,10 +14,12 @@ import (
 // - Returns the router for making test requests
 //
 // Typical usage:
-//   router, _, _ := newTestEnv(t)  // Ignore unused stores if not needed
+//
+//	router, _, _ := newTestEnv(t)  // Ignore unused stores if not needed
 //
 // Or if you need to interact with stores:
-//   router, userStore, collectorStore := newTestEnv(t)
+//
+//	router, userStore, collectorStore := newTestEnv(t)
 func newTestEnv(t *testing.T) (*gin.Engine, *TestUserStore, *TestCollectorStore) {
 	t.Helper()
 

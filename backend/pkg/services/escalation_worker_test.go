@@ -12,10 +12,10 @@ import (
 
 // MockWorkerDB implements the EscalationWorkerDB interface for testing
 type MockWorkerDB struct {
-	policies  map[int64]*models.EscalationPolicy
-	states    map[int64]*models.EscalationState
-	nextID    int64
-	mu        sync.Mutex
+	policies map[int64]*models.EscalationPolicy
+	states   map[int64]*models.EscalationState
+	nextID   int64
+	mu       sync.Mutex
 }
 
 // NewMockWorkerDB creates a new MockWorkerDB
@@ -125,7 +125,7 @@ func TestWorkerProcessesReadyEscalations(t *testing.T) {
 
 	// Create policy with 2 steps
 	policy := &models.EscalationPolicy{
-		Name:   "Test Policy",
+		Name:     "Test Policy",
 		IsActive: true,
 		Steps: []*models.EscalationPolicyStep{
 			{
@@ -147,10 +147,10 @@ func TestWorkerProcessesReadyEscalations(t *testing.T) {
 	// Create escalation state ready for processing (next_escalation_at in past)
 	pastTime := time.Now().Add(-1 * time.Minute)
 	state := &models.EscalationState{
-		AlertTriggerID: 1,
-		PolicyID:       policy.ID,
-		CurrentStep:    0,
-		Status:         "active",
+		AlertTriggerID:   1,
+		PolicyID:         policy.ID,
+		CurrentStep:      0,
+		Status:           "active",
 		NextEscalationAt: &pastTime,
 	}
 	db.CreateState(state)
@@ -187,7 +187,7 @@ func TestWorkerSkipsAcknowledgedEscalations(t *testing.T) {
 
 	// Create policy
 	policy := &models.EscalationPolicy{
-		Name:   "Test Policy",
+		Name:     "Test Policy",
 		IsActive: true,
 		Steps: []*models.EscalationPolicyStep{
 			{
@@ -203,10 +203,10 @@ func TestWorkerSkipsAcknowledgedEscalations(t *testing.T) {
 	// Create escalation state with status="acknowledged"
 	pastTime := time.Now().Add(-1 * time.Minute)
 	state := &models.EscalationState{
-		AlertTriggerID: 1,
-		PolicyID:       policy.ID,
-		CurrentStep:    0,
-		Status:         "acknowledged",
+		AlertTriggerID:   1,
+		PolicyID:         policy.ID,
+		CurrentStep:      0,
+		Status:           "acknowledged",
 		NextEscalationAt: &pastTime,
 	}
 	db.CreateState(state)
@@ -232,7 +232,7 @@ func TestWorkerSkipsNotReadyEscalations(t *testing.T) {
 
 	// Create policy
 	policy := &models.EscalationPolicy{
-		Name:   "Test Policy",
+		Name:     "Test Policy",
 		IsActive: true,
 		Steps: []*models.EscalationPolicyStep{
 			{
@@ -248,10 +248,10 @@ func TestWorkerSkipsNotReadyEscalations(t *testing.T) {
 	// Create escalation state with future next_escalation_at
 	futureTime := time.Now().Add(10 * time.Minute)
 	state := &models.EscalationState{
-		AlertTriggerID: 1,
-		PolicyID:       policy.ID,
-		CurrentStep:    0,
-		Status:         "active",
+		AlertTriggerID:   1,
+		PolicyID:         policy.ID,
+		CurrentStep:      0,
+		Status:           "active",
 		NextEscalationAt: &futureTime,
 	}
 	db.CreateState(state)
@@ -277,7 +277,7 @@ func TestWorkerSendsCorrectChannel(t *testing.T) {
 
 	// Create policy with email step
 	policy := &models.EscalationPolicy{
-		Name:   "Test Policy",
+		Name:     "Test Policy",
 		IsActive: true,
 		Steps: []*models.EscalationPolicyStep{
 			{
@@ -293,10 +293,10 @@ func TestWorkerSendsCorrectChannel(t *testing.T) {
 	// Create escalation state
 	pastTime := time.Now().Add(-1 * time.Minute)
 	state := &models.EscalationState{
-		AlertTriggerID: 1,
-		PolicyID:       policy.ID,
-		CurrentStep:    0,
-		Status:         "active",
+		AlertTriggerID:   1,
+		PolicyID:         policy.ID,
+		CurrentStep:      0,
+		Status:           "active",
 		NextEscalationAt: &pastTime,
 	}
 	db.CreateState(state)
@@ -328,7 +328,7 @@ func TestWorkerSchedulesNextStep(t *testing.T) {
 
 	// Create policy with 2 steps (5 min, 10 min delay)
 	policy := &models.EscalationPolicy{
-		Name:   "Test Policy",
+		Name:     "Test Policy",
 		IsActive: true,
 		Steps: []*models.EscalationPolicyStep{
 			{
@@ -350,10 +350,10 @@ func TestWorkerSchedulesNextStep(t *testing.T) {
 	// Create escalation state
 	pastTime := time.Now().Add(-1 * time.Minute)
 	state := &models.EscalationState{
-		AlertTriggerID: 1,
-		PolicyID:       policy.ID,
-		CurrentStep:    0,
-		Status:         "active",
+		AlertTriggerID:   1,
+		PolicyID:         policy.ID,
+		CurrentStep:      0,
+		Status:           "active",
 		NextEscalationAt: &pastTime,
 	}
 	db.CreateState(state)
@@ -391,7 +391,7 @@ func TestWorkerAdvancesStep(t *testing.T) {
 
 	// Create policy with 3 steps
 	policy := &models.EscalationPolicy{
-		Name:   "Test Policy",
+		Name:     "Test Policy",
 		IsActive: true,
 		Steps: []*models.EscalationPolicyStep{
 			{StepOrder: 0, ChannelType: "email", ChannelConfig: map[string]interface{}{}, DelayMinutes: 5},
@@ -404,10 +404,10 @@ func TestWorkerAdvancesStep(t *testing.T) {
 	// Create escalation state at step 0
 	pastTime := time.Now().Add(-1 * time.Minute)
 	state := &models.EscalationState{
-		AlertTriggerID: 1,
-		PolicyID:       policy.ID,
-		CurrentStep:    0,
-		Status:         "active",
+		AlertTriggerID:   1,
+		PolicyID:         policy.ID,
+		CurrentStep:      0,
+		Status:           "active",
 		NextEscalationAt: &pastTime,
 	}
 	db.CreateState(state)
@@ -441,7 +441,7 @@ func TestWorkerMarksExhausted(t *testing.T) {
 
 	// Create policy with 2 steps
 	policy := &models.EscalationPolicy{
-		Name:   "Test Policy",
+		Name:     "Test Policy",
 		IsActive: true,
 		Steps: []*models.EscalationPolicyStep{
 			{StepOrder: 0, ChannelType: "email", ChannelConfig: map[string]interface{}{}, DelayMinutes: 5},
@@ -453,10 +453,10 @@ func TestWorkerMarksExhausted(t *testing.T) {
 	// Create escalation state at last step
 	pastTime := time.Now().Add(-1 * time.Minute)
 	state := &models.EscalationState{
-		AlertTriggerID: 1,
-		PolicyID:       policy.ID,
-		CurrentStep:    2, // Already at step 2 (out of bounds)
-		Status:         "active",
+		AlertTriggerID:   1,
+		PolicyID:         policy.ID,
+		CurrentStep:      2, // Already at step 2 (out of bounds)
+		Status:           "active",
 		NextEscalationAt: &pastTime,
 	}
 	db.CreateState(state)
@@ -484,7 +484,7 @@ func TestWorkerHandlesErrors(t *testing.T) {
 
 	// Create policy with 2 steps
 	policy := &models.EscalationPolicy{
-		Name:   "Test Policy",
+		Name:     "Test Policy",
 		IsActive: true,
 		Steps: []*models.EscalationPolicyStep{
 			{StepOrder: 0, ChannelType: "email", ChannelConfig: map[string]interface{}{}, DelayMinutes: 5},
@@ -496,19 +496,19 @@ func TestWorkerHandlesErrors(t *testing.T) {
 	// Create two escalation states, first will fail notification
 	pastTime := time.Now().Add(-1 * time.Minute)
 	state1 := &models.EscalationState{
-		AlertTriggerID: 1,
-		PolicyID:       policy.ID,
-		CurrentStep:    0,
-		Status:         "active",
+		AlertTriggerID:   1,
+		PolicyID:         policy.ID,
+		CurrentStep:      0,
+		Status:           "active",
 		NextEscalationAt: &pastTime,
 	}
 	db.CreateState(state1)
 
 	state2 := &models.EscalationState{
-		AlertTriggerID: 2,
-		PolicyID:       policy.ID,
-		CurrentStep:    0,
-		Status:         "active",
+		AlertTriggerID:   2,
+		PolicyID:         policy.ID,
+		CurrentStep:      0,
+		Status:           "active",
 		NextEscalationAt: &pastTime,
 	}
 	db.CreateState(state2)
@@ -547,7 +547,7 @@ func TestWorkerMultiplePending(t *testing.T) {
 
 	// Create policy
 	policy := &models.EscalationPolicy{
-		Name:   "Test Policy",
+		Name:     "Test Policy",
 		IsActive: true,
 		Steps: []*models.EscalationPolicyStep{
 			{StepOrder: 0, ChannelType: "email", ChannelConfig: map[string]interface{}{}, DelayMinutes: 5},
@@ -560,10 +560,10 @@ func TestWorkerMultiplePending(t *testing.T) {
 	pastTime := time.Now().Add(-1 * time.Minute)
 	for i := 1; i <= 3; i++ {
 		state := &models.EscalationState{
-			AlertTriggerID: int64(i),
-			PolicyID:       policy.ID,
-			CurrentStep:    0,
-			Status:         "active",
+			AlertTriggerID:   int64(i),
+			PolicyID:         policy.ID,
+			CurrentStep:      0,
+			Status:           "active",
 			NextEscalationAt: &pastTime,
 		}
 		db.CreateState(state)
@@ -600,7 +600,7 @@ func TestWorkerLastEscalatedAtSet(t *testing.T) {
 
 	// Create policy
 	policy := &models.EscalationPolicy{
-		Name:   "Test Policy",
+		Name:     "Test Policy",
 		IsActive: true,
 		Steps: []*models.EscalationPolicyStep{
 			{StepOrder: 0, ChannelType: "email", ChannelConfig: map[string]interface{}{}, DelayMinutes: 5},
@@ -611,12 +611,12 @@ func TestWorkerLastEscalatedAtSet(t *testing.T) {
 	// Create escalation state
 	pastTime := time.Now().Add(-1 * time.Minute)
 	state := &models.EscalationState{
-		AlertTriggerID: 1,
-		PolicyID:       policy.ID,
-		CurrentStep:    0,
-		Status:         "active",
+		AlertTriggerID:   1,
+		PolicyID:         policy.ID,
+		CurrentStep:      0,
+		Status:           "active",
 		NextEscalationAt: &pastTime,
-		LastEscalatedAt: nil,
+		LastEscalatedAt:  nil,
 	}
 	db.CreateState(state)
 
@@ -648,7 +648,7 @@ func TestWorkerSendsNotificationConfig(t *testing.T) {
 		"template":  "critical_alert",
 	}
 	policy := &models.EscalationPolicy{
-		Name:   "Test Policy",
+		Name:     "Test Policy",
 		IsActive: true,
 		Steps: []*models.EscalationPolicyStep{
 			{
@@ -664,10 +664,10 @@ func TestWorkerSendsNotificationConfig(t *testing.T) {
 	// Create escalation state
 	pastTime := time.Now().Add(-1 * time.Minute)
 	state := &models.EscalationState{
-		AlertTriggerID: 1,
-		PolicyID:       policy.ID,
-		CurrentStep:    0,
-		Status:         "active",
+		AlertTriggerID:   1,
+		PolicyID:         policy.ID,
+		CurrentStep:      0,
+		Status:           "active",
 		NextEscalationAt: &pastTime,
 	}
 	db.CreateState(state)
@@ -699,7 +699,7 @@ func TestWorkerNoNextEscalationAtWhenAllStepsSent(t *testing.T) {
 
 	// Create policy with 2 steps
 	policy := &models.EscalationPolicy{
-		Name:   "Test Policy",
+		Name:     "Test Policy",
 		IsActive: true,
 		Steps: []*models.EscalationPolicyStep{
 			{StepOrder: 0, ChannelType: "email", ChannelConfig: map[string]interface{}{}, DelayMinutes: 5},
@@ -712,10 +712,10 @@ func TestWorkerNoNextEscalationAtWhenAllStepsSent(t *testing.T) {
 	pastTime := time.Now().Add(-1 * time.Minute)
 	nextTime := time.Now().Add(5 * time.Minute)
 	state := &models.EscalationState{
-		AlertTriggerID: 1,
-		PolicyID:       policy.ID,
-		CurrentStep:    1,
-		Status:         "active",
+		AlertTriggerID:   1,
+		PolicyID:         policy.ID,
+		CurrentStep:      1,
+		Status:           "active",
 		NextEscalationAt: &pastTime,
 	}
 	db.CreateState(state)

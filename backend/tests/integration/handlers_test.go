@@ -198,8 +198,8 @@ func createTestServer(userStore auth.UserStore, collectorStore auth.CollectorSto
 
 	// Create config
 	cfg := &config.Config{
-		Environment:       "development",
-		Port:              8080,
+		Environment:        "development",
+		Port:               8080,
 		RegistrationSecret: "test-secret",
 	}
 

@@ -15,7 +15,7 @@ type EndpointRateLimiter struct {
 // RateLimitConfig defines rate limit configuration for an endpoint
 type RateLimitConfig struct {
 	RequestsPerMinute int           // Max requests per minute
-	BurstSize        int           // Burst allowance (tokens to add immediately)
+	BurstSize         int           // Burst allowance (tokens to add immediately)
 	CleanupInterval   time.Duration // How often to cleanup inactive buckets
 }
 
@@ -29,37 +29,37 @@ func NewEndpointRateLimiter() *EndpointRateLimiter {
 	// Configure rate limits for different endpoint categories
 	erl.RegisterEndpoint("/api/v1/metrics/push", RateLimitConfig{
 		RequestsPerMinute: 10000, // High volume for collector metrics
-		BurstSize:        500,
+		BurstSize:         500,
 		CleanupInterval:   5 * time.Minute,
 	})
 
 	erl.RegisterEndpoint("/api/v1/config/refresh", RateLimitConfig{
 		RequestsPerMinute: 500, // Moderate for config refreshes
-		BurstSize:        50,
+		BurstSize:         50,
 		CleanupInterval:   5 * time.Minute,
 	})
 
 	erl.RegisterEndpoint("/api/v1/collectors/register", RateLimitConfig{
 		RequestsPerMinute: 100, // Low for registrations
-		BurstSize:        10,
+		BurstSize:         10,
 		CleanupInterval:   10 * time.Minute,
 	})
 
 	erl.RegisterEndpoint("/api/v1/collectors/refresh-token", RateLimitConfig{
 		RequestsPerMinute: 500, // Moderate for token refreshes
-		BurstSize:        50,
+		BurstSize:         50,
 		CleanupInterval:   5 * time.Minute,
 	})
 
 	erl.RegisterEndpoint("/api/v1/auth/*", RateLimitConfig{
 		RequestsPerMinute: 1000, // Higher for auth endpoints
-		BurstSize:        100,
+		BurstSize:         100,
 		CleanupInterval:   5 * time.Minute,
 	})
 
 	erl.RegisterEndpoint("default", RateLimitConfig{
 		RequestsPerMinute: 1000, // Default for other endpoints
-		BurstSize:        100,
+		BurstSize:         100,
 		CleanupInterval:   5 * time.Minute,
 	})
 
@@ -115,21 +115,21 @@ func (erl *EndpointRateLimiter) GetStats(endpoint, clientID string) map[string]i
 	bucket, exists := limiter.buckets[clientID]
 	if !exists {
 		return map[string]interface{}{
-			"tokens":     float64(limiter.capacity),
-			"capacity":   limiter.capacity,
-			"client_id":  clientID,
-			"endpoint":   endpoint,
+			"tokens":            float64(limiter.capacity),
+			"capacity":          limiter.capacity,
+			"client_id":         clientID,
+			"endpoint":          endpoint,
 			"refill_per_second": float64(limiter.refill),
 		}
 	}
 
 	return map[string]interface{}{
-		"tokens":             bucket.tokens,
-		"capacity":           bucket.capacity,
-		"client_id":          clientID,
-		"endpoint":           endpoint,
-		"last_refill":        bucket.lastRefill,
-		"refill_per_second":  float64(limiter.refill),
+		"tokens":            bucket.tokens,
+		"capacity":          bucket.capacity,
+		"client_id":         clientID,
+		"endpoint":          endpoint,
+		"last_refill":       bucket.lastRefill,
+		"refill_per_second": float64(limiter.refill),
 	}
 }
 

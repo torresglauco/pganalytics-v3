@@ -36,7 +36,7 @@ type AnomalyDetectionJob struct {
 	runCount  int64
 
 	// Thresholds
-	zscorerThreshold       float64 // Default 2.5 standard deviations
+	zscorerThreshold      float64 // Default 2.5 standard deviations
 	anomalySeverityLevels AnomalySeverityConfig
 }
 
@@ -50,24 +50,24 @@ type AnomalySeverityConfig struct {
 
 // QueryBaseline represents statistical baseline for a query metric
 type QueryBaseline struct {
-	ID                 int64
-	DatabaseID         int
-	QueryID            int
-	MetricName         string
-	BaselineMean       float64
-	BaselineStdDev     float64
-	BaselineMin        float64
-	BaselineMax        float64
-	BaselineMedian     float64
-	BaselineP25        float64
-	BaselineP75        float64
-	BaselineP90        float64
-	BaselineP95        float64
-	BaselineP99        float64
-	BaselineWindowHrs  int
-	DataPoints         int
-	CalculatedAt       time.Time
-	IsEnabled          bool
+	ID                int64
+	DatabaseID        int
+	QueryID           int
+	MetricName        string
+	BaselineMean      float64
+	BaselineStdDev    float64
+	BaselineMin       float64
+	BaselineMax       float64
+	BaselineMedian    float64
+	BaselineP25       float64
+	BaselineP75       float64
+	BaselineP90       float64
+	BaselineP95       float64
+	BaselineP99       float64
+	BaselineWindowHrs int
+	DataPoints        int
+	CalculatedAt      time.Time
+	IsEnabled         bool
 }
 
 // DetectedAnomaly represents an anomaly detected in query metrics
@@ -90,18 +90,18 @@ type DetectedAnomaly struct {
 
 // AnomalyDetectionMetrics contains statistics from a detection run
 type AnomalyDetectionMetrics struct {
-	TotalAnomaliesDetected   int
-	NewAnomalies             int
-	ResolvedAnomalies        int
-	CriticalAnomalies        int
-	HighAnomalies            int
-	MediumAnomalies          int
-	LowAnomalies             int
-	BaselineUpdated          int
-	ExecutionTimeMs          int64
-	AffectedDatabases        int
-	AffectedQueries          int
-	Timestamp                time.Time
+	TotalAnomaliesDetected int
+	NewAnomalies           int
+	ResolvedAnomalies      int
+	CriticalAnomalies      int
+	HighAnomalies          int
+	MediumAnomalies        int
+	LowAnomalies           int
+	BaselineUpdated        int
+	ExecutionTimeMs        int64
+	AffectedDatabases      int
+	AffectedQueries        int
+	Timestamp              time.Time
 }
 
 // ============================================================================
@@ -113,14 +113,14 @@ func NewAnomalyDetectionJob(db *sql.DB) *AnomalyDetectionJob {
 	return &AnomalyDetectionJob{
 		db:                   db,
 		enabled:              true,
-		checkIntervalMinutes: 5, // Default: check every 5 minutes
+		checkIntervalMinutes: 5,   // Default: check every 5 minutes
 		baselineWindowHours:  168, // Default: 7-day rolling window
 		zscorerThreshold:     2.5,
 		anomalySeverityLevels: AnomalySeverityConfig{
-			CriticalZScore: 3.0,  // 3 sigma
-			HighZScore:     2.5,  // 2.5 sigma
-			MediumZScore:   1.5,  // 1.5 sigma
-			LowZScore:      1.0,  // 1 sigma
+			CriticalZScore: 3.0, // 3 sigma
+			HighZScore:     2.5, // 2.5 sigma
+			MediumZScore:   1.5, // 1.5 sigma
+			LowZScore:      1.0, // 1 sigma
 		},
 		stopChan: make(chan struct{}),
 		done:     make(chan struct{}),

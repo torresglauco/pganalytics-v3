@@ -12,10 +12,10 @@ import (
 
 // Configuration constants
 const (
-	writeWait      = 10 * time.Second   // Time allowed to write a message to the peer
-	pongWait       = 60 * time.Second   // Time allowed to read the next pong message
-	pingInterval   = 30 * time.Second   // Send pings to peer with this period
-	maxMessageSize = 512 * 1024         // Max message size in bytes (512KB)
+	writeWait      = 10 * time.Second // Time allowed to write a message to the peer
+	pongWait       = 60 * time.Second // Time allowed to read the next pong message
+	pingInterval   = 30 * time.Second // Send pings to peer with this period
+	maxMessageSize = 512 * 1024       // Max message size in bytes (512KB)
 )
 
 // CircuitBreakerState represents the state of a circuit breaker

@@ -282,7 +282,6 @@ func intPtr(i int) *int {
 	return &i
 }
 
-
 // Test handler wrapper with HTTP response
 func TestSilenceHandlerHTTP(t *testing.T) {
 	mockDB := NewMockSilenceDB()
@@ -374,8 +373,8 @@ func TestSilenceListSerialization(t *testing.T) {
 
 	// Create response structure
 	type ListResponse struct {
-		Success  bool                    `json:"success"`
-		Silences []*models.AlertSilence  `json:"silences,omitempty"`
+		Success  bool                   `json:"success"`
+		Silences []*models.AlertSilence `json:"silences,omitempty"`
 	}
 
 	resp := ListResponse{

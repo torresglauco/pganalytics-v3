@@ -11,17 +11,17 @@ import (
 func TestVacuumRecommendationModelCreation(t *testing.T) {
 	now := time.Now()
 	rec := &VacuumRecommendation{
-		ID:                  1,
-		DatabaseID:          1,
-		TableName:           "test_table",
-		TableSize:           1000000,
-		DeadTuplesCount:     50000,
-		DeadTuplesRatio:     5.0,
-		AutovacuumEnabled:   true,
-		RecommendationType:  "full_vacuum",
-		EstimatedGain:       50000.00,
-		CreatedAt:           now,
-		UpdatedAt:           now,
+		ID:                 1,
+		DatabaseID:         1,
+		TableName:          "test_table",
+		TableSize:          1000000,
+		DeadTuplesCount:    50000,
+		DeadTuplesRatio:    5.0,
+		AutovacuumEnabled:  true,
+		RecommendationType: "full_vacuum",
+		EstimatedGain:      50000.00,
+		CreatedAt:          now,
+		UpdatedAt:          now,
 	}
 
 	assert.NotNil(t, rec)

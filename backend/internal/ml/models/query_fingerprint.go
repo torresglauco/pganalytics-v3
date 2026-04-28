@@ -6,12 +6,12 @@ import (
 )
 
 type QueryFeatures struct {
-	JoinCount      int     `json:"join_count"`
-	ScanType       string  `json:"scan_type"`       // seq_scan, index_scan, bitmap_scan
-	RowCount       int     `json:"row_count"`
-	FilterCount    int     `json:"filter_count"`
-	SubqueryCount  int     `json:"subquery_count"`
-	AggregateType  string  `json:"aggregate_type"`  // none, sum, count, group_by
+	JoinCount       int     `json:"join_count"`
+	ScanType        string  `json:"scan_type"` // seq_scan, index_scan, bitmap_scan
+	RowCount        int     `json:"row_count"`
+	FilterCount     int     `json:"filter_count"`
+	SubqueryCount   int     `json:"subquery_count"`
+	AggregateType   string  `json:"aggregate_type"` // none, sum, count, group_by
 	ExecutionTimeMs float64 `json:"execution_time_ms"`
 }
 
@@ -20,7 +20,7 @@ func (qf *QueryFeatures) Fingerprint() string {
 	data := fmt.Sprintf("%d|%s|%d|%d|%d|%s",
 		qf.JoinCount,
 		qf.ScanType,
-		qf.RowCount/1000,  // Bucketing
+		qf.RowCount/1000, // Bucketing
 		qf.FilterCount,
 		qf.SubqueryCount,
 		qf.AggregateType,
@@ -54,7 +54,7 @@ func (qf *QueryFeatures) Vector() []float64 {
 	return []float64{
 		float64(qf.JoinCount),
 		scanTypeVal,
-		float64(qf.RowCount) / 1000,  // Normalize
+		float64(qf.RowCount) / 1000, // Normalize
 		float64(qf.FilterCount),
 		float64(qf.SubqueryCount),
 		aggregateVal,

@@ -33,12 +33,12 @@ type NotificationService struct {
 	channels map[string]NotificationChannel
 
 	// Metrics
-	mu                   sync.RWMutex
-	totalSent            int64
-	totalFailed          int64
-	totalRetried         int64
-	deliverySuccessRate  float64
-	lastMetricsRecalc    time.Time
+	mu                  sync.RWMutex
+	totalSent           int64
+	totalFailed         int64
+	totalRetried        int64
+	deliverySuccessRate float64
+	lastMetricsRecalc   time.Time
 }
 
 // NotificationChannel is the interface for notification providers
@@ -463,7 +463,7 @@ func (ns *NotificationService) updateMetrics(delivery *NotificationDelivery) {
 	}
 
 	// Recalculate success rate every 100 notifications
-	if (ns.totalSent + ns.totalFailed) % 100 == 0 {
+	if (ns.totalSent+ns.totalFailed)%100 == 0 {
 		total := ns.totalSent + ns.totalFailed
 		if total > 0 {
 			ns.deliverySuccessRate = float64(ns.totalSent) / float64(total)
@@ -478,11 +478,11 @@ func (ns *NotificationService) GetMetrics() map[string]interface{} {
 	defer ns.mu.RUnlock()
 
 	return map[string]interface{}{
-		"total_sent":            ns.totalSent,
-		"total_failed":          ns.totalFailed,
-		"total_retried":         ns.totalRetried,
-		"success_rate_percent":  ns.deliverySuccessRate * 100,
-		"last_metrics_recalc":   ns.lastMetricsRecalc,
+		"total_sent":           ns.totalSent,
+		"total_failed":         ns.totalFailed,
+		"total_retried":        ns.totalRetried,
+		"success_rate_percent": ns.deliverySuccessRate * 100,
+		"last_metrics_recalc":  ns.lastMetricsRecalc,
 	}
 }
 

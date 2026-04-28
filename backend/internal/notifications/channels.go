@@ -221,13 +221,13 @@ type SlackMessage struct {
 }
 
 type SlackAttach struct {
-	Color    string `json:"color"`
-	Title    string `json:"title"`
-	Text     string `json:"text"`
-	TitleLink string `json:"title_link,omitempty"`
-	Fields   []SlackField `json:"fields"`
-	Footer   string `json:"footer"`
-	TS       int64  `json:"ts"`
+	Color     string       `json:"color"`
+	Title     string       `json:"title"`
+	Text      string       `json:"text"`
+	TitleLink string       `json:"title_link,omitempty"`
+	Fields    []SlackField `json:"fields"`
+	Footer    string       `json:"footer"`
+	TS        int64        `json:"ts"`
 }
 
 type SlackField struct {
@@ -455,7 +455,7 @@ func (e *EmailChannel) Send(ctx context.Context, alert *AlertNotification, confi
 	}
 
 	// Add timeout
-	ctx, cancel := context.WithTimeout(ctx, e.timeout)
+	_, cancel := context.WithTimeout(ctx, e.timeout)
 	defer cancel()
 
 	var emailConfig EmailConfig
@@ -812,11 +812,11 @@ func (p *PagerDutyChannel) Send(ctx context.Context, alert *AlertNotification, c
 
 func (p *PagerDutyChannel) Test(ctx context.Context, config ChannelConfig) error {
 	testAlert := &AlertNotification{
-		AlertID:     0,
-		Title:       "pgAnalytics Test Alert",
-		Severity:    "warning",
-		Status:      "firing",
-		FiredAt:     now(),
+		AlertID:  0,
+		Title:    "pgAnalytics Test Alert",
+		Severity: "warning",
+		Status:   "firing",
+		FiredAt:  now(),
 	}
 
 	_, err := p.Send(ctx, testAlert, config)
@@ -833,11 +833,11 @@ type JiraChannel struct {
 }
 
 type JiraConfig struct {
-	URL           string `json:"url"`
-	ProjectKey    string `json:"project_key"`
-	IssueType     string `json:"issue_type,omitempty"`
-	AuthUsername  string `json:"auth_username"`
-	AuthToken     string `json:"auth_token"`
+	URL          string `json:"url"`
+	ProjectKey   string `json:"project_key"`
+	IssueType    string `json:"issue_type,omitempty"`
+	AuthUsername string `json:"auth_username"`
+	AuthToken    string `json:"auth_token"`
 }
 
 type JiraCreateIssue struct {

@@ -399,9 +399,9 @@ func TestCreateUserBoundary_MissingRole(t *testing.T) {
 
 	// JSON without role field
 	jsonData := map[string]interface{}{
-		"username": "newuser",
-		"email":    "newuser@example.com",
-		"password": "ValidPassword123!",
+		"username":  "newuser",
+		"email":     "newuser@example.com",
+		"password":  "ValidPassword123!",
 		"full_name": "New User",
 	}
 

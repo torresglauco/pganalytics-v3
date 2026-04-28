@@ -328,5 +328,3 @@ func TestConnectionUnregisterOnClose(t *testing.T) {
 		t.Error("Connection not unregistered")
 	}
 }
-
-

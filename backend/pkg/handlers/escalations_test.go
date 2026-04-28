@@ -268,8 +268,8 @@ func TestStartEscalation(t *testing.T) {
 
 	// Create a policy first
 	policy := &models.EscalationPolicy{
-		Name:        "Test Policy",
-		IsActive:    true,
+		Name:     "Test Policy",
+		IsActive: true,
 	}
 	escalationService.CreatePolicy(policy)
 
@@ -311,8 +311,8 @@ func TestAcknowledgeAlert(t *testing.T) {
 
 	// Create policy and start escalation
 	policy := &models.EscalationPolicy{
-		Name:        "Test Policy",
-		IsActive:    true,
+		Name:     "Test Policy",
+		IsActive: true,
 	}
 	escalationService.CreatePolicy(policy)
 	escalationService.StartEscalation(1, policy.ID)
@@ -373,8 +373,8 @@ func TestGetPendingEscalations(t *testing.T) {
 
 	// Create policy
 	policy := &models.EscalationPolicy{
-		Name:        "Test Policy",
-		IsActive:    true,
+		Name:     "Test Policy",
+		IsActive: true,
 	}
 	escalationService.CreatePolicy(policy)
 
@@ -440,14 +440,14 @@ func TestPolicyListSerialization(t *testing.T) {
 
 	// Create multiple policies
 	policy1 := &models.EscalationPolicy{
-		Name:        "Policy 1",
-		IsActive:    true,
+		Name:     "Policy 1",
+		IsActive: true,
 	}
 	escalationService.CreatePolicy(policy1)
 
 	policy2 := &models.EscalationPolicy{
-		Name:        "Policy 2",
-		IsActive:    true,
+		Name:     "Policy 2",
+		IsActive: true,
 	}
 	escalationService.CreatePolicy(policy2)
 
@@ -455,8 +455,8 @@ func TestPolicyListSerialization(t *testing.T) {
 
 	// Create response structure
 	type ListResponse struct {
-		Success   bool                      `json:"success"`
-		Policies  []*models.EscalationPolicy `json:"policies,omitempty"`
+		Success  bool                       `json:"success"`
+		Policies []*models.EscalationPolicy `json:"policies,omitempty"`
 	}
 
 	resp := ListResponse{
@@ -585,8 +585,8 @@ func TestPolicyCreatedAsActive(t *testing.T) {
 
 	// Create policy (even if we try to set IsActive to false, it will be overridden to true)
 	policy := &models.EscalationPolicy{
-		Name:        "Test Policy",
-		IsActive:    false, // This will be overridden
+		Name:     "Test Policy",
+		IsActive: false, // This will be overridden
 	}
 	escalationService.CreatePolicy(policy)
 
@@ -605,8 +605,8 @@ func TestAcknowledgeAlert_AlreadyAcknowledged(t *testing.T) {
 
 	// Create policy and start escalation
 	policy := &models.EscalationPolicy{
-		Name:        "Test Policy",
-		IsActive:    true,
+		Name:     "Test Policy",
+		IsActive: true,
 	}
 	escalationService.CreatePolicy(policy)
 	escalationService.StartEscalation(1, policy.ID)

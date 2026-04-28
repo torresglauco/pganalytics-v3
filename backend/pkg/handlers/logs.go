@@ -15,17 +15,17 @@ import (
 
 // IngestLogsRequest is the request body for POST /api/v1/logs/ingest
 type IngestLogsRequest struct {
-	CollectorID string                 `json:"collector_id"`
-	InstanceID  int                    `json:"instance_id"`
+	CollectorID string                   `json:"collector_id"`
+	InstanceID  int                      `json:"instance_id"`
 	Logs        []map[string]interface{} `json:"logs"`
 }
 
 // IngestLogsResponse is the response body
 type IngestLogsResponse struct {
-	Success   bool     `json:"success"`
-	Ingested  int      `json:"ingested"`
-	Errors    []string `json:"errors,omitempty"`
-	Message   string   `json:"message,omitempty"`
+	Success  bool     `json:"success"`
+	Ingested int      `json:"ingested"`
+	Errors   []string `json:"errors,omitempty"`
+	Message  string   `json:"message,omitempty"`
 }
 
 // IngestLogs handles POST /api/v1/logs/ingest
@@ -173,10 +173,10 @@ func IngestLogs(db *storage.PostgresDB, wsManager *services.ConnectionManager) h
 
 			// Broadcast WebSocket event
 			wsManager.BroadcastLogEvent(map[string]interface{}{
-				"id":        i,
-				"timestamp": timestamp,
-				"level":     level,
-				"message":   message,
+				"id":          i,
+				"timestamp":   timestamp,
+				"level":       level,
+				"message":     message,
 				"instance_id": req.InstanceID,
 			}, req.InstanceID)
 

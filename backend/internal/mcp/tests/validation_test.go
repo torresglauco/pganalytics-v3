@@ -442,11 +442,11 @@ func TestAnomalyDetectToolSchema(t *testing.T) {
 // TestErrorValidation validates error responses follow JSON-RPC 2.0 format
 func TestErrorValidation(t *testing.T) {
 	tests := []struct {
-		name           string
-		method         string
-		params         map[string]interface{}
-		expectedError  bool
-		errorContains  string
+		name          string
+		method        string
+		params        map[string]interface{}
+		expectedError bool
+		errorContains string
 	}{
 		{
 			name:          "Unknown method",

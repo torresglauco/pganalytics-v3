@@ -297,12 +297,12 @@ func TestCreateManagedInstanceBoundary_ConnectionTimeoutNegative(t *testing.T) {
 	router, _, _ := newTestEnv(t)
 
 	createReq := models.CreateManagedInstanceRequest{
-		Name:               "test-instance",
-		Endpoint:           "database.example.com",
-		Port:               5432,
-		MasterUsername:     "admin",
-		MasterPassword:     "password123",
-		ConnectionTimeout:  -1,
+		Name:              "test-instance",
+		Endpoint:          "database.example.com",
+		Port:              5432,
+		MasterUsername:    "admin",
+		MasterPassword:    "password123",
+		ConnectionTimeout: -1,
 	}
 
 	body, _ := json.Marshal(createReq)
@@ -321,12 +321,12 @@ func TestCreateManagedInstanceBoundary_ConnectionTimeoutZero(t *testing.T) {
 	router, _, _ := newTestEnv(t)
 
 	createReq := models.CreateManagedInstanceRequest{
-		Name:               "test-instance",
-		Endpoint:           "database.example.com",
-		Port:               5432,
-		MasterUsername:     "admin",
-		MasterPassword:     "password123",
-		ConnectionTimeout:  0,
+		Name:              "test-instance",
+		Endpoint:          "database.example.com",
+		Port:              5432,
+		MasterUsername:    "admin",
+		MasterPassword:    "password123",
+		ConnectionTimeout: 0,
 	}
 
 	body, _ := json.Marshal(createReq)

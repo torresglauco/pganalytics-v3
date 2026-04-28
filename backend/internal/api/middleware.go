@@ -289,10 +289,10 @@ func (s *Server) CORSMiddleware() gin.HandlerFunc {
 // isOriginAllowed checks if the origin is in the whitelist
 func (s *Server) isOriginAllowed(origin string) bool {
 	allowedOrigins := []string{
-		"http://localhost:3000",      // Development frontend
-		"http://localhost:5173",      // Vite development
-		"http://127.0.0.1:3000",      // Alternative localhost
-		"http://127.0.0.1:5173",      // Alternative Vite
+		"http://localhost:3000", // Development frontend
+		"http://localhost:5173", // Vite development
+		"http://127.0.0.1:3000", // Alternative localhost
+		"http://127.0.0.1:5173", // Alternative Vite
 	}
 
 	// Allow from environment variable for production

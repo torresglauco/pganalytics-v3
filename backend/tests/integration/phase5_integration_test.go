@@ -14,18 +14,18 @@ func TestAnomalyDetectionToAlertPipeline(t *testing.T) {
 
 		// Step 1: Create baseline metrics
 		baseline := &QueryBaseline{
-			QueryID:        1,
-			DatabaseID:     1,
-			MetricName:     "query_duration_ms",
-			Mean:           100.0,
-			StdDev:         10.0,
-			P25:            95.0,
-			P50:            100.0,
-			P75:            105.0,
-			P90:            110.0,
-			P95:            115.0,
-			P99:            120.0,
-			CalculatedAt:   time.Now().Add(-24 * time.Hour),
+			QueryID:      1,
+			DatabaseID:   1,
+			MetricName:   "query_duration_ms",
+			Mean:         100.0,
+			StdDev:       10.0,
+			P25:          95.0,
+			P50:          100.0,
+			P75:          105.0,
+			P90:          110.0,
+			P95:          115.0,
+			P99:          120.0,
+			CalculatedAt: time.Now().Add(-24 * time.Hour),
 		}
 		assert.NotNil(t, baseline)
 
@@ -46,20 +46,20 @@ func TestAnomalyDetectionToAlertPipeline(t *testing.T) {
 
 		// Step 4: Trigger alert from anomaly
 		alert := &Alert{
-			ID:        1,
-			RuleID:    rule.ID,
-			Status:    "firing",
-			Severity:  "critical",
-			FiredAt:   time.Now(),
+			ID:       1,
+			RuleID:   rule.ID,
+			Status:   "firing",
+			Severity: "critical",
+			FiredAt:  time.Now(),
 		}
 		assert.Equal(t, "critical", alert.Severity)
 
 		// Step 5: Send notification
 		delivery := &NotificationDelivery{
-			AlertID:    alert.ID,
-			ChannelID:  1,
-			Status:     "success",
-			SentAt:     time.Now(),
+			AlertID:   alert.ID,
+			ChannelID: 1,
+			Status:    "success",
+			SentAt:    time.Now(),
 		}
 		assert.Equal(t, "success", delivery.Status)
 
@@ -75,10 +75,10 @@ func TestAlertRuleEvaluationWorkflow(t *testing.T) {
 	t.Run("threshold_rule_evaluation", func(t *testing.T) {
 		// Setup rule configuration
 		rule := &AlertRule{
-			ID:       1,
-			Name:     "High CPU",
-			Type:     "threshold",
-			Enabled:  true,
+			ID:      1,
+			Name:    "High CPU",
+			Type:    "threshold",
+			Enabled: true,
 			RuleData: map[string]interface{}{
 				"metric":    "cpu_usage_percent",
 				"operator":  ">",
@@ -108,10 +108,10 @@ func TestAlertRuleEvaluationWorkflow(t *testing.T) {
 
 	t.Run("change_rule_evaluation", func(t *testing.T) {
 		_ = &AlertRule{
-			ID:       2,
-			Name:     "QPS Drop",
-			Type:     "change",
-			Enabled:  true,
+			ID:      2,
+			Name:    "QPS Drop",
+			Type:    "change",
+			Enabled: true,
 			RuleData: map[string]interface{}{
 				"metric":           "queries_per_second",
 				"change_threshold": 50.0,
@@ -135,10 +135,10 @@ func TestAlertRuleEvaluationWorkflow(t *testing.T) {
 
 	t.Run("composite_rule_evaluation", func(t *testing.T) {
 		_ = &AlertRule{
-			ID:       3,
-			Name:     "Complex Alert",
-			Type:     "composite",
-			Enabled:  true,
+			ID:      3,
+			Name:    "Complex Alert",
+			Type:    "composite",
+			Enabled: true,
 			RuleData: map[string]interface{}{
 				"operator": "AND",
 				"conditions": []map[string]interface{}{
@@ -179,12 +179,12 @@ func TestNotificationDeliveryWorkflow(t *testing.T) {
 
 		for _, channelType := range channels {
 			delivery := &NotificationDelivery{
-				AlertID:    alert.ID,
-				ChannelID:  int64(len(deliveries) + 1),
-				Type:       channelType,
-				Status:     "success",
-				Attempt:    1,
-				SentAt:     time.Now(),
+				AlertID:   alert.ID,
+				ChannelID: int64(len(deliveries) + 1),
+				Type:      channelType,
+				Status:    "success",
+				Attempt:   1,
+				SentAt:    time.Now(),
 			}
 			deliveries = append(deliveries, delivery)
 		}
@@ -275,8 +275,8 @@ func TestAlertAcknowledgment(t *testing.T) {
 
 	t.Run("resolve_alert", func(t *testing.T) {
 		alert := &Alert{
-			ID:       1,
-			Status:   "firing",
+			ID:         1,
+			Status:     "firing",
 			ResolvedAt: nil,
 		}
 
@@ -370,11 +370,11 @@ func TestAuditLoggingWithAlerts(t *testing.T) {
 		alert := &Alert{ID: 1, Status: "firing"}
 
 		auditLog := &AuditLog{
-			UserID:        "user_456",
-			Action:        "acknowledge_alert",
-			ResourceType:  "alert",
-			ResourceID:    alert.ID,
-			Timestamp:     time.Now(),
+			UserID:       "user_456",
+			Action:       "acknowledge_alert",
+			ResourceType: "alert",
+			ResourceID:   alert.ID,
+			Timestamp:    time.Now(),
 		}
 
 		assert.Equal(t, "acknowledge_alert", auditLog.Action)
@@ -427,24 +427,24 @@ type QueryBaseline struct {
 }
 
 type AlertRule struct {
-	ID       int64
-	Name     string
-	Type     string
-	Enabled  bool
-	RuleData map[string]interface{}
+	ID        int64
+	Name      string
+	Type      string
+	Enabled   bool
+	RuleData  map[string]interface{}
 	CreatedAt time.Time
 }
 
 type Alert struct {
-	ID                    int64
-	RuleID                int64
-	Status                string
-	Severity              string
-	FiredAt               time.Time
-	ResolvedAt            *time.Time
-	AcknowledgedAt        *time.Time
-	AcknowledgedBy        *string
-	AcknowledgmentNotes   *string
+	ID                  int64
+	RuleID              int64
+	Status              string
+	Severity            string
+	FiredAt             time.Time
+	ResolvedAt          *time.Time
+	AcknowledgedAt      *time.Time
+	AcknowledgedBy      *string
+	AcknowledgmentNotes *string
 }
 
 type NotificationDelivery struct {
@@ -459,13 +459,13 @@ type NotificationDelivery struct {
 }
 
 type AuditLog struct {
-	UserID       string
-	Action       string
-	ResourceType string
-	ResourceID   int64
+	UserID        string
+	Action        string
+	ResourceType  string
+	ResourceID    int64
 	ChangesBefore map[string]interface{}
 	ChangesAfter  map[string]interface{}
-	Timestamp    time.Time
+	Timestamp     time.Time
 }
 
 func evaluateThresholdRule(value, threshold float64, operator string) bool {

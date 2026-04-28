@@ -6,11 +6,11 @@ import (
 
 // IndexRecommendation represents a recommended index to be created
 type IndexRecommendation struct {
-	TableName                string
-	ColumnNames              []string
-	IndexType                string
-	EstimatedBenefit         float64
-	WeightedCostImprovement  float64
+	TableName               string
+	ColumnNames             []string
+	IndexType               string
+	EstimatedBenefit        float64
+	WeightedCostImprovement float64
 }
 
 // IndexAnalyzer performs cost-based analysis on query plans to recommend indexes

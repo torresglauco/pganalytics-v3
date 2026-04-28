@@ -36,8 +36,8 @@ func NewCollectorCleanupJob(
 		logger:         logger,
 		ctx:            ctx,
 		cancel:         cancel,
-		tickInterval:   24 * time.Hour, // Run daily
-		jitterFactor:   0.1,            // 10% randomization
+		tickInterval:   24 * time.Hour,     // Run daily
+		jitterFactor:   0.1,                // 10% randomization
 		offlineTimeout: 7 * 24 * time.Hour, // 7 days offline = inactive
 		isRunning:      false,
 	}

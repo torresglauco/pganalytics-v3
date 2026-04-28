@@ -7,29 +7,29 @@ import (
 // CostCalculator provides cost analysis for VACUUM operations
 type CostCalculator struct {
 	// VACUUM operation costs (milliseconds per operation)
-	SeqScanCostPerPage    float64 // 1.0 - cost to read a page sequentially
+	SeqScanCostPerPage       float64 // 1.0 - cost to read a page sequentially
 	RandomAccessCostPerTuple float64 // 4.0 - cost to access a tuple randomly
 
 	// PostgreSQL configuration defaults
-	RandomPageCost float64 // 4.0 - relative cost of random I/O vs sequential
-	CpuTupleOperationCost float64 // 0.01 - cost per tuple operation
+	RandomPageCost             float64 // 4.0 - relative cost of random I/O vs sequential
+	CpuTupleOperationCost      float64 // 0.01 - cost per tuple operation
 	CpuIndexTupleOperationCost float64 // 0.005 - cost per index operation
 
 	// Table bloat metrics
-	AveragePageSize int64 // 8192 - PostgreSQL page size in bytes
+	AveragePageSize  int64 // 8192 - PostgreSQL page size in bytes
 	AverageTupleSize int64 // 100-200 bytes typical
 }
 
 // NewCostCalculator creates a new cost calculator with PostgreSQL defaults
 func NewCostCalculator() *CostCalculator {
 	return &CostCalculator{
-		SeqScanCostPerPage:        1.0,
-		RandomAccessCostPerTuple:  4.0,
-		RandomPageCost:            4.0,
-		CpuTupleOperationCost:     0.01,
+		SeqScanCostPerPage:         1.0,
+		RandomAccessCostPerTuple:   4.0,
+		RandomPageCost:             4.0,
+		CpuTupleOperationCost:      0.01,
 		CpuIndexTupleOperationCost: 0.005,
-		AveragePageSize:           8192,
-		AverageTupleSize:          150,
+		AveragePageSize:            8192,
+		AverageTupleSize:           150,
 	}
 }
 
@@ -61,11 +61,11 @@ func (cc *CostCalculator) EstimateVacuumDuration(tableSize int64, deadTuples int
 // EstimateVacuumImpact estimates the impact of VACUUM on system performance
 func (cc *CostCalculator) EstimateVacuumImpact(databaseSize int64, tableSize int64) VacuumImpactMetrics {
 	impact := VacuumImpactMetrics{
-		TableSize:         tableSize,
-		DatabaseSize:      databaseSize,
-		BlocketTables:     0,
+		TableSize:           tableSize,
+		DatabaseSize:        databaseSize,
+		BlocketTables:       0,
 		QuerySlowdownFactor: 1.0,
-		DiskIOIncrease:    1.0,
+		DiskIOIncrease:      1.0,
 	}
 
 	// Percentage of database this VACUUM will process

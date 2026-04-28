@@ -360,9 +360,9 @@ func TestDataFlowAcrossServices(t *testing.T) {
 // TestSchemaIntegrity validates that all database schemas are consistent
 func TestSchemaIntegrity(t *testing.T) {
 	requiredTables := map[string][]string{
-		"query_plans": {"id", "query_hash", "plan_json", "mean_time"},
-		"logs": {"id", "message", "severity", "category"},
-		"index_recommendations": {"id", "table_name", "estimated_benefit"},
+		"query_plans":            {"id", "query_hash", "plan_json", "mean_time"},
+		"logs":                   {"id", "message", "severity", "category"},
+		"index_recommendations":  {"id", "table_name", "estimated_benefit"},
 		"vacuum_recommendations": {"id", "table_name", "dead_tuples_ratio"},
 	}
 

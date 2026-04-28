@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"syscall"
@@ -24,51 +25,51 @@ import (
 
 // Load test configuration
 type LoadTestConfig struct {
-	NumCollectors      int
-	Duration           time.Duration
-	Interval           time.Duration
+	NumCollectors       int
+	Duration            time.Duration
+	Interval            time.Duration
 	MetricsPerCollector int
-	BackendURL         string
-	Protocol           string // "json" or "binary"
-	TLSVerify          bool
-	PrometheusPort     int
+	BackendURL          string
+	Protocol            string // "json" or "binary"
+	TLSVerify           bool
+	PrometheusPort      int
 }
 
 // Metrics to track
 type LoadTestMetrics struct {
 	// Prometheus metrics
-	collectionsDone    prometheus.Counter
-	collectionsErrors  prometheus.Counter
-	collectionTime     prometheus.Histogram
-	ingestionTime      prometheus.Histogram
-	metricsGenerated   prometheus.Counter
-	metricsSent        prometheus.Counter
-	metricsErrors      prometheus.Counter
-	bytesSent          prometheus.Counter
-	bytesSavedBinary   prometheus.Counter
+	collectionsDone   prometheus.Counter
+	collectionsErrors prometheus.Counter
+	collectionTime    prometheus.Histogram
+	ingestionTime     prometheus.Histogram
+	metricsGenerated  prometheus.Counter
+	metricsSent       prometheus.Counter
+	metricsErrors     prometheus.Counter
+	bytesSent         prometheus.Counter
+	bytesSavedBinary  prometheus.Counter
 
 	// In-memory tracking
-	successCount    int64
-	errorCount      int64
-	totalMetrics    int64
-	totalBytesJSON  int64
+	successCount     int64
+	errorCount       int64
+	totalMetrics     int64
+	totalBytesJSON   int64
 	totalBytesBinary int64
-	startTime       time.Time
-	mu              sync.Mutex
+	startTime        time.Time
+	mu               sync.Mutex
 }
 
 // SimulatedCollector represents a single collector instance
 type SimulatedCollector struct {
-	ID                string
-	BackendURL        string
-	Protocol          string
-	Interval          time.Duration
-	MetricsPerRound   int
-	metrics           *LoadTestMetrics
-	httpClient        *http.Client
-	ctx               context.Context
-	cancel            context.CancelFunc
-	wg                sync.WaitGroup
+	ID              string
+	BackendURL      string
+	Protocol        string
+	Interval        time.Duration
+	MetricsPerRound int
+	metrics         *LoadTestMetrics
+	httpClient      *http.Client
+	ctx             context.Context
+	cancel          context.CancelFunc
+	wg              sync.WaitGroup
 }
 
 // Metric represents a single metric data point
@@ -81,10 +82,10 @@ type Metric struct {
 
 // MetricsPayload represents the metrics submission payload
 type MetricsPayload struct {
-	CollectorID string    `json:"collector_id"`
-	Hostname    string    `json:"hostname"`
-	Version     string    `json:"version"`
-	Metrics     []Metric  `json:"metrics"`
+	CollectorID string   `json:"collector_id"`
+	Hostname    string   `json:"hostname"`
+	Version     string   `json:"version"`
+	Metrics     []Metric `json:"metrics"`
 }
 
 func main() {
@@ -362,14 +363,14 @@ func (c *SimulatedCollector) sendBinary(payload *MetricsPayload) (int, error) {
 	// Simulate binary protocol with smaller payload
 	// In reality, this would use the binary_protocol encoding
 	binaryPayload := []byte{
-		0x01,                                    // Message type: MetricsBatch
-		0x01,                                    // Compression: Zstd
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00,    // Reserved
-		0x00, 0x00, 0x00, 0x80,                 // Payload size (~128 bytes)
-		0x00, 0x00, 0x00, 0x00,                 // Timestamp
-		0x00, 0x00, 0x00, 0x00,                 // CRC32
-		0x01, 0x00,                             // Version
-		0x00, 0x00, 0x00, 0x00,                 // Flags
+		0x01,                               // Message type: MetricsBatch
+		0x01,                               // Compression: Zstd
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Reserved
+		0x00, 0x00, 0x00, 0x80, // Payload size (~128 bytes)
+		0x00, 0x00, 0x00, 0x00, // Timestamp
+		0x00, 0x00, 0x00, 0x00, // CRC32
+		0x01, 0x00, // Version
+		0x00, 0x00, 0x00, 0x00, // Flags
 	}
 
 	// Add collector ID and metrics data
@@ -428,9 +429,9 @@ func printReport(metrics *LoadTestMetrics, config LoadTestConfig) {
 		successRate = float64(success) / float64(total) * 100
 	}
 
-	fmt.Println("\n" + "═"*80)
+	fmt.Println("\n" + strings.Repeat("═", 80))
 	fmt.Println("                           LOAD TEST REPORT")
-	fmt.Println("═"*80)
+	fmt.Println(strings.Repeat("═", 80))
 	fmt.Println()
 
 	fmt.Println("TEST CONFIGURATION")
@@ -454,6 +455,6 @@ func printReport(metrics *LoadTestMetrics, config LoadTestConfig) {
 	fmt.Printf("  Throughput:         %.2f metrics/sec\n", float64(success*int64(config.MetricsPerCollector))/elapsed.Seconds())
 	fmt.Println()
 
-	fmt.Println("═"*80)
+	fmt.Println(strings.Repeat("═", 80))
 	fmt.Println()
 }

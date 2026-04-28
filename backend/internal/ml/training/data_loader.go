@@ -2,12 +2,13 @@ package training
 
 import (
 	"database/sql"
+
 	"github.com/torresglauco/pganalytics-v3/backend/internal/ml/models"
 )
 
 type DataLoader struct {
-	db      *sql.DB
-	limit   int
+	db    *sql.DB
+	limit int
 }
 
 type TrainingDataset struct {
@@ -59,9 +60,9 @@ func (dl *DataLoader) LoadAnomalyTrainingData() (*TrainingDataset, error) {
 func FingerprintQuery(features map[string]float64) string {
 	// Simple fingerprint from features
 	qf := &models.QueryFeatures{
-		JoinCount:  int(features["join_count"]),
-		ScanType:   "seq_scan",
-		RowCount:   int(features["row_count"]),
+		JoinCount: int(features["join_count"]),
+		ScanType:  "seq_scan",
+		RowCount:  int(features["row_count"]),
 	}
 	return qf.Fingerprint()
 }

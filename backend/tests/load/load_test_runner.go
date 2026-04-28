@@ -15,43 +15,43 @@ import (
 
 // LoadTestConfig defines configuration for load testing
 type LoadTestConfig struct {
-	BaseURL              string        // API base URL
-	NumCollectors        int           // Number of simulated collectors
-	MetricsPerCollector  int           // Metrics per push (default: 10)
-	PushIntervalSeconds  int           // Interval between pushes (default: 5)
-	DurationMinutes      int           // Test duration (default: 5)
-	ConcurrentPushes     int           // Concurrent metric pushes (default: 10)
-	EnableRateLimitTest  bool          // Test rate limiting
-	EnableCacheTest      bool          // Test configuration caching
-	EnableCleanupTest    bool          // Monitor cleanup job
-	Verbose              bool          // Verbose logging
+	BaseURL             string // API base URL
+	NumCollectors       int    // Number of simulated collectors
+	MetricsPerCollector int    // Metrics per push (default: 10)
+	PushIntervalSeconds int    // Interval between pushes (default: 5)
+	DurationMinutes     int    // Test duration (default: 5)
+	ConcurrentPushes    int    // Concurrent metric pushes (default: 10)
+	EnableRateLimitTest bool   // Test rate limiting
+	EnableCacheTest     bool   // Test configuration caching
+	EnableCleanupTest   bool   // Monitor cleanup job
+	Verbose             bool   // Verbose logging
 }
 
 // LoadTestResults holds the results of a load test
 type LoadTestResults struct {
-	TotalRequests      int64
-	SuccessfulRequests int64
-	FailedRequests     int64
+	TotalRequests       int64
+	SuccessfulRequests  int64
+	FailedRequests      int64
 	RateLimitedRequests int64
-	TotalDuration      time.Duration
-	AverageLatency     time.Duration
-	MinLatency         time.Duration
-	MaxLatency         time.Duration
-	P50Latency         time.Duration
-	P95Latency         time.Duration
-	P99Latency         time.Duration
-	RequestsPerSecond  float64
-	ErrorRate          float64
-	RateLimitRate      float64
+	TotalDuration       time.Duration
+	AverageLatency      time.Duration
+	MinLatency          time.Duration
+	MaxLatency          time.Duration
+	P50Latency          time.Duration
+	P95Latency          time.Duration
+	P99Latency          time.Duration
+	RequestsPerSecond   float64
+	ErrorRate           float64
+	RateLimitRate       float64
 
 	// Cache statistics
-	CacheHits          int64
-	CacheMisses        int64
-	CacheHitRate       float64
+	CacheHits    int64
+	CacheMisses  int64
+	CacheHitRate float64
 
 	// Detailed metrics
-	Latencies          []time.Duration
-	StatusCodeCounts   map[int]int64
+	Latencies        []time.Duration
+	StatusCodeCounts map[int]int64
 }
 
 // MetricPush represents a metric push request
@@ -63,30 +63,30 @@ type MetricPush struct {
 
 // MetricDataPoint represents a single metric
 type MetricDataPoint struct {
-	Name  string                 `json:"name"`
-	Value float64                `json:"value"`
-	Tags  map[string]string      `json:"tags"`
+	Name  string            `json:"name"`
+	Value float64           `json:"value"`
+	Tags  map[string]string `json:"tags"`
 }
 
 // LoadTester handles load testing
 type LoadTester struct {
-	config    *LoadTestConfig
-	client    *http.Client
-	results   *LoadTestResults
-	mu        sync.RWMutex
-	ctx       context.Context
-	cancel    context.CancelFunc
-	wg        sync.WaitGroup
+	config  *LoadTestConfig
+	client  *http.Client
+	results *LoadTestResults
+	mu      sync.RWMutex
+	ctx     context.Context
+	cancel  context.CancelFunc
+	wg      sync.WaitGroup
 
 	// Metrics tracking
-	totalRequests      int64
-	successfulRequests int64
-	failedRequests     int64
+	totalRequests       int64
+	successfulRequests  int64
+	failedRequests      int64
 	rateLimitedRequests int64
-	cacheHits          int64
-	cacheMisses        int64
-	latencies          []time.Duration
-	statusCodes        map[int]int64
+	cacheHits           int64
+	cacheMisses         int64
+	latencies           []time.Duration
+	statusCodes         map[int]int64
 }
 
 // NewLoadTester creates a new load tester

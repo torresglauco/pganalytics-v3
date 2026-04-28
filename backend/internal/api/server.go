@@ -13,10 +13,10 @@ import (
 	"github.com/torresglauco/pganalytics-v3/backend/internal/config"
 	"github.com/torresglauco/pganalytics-v3/backend/internal/crypto"
 	"github.com/torresglauco/pganalytics-v3/backend/internal/ml"
+	"github.com/torresglauco/pganalytics-v3/backend/internal/services/log_analysis"
 	"github.com/torresglauco/pganalytics-v3/backend/internal/session"
 	"github.com/torresglauco/pganalytics-v3/backend/internal/storage"
 	"github.com/torresglauco/pganalytics-v3/backend/internal/timescale"
-	"github.com/torresglauco/pganalytics-v3/backend/internal/services/log_analysis"
 	"github.com/torresglauco/pganalytics-v3/backend/pkg/handlers"
 	"github.com/torresglauco/pganalytics-v3/backend/pkg/services"
 	"go.uber.org/zap"
@@ -24,25 +24,25 @@ import (
 
 // Server represents the API server
 type Server struct {
-	config              *config.Config
-	logger              *zap.Logger
-	postgres            *storage.PostgresDB
-	timescale           *timescale.TimescaleDB
-	authService         *auth.AuthService
-	jwtManager          *auth.JWTManager
-	mlClient            *ml.Client
-	featureExtractor    ml.IFeatureExtractor
-	cacheManager        *cache.Manager
-	rateLimiter         *RateLimiter
-	secretManager       *crypto.SecretManager
-	sessionManager      session.ISessionManager
-	mfaManager          *auth.MFAManager
-	auditLogger         *audit.AuditLogger
-	wsManager           *services.ConnectionManager
-	conditionHandler    *handlers.ConditionHandler
-	silenceHandler      *handlers.SilenceHandler
-	escalationHandler   *handlers.EscalationHandler
-	logCollector        *log_analysis.LogCollector
+	config            *config.Config
+	logger            *zap.Logger
+	postgres          *storage.PostgresDB
+	timescale         *timescale.TimescaleDB
+	authService       *auth.AuthService
+	jwtManager        *auth.JWTManager
+	mlClient          *ml.Client
+	featureExtractor  ml.IFeatureExtractor
+	cacheManager      *cache.Manager
+	rateLimiter       *RateLimiter
+	secretManager     *crypto.SecretManager
+	sessionManager    session.ISessionManager
+	mfaManager        *auth.MFAManager
+	auditLogger       *audit.AuditLogger
+	wsManager         *services.ConnectionManager
+	conditionHandler  *handlers.ConditionHandler
+	silenceHandler    *handlers.SilenceHandler
+	escalationHandler *handlers.EscalationHandler
+	logCollector      *log_analysis.LogCollector
 }
 
 // NewServer creates a new API server
@@ -101,23 +101,23 @@ func NewServer(
 	logCollector := log_analysis.NewLogCollector(logCollectorDB)
 
 	return &Server{
-		config:              cfg,
-		logger:              logger,
-		postgres:            postgres,
-		timescale:           timescale,
-		authService:         authService,
-		jwtManager:          jwtManager,
-		mlClient:            mlClient,
-		featureExtractor:    featureExtractor,
-		cacheManager:        nil, // Set via SetCacheManager
-		rateLimiter:         rateLimiter,
-		secretManager:       secretManager,
-		sessionManager:      sessionManager,
-		wsManager:           services.NewConnectionManager(logger),
-		conditionHandler:    conditionHandler,
-		silenceHandler:      silenceHandler,
-		escalationHandler:   escalationHandler,
-		logCollector:        logCollector,
+		config:            cfg,
+		logger:            logger,
+		postgres:          postgres,
+		timescale:         timescale,
+		authService:       authService,
+		jwtManager:        jwtManager,
+		mlClient:          mlClient,
+		featureExtractor:  featureExtractor,
+		cacheManager:      nil, // Set via SetCacheManager
+		rateLimiter:       rateLimiter,
+		secretManager:     secretManager,
+		sessionManager:    sessionManager,
+		wsManager:         services.NewConnectionManager(logger),
+		conditionHandler:  conditionHandler,
+		silenceHandler:    silenceHandler,
+		escalationHandler: escalationHandler,
+		logCollector:      logCollector,
 	}
 }
 

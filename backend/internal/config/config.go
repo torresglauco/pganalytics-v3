@@ -25,8 +25,8 @@ type Config struct {
 	JWTRefreshExpiration time.Duration
 
 	// Security
-	RegistrationSecret      string
-	SetupEndpointEnabled    bool // Only enable /api/v1/auth/setup during initial deployment
+	RegistrationSecret   string
+	SetupEndpointEnabled bool // Only enable /api/v1/auth/setup during initial deployment
 
 	// TLS
 	TLSCertPath string

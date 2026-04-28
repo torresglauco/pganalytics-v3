@@ -12,16 +12,16 @@ import (
 
 // ConfigCache caches collector and query configurations with versioning
 type ConfigCache struct {
-	mu               sync.RWMutex
-	cache            map[string]*CachedConfig
-	versionMap       map[string]int // Map of config key to version
-	ttl              time.Duration
-	defaultTTL       time.Duration
-	maxSize          int
-	hitCount         int64
-	missCount        int64
-	evictionCount    int64
-	logger           *zap.Logger
+	mu            sync.RWMutex
+	cache         map[string]*CachedConfig
+	versionMap    map[string]int // Map of config key to version
+	ttl           time.Duration
+	defaultTTL    time.Duration
+	maxSize       int
+	hitCount      int64
+	missCount     int64
+	evictionCount int64
+	logger        *zap.Logger
 }
 
 // CachedConfig represents a cached configuration entry
@@ -198,15 +198,15 @@ func (cc *ConfigCache) GetStats() map[string]interface{} {
 	}
 
 	return map[string]interface{}{
-		"size":              len(cc.cache),
-		"max_size":          cc.maxSize,
-		"version_map_size":  len(cc.versionMap),
-		"hits":              cc.hitCount,
-		"misses":            cc.missCount,
-		"total_requests":    total,
-		"hit_rate_percent":  fmt.Sprintf("%.2f", hitRate),
-		"evictions":         cc.evictionCount,
-		"ttl_seconds":       int(cc.ttl.Seconds()),
+		"size":             len(cc.cache),
+		"max_size":         cc.maxSize,
+		"version_map_size": len(cc.versionMap),
+		"hits":             cc.hitCount,
+		"misses":           cc.missCount,
+		"total_requests":   total,
+		"hit_rate_percent": fmt.Sprintf("%.2f", hitRate),
+		"evictions":        cc.evictionCount,
+		"ttl_seconds":      int(cc.ttl.Seconds()),
 	}
 }
 

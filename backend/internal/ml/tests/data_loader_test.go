@@ -2,6 +2,7 @@ package tests
 
 import (
 	"testing"
+
 	"github.com/torresglauco/pganalytics-v3/backend/internal/ml/training"
 )
 
@@ -17,7 +18,7 @@ func TestLoadQueryData(t *testing.T) {
 func TestFeatureEngineering(t *testing.T) {
 	features := map[string]float64{
 		"join_count": 2,
-		"scan_type":  1,  // sequential=0, index=1, bitmap=2
+		"scan_type":  1, // sequential=0, index=1, bitmap=2
 		"row_count":  1000,
 	}
 

@@ -302,9 +302,9 @@ func TestResponseStructureIntegrity(t *testing.T) {
 	mockCtx := NewHandlerContext(nil)
 
 	tests := []struct {
-		name      string
-		toolFunc  func(map[string]interface{}) (interface{}, error)
-		params    map[string]interface{}
+		name     string
+		toolFunc func(map[string]interface{}) (interface{}, error)
+		params   map[string]interface{}
 	}{
 		{
 			name:     "TableStats",

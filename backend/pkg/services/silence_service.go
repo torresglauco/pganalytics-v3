@@ -80,13 +80,13 @@ func (s *SilenceService) CreateSilence(ruleID int64, durationMinutes int, silenc
 
 	// Broadcast via WebSocket if available
 	event := map[string]interface{}{
-		"type":         "silence_created",
-		"rule_id":      ruleID,
-		"instance_id":  instanceID,
-		"silence_type": silenceType,
+		"type":           "silence_created",
+		"rule_id":        ruleID,
+		"instance_id":    instanceID,
+		"silence_type":   silenceType,
 		"silenced_until": silence.SilencedUntil,
-		"reason":       reason,
-		"created_at":   silence.CreatedAt,
+		"reason":         reason,
+		"created_at":     silence.CreatedAt,
 	}
 	_ = s.db.Broadcast("silence_event", event) // Ignore broadcast error
 

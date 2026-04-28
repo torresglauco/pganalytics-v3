@@ -475,9 +475,9 @@ func (s *Server) handlePredictQueryLatency(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"predicted_latency_ms": pred.PredictedExecutionMs,
-		"confidence":          pred.ConfidenceScore,
-		"recommendations":     recommendations,
-		"timestamp":           time.Now().UTC(),
+		"confidence":           pred.ConfidenceScore,
+		"recommendations":      recommendations,
+		"timestamp":            time.Now().UTC(),
 	})
 }
 

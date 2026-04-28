@@ -267,9 +267,9 @@ func TestLogAnalysisAnomalyDetection(t *testing.T) {
 func TestLogAnalysisPatternDetection(t *testing.T) {
 	t.Run("detect_repeated_errors", func(t *testing.T) {
 		logsByMessage := map[string]int{
-			"ERROR: permission denied": 15,
+			"ERROR: permission denied":   15,
 			"ERROR: constraint violated": 8,
-			"ERROR: syntax error": 2,
+			"ERROR: syntax error":        2,
 		}
 
 		// Find most common error
@@ -340,7 +340,7 @@ func TestLogAnalysisErrorHandling(t *testing.T) {
 		// Missing required fields
 		invalidLogs := []map[string]interface{}{
 			{
-				"message":  "test",
+				"message": "test",
 				// Missing severity and timestamp
 			},
 		}

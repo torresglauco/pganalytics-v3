@@ -210,9 +210,9 @@ func TestAPIResponseFormats(t *testing.T) {
 	}
 
 	testCases := []struct {
-		name   string
-		method string
-		path   string
+		name    string
+		method  string
+		path    string
 		handler gin.HandlerFunc
 	}{
 		{

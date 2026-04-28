@@ -23,7 +23,7 @@ func NewSilenceHandler(service *services.SilenceService) *SilenceHandler {
 
 // CreateSilenceRequest is the request body for POST /api/v1/alerts/{rule_id}/silence
 type CreateSilenceRequest struct {
-	Duration    int    `json:"duration"`      // Duration in minutes
+	Duration    int    `json:"duration"`     // Duration in minutes
 	Reason      string `json:"reason"`       // Reason for silence
 	SilenceType string `json:"silence_type"` // 'rule', 'instance', or 'all'
 	InstanceID  *int   `json:"instance_id,omitempty"`
@@ -31,18 +31,18 @@ type CreateSilenceRequest struct {
 
 // CreateSilenceResponse is the response body
 type CreateSilenceResponse struct {
-	Success       bool                  `json:"success"`
-	Message       string                `json:"message,omitempty"`
-	Error         string                `json:"error,omitempty"`
-	SilenceID     int64                 `json:"silence_id,omitempty"`
-	AlertSilence  *models.AlertSilence  `json:"silence,omitempty"`
+	Success      bool                 `json:"success"`
+	Message      string               `json:"message,omitempty"`
+	Error        string               `json:"error,omitempty"`
+	SilenceID    int64                `json:"silence_id,omitempty"`
+	AlertSilence *models.AlertSilence `json:"silence,omitempty"`
 }
 
 // ListSilencesResponse is the response body for GET /api/v1/silences
 type ListSilencesResponse struct {
-	Success  bool                    `json:"success"`
-	Silences []*models.AlertSilence  `json:"silences,omitempty"`
-	Error    string                  `json:"error,omitempty"`
+	Success  bool                   `json:"success"`
+	Silences []*models.AlertSilence `json:"silences,omitempty"`
+	Error    string                 `json:"error,omitempty"`
 }
 
 // CreateSilence handles POST /api/v1/alerts/{rule_id}/silence

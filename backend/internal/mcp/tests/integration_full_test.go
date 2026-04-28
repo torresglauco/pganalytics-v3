@@ -84,21 +84,21 @@ func TestTableStatsErrorHandling(t *testing.T) {
 		expectedErrMsg string
 	}{
 		{
-			name:      "Missing table_name",
-			params:    map[string]interface{}{},
-			shouldErr: true,
+			name:           "Missing table_name",
+			params:         map[string]interface{}{},
+			shouldErr:      true,
 			expectedErrMsg: "table_name parameter required",
 		},
 		{
-			name:      "Empty table_name",
-			params:    map[string]interface{}{"table_name": ""},
-			shouldErr: true,
+			name:           "Empty table_name",
+			params:         map[string]interface{}{"table_name": ""},
+			shouldErr:      true,
 			expectedErrMsg: "table_name parameter required",
 		},
 		{
-			name:      "Invalid table_name type",
-			params:    map[string]interface{}{"table_name": 123},
-			shouldErr: true,
+			name:           "Invalid table_name type",
+			params:         map[string]interface{}{"table_name": 123},
+			shouldErr:      true,
 			expectedErrMsg: "table_name parameter required",
 		},
 	}
@@ -179,27 +179,27 @@ func TestQueryAnalysisValidAnalysis(t *testing.T) {
 // TestQueryAnalysisAnomalyDetection tests anomaly detection logic in QueryAnalysis
 func TestQueryAnalysisAnomalyDetection(t *testing.T) {
 	tests := []struct {
-		name               string
-		meanTimeMs         float64
-		maxTimeMs          float64
+		name                string
+		meanTimeMs          float64
+		maxTimeMs           float64
 		shouldDetectAnomaly bool
 	}{
 		{
-			name:               "High variance detected",
-			meanTimeMs:         50.0,
-			maxTimeMs:          300.0, // 6x mean
+			name:                "High variance detected",
+			meanTimeMs:          50.0,
+			maxTimeMs:           300.0, // 6x mean
 			shouldDetectAnomaly: true,
 		},
 		{
-			name:               "Normal variance",
-			meanTimeMs:         50.0,
-			maxTimeMs:          100.0, // 2x mean
+			name:                "Normal variance",
+			meanTimeMs:          50.0,
+			maxTimeMs:           100.0, // 2x mean
 			shouldDetectAnomaly: false,
 		},
 		{
-			name:               "Zero mean time",
-			meanTimeMs:         0.0,
-			maxTimeMs:          100.0,
+			name:                "Zero mean time",
+			meanTimeMs:          0.0,
+			maxTimeMs:           100.0,
 			shouldDetectAnomaly: false,
 		},
 	}
@@ -243,15 +243,15 @@ func TestQueryAnalysisErrorHandling(t *testing.T) {
 		expectedErrMsg string
 	}{
 		{
-			name:      "Missing query_id",
-			params:    map[string]interface{}{},
-			shouldErr: true,
+			name:           "Missing query_id",
+			params:         map[string]interface{}{},
+			shouldErr:      true,
 			expectedErrMsg: "query_id parameter required",
 		},
 		{
-			name:      "Empty query_id",
-			params:    map[string]interface{}{"query_id": ""},
-			shouldErr: true,
+			name:           "Empty query_id",
+			params:         map[string]interface{}{"query_id": ""},
+			shouldErr:      true,
 			expectedErrMsg: "query_id parameter required",
 		},
 	}
@@ -323,8 +323,8 @@ func TestIndexSuggestWithTable(t *testing.T) {
 // TestIndexSuggestPriorityLevels tests priority level calculation
 func TestIndexSuggestPriorityLevels(t *testing.T) {
 	tests := []struct {
-		name         string
-		estimatedGain float64
+		name             string
+		estimatedGain    float64
 		expectedPriority string
 	}{
 		{
@@ -441,9 +441,9 @@ func TestAnomalyDetectZScoreCalculation(t *testing.T) {
 // TestAnomalyDetectSeverityLevels tests severity level assignment
 func TestAnomalyDetectSeverityLevels(t *testing.T) {
 	tests := []struct {
-		name              string
-		zScore            float64
-		expectedSeverity  string
+		name             string
+		zScore           float64
+		expectedSeverity string
 	}{
 		{
 			name:             "High severity (|z| > 3.5)",
@@ -496,15 +496,15 @@ func TestAnomalyDetectErrorHandling(t *testing.T) {
 		expectedErrMsg string
 	}{
 		{
-			name:      "Missing table_name",
-			params:    map[string]interface{}{},
-			shouldErr: true,
+			name:           "Missing table_name",
+			params:         map[string]interface{}{},
+			shouldErr:      true,
 			expectedErrMsg: "table_name parameter required",
 		},
 		{
-			name:      "Empty table_name",
-			params:    map[string]interface{}{"table_name": ""},
-			shouldErr: true,
+			name:           "Empty table_name",
+			params:         map[string]interface{}{"table_name": ""},
+			shouldErr:      true,
 			expectedErrMsg: "table_name parameter required",
 		},
 	}
@@ -587,9 +587,9 @@ func TestResponseStructureIntegrity(t *testing.T) {
 	mockCtx := handlers.NewHandlerContext(nil)
 
 	tests := []struct {
-		name      string
-		toolFunc  func(map[string]interface{}) (interface{}, error)
-		params    map[string]interface{}
+		name     string
+		toolFunc func(map[string]interface{}) (interface{}, error)
+		params   map[string]interface{}
 	}{
 		{
 			name:     "TableStats",

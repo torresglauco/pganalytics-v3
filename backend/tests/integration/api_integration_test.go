@@ -141,12 +141,12 @@ func TestQueryPerformanceAPIIntegration(t *testing.T) {
 func TestLogAnalysisAPIIntegration(t *testing.T) {
 	t.Run("get_log_analysis_endpoint", func(t *testing.T) {
 		mockLogEntry := map[string]interface{}{
-			"id":          1,
-			"timestamp":  time.Now().Format(time.RFC3339),
-			"category":   "slow_query",
-			"severity":   "LOG",
-			"message":    "duration: 1234.56 ms  execute <unnamed>: SELECT * FROM users",
-			"duration":   1234.56,
+			"id":             1,
+			"timestamp":      time.Now().Format(time.RFC3339),
+			"category":       "slow_query",
+			"severity":       "LOG",
+			"message":        "duration: 1234.56 ms  execute <unnamed>: SELECT * FROM users",
+			"duration":       1234.56,
 			"table_affected": "users",
 		}
 
@@ -169,18 +169,18 @@ func TestLogAnalysisAPIIntegration(t *testing.T) {
 	t.Run("get_log_patterns_endpoint", func(t *testing.T) {
 		mockPatterns := []map[string]interface{}{
 			{
-				"id":              1,
-				"pattern_name":    "ERROR: permission denied",
-				"frequency":       15,
-				"severity_avg":    0.8,
-				"last_seen":       time.Now().Format(time.RFC3339),
+				"id":           1,
+				"pattern_name": "ERROR: permission denied",
+				"frequency":    15,
+				"severity_avg": 0.8,
+				"last_seen":    time.Now().Format(time.RFC3339),
 			},
 			{
-				"id":              2,
-				"pattern_name":    "duration: >1000ms",
-				"frequency":       42,
-				"severity_avg":    0.5,
-				"last_seen":       time.Now().Format(time.RFC3339),
+				"id":           2,
+				"pattern_name": "duration: >1000ms",
+				"frequency":    42,
+				"severity_avg": 0.5,
+				"last_seen":    time.Now().Format(time.RFC3339),
 			},
 		}
 
@@ -387,11 +387,11 @@ func TestAPIResponseFormats(t *testing.T) {
 			},
 			"patterns": []map[string]interface{}{
 				{
-					"id":              1,
-					"pattern_name":    "ERROR: permission",
-					"frequency":       10,
-					"severity_avg":    0.8,
-					"last_seen":       time.Now().Format(time.RFC3339),
+					"id":           1,
+					"pattern_name": "ERROR: permission",
+					"frequency":    10,
+					"severity_avg": 0.8,
+					"last_seen":    time.Now().Format(time.RFC3339),
 				},
 			},
 			"anomalies": []map[string]interface{}{
@@ -472,13 +472,13 @@ func TestAPIDataConsistency(t *testing.T) {
 	t.Run("consistent_query_performance_data", func(t *testing.T) {
 		// First request
 		response1 := map[string]interface{}{
-			"query_hash": 12345,
+			"query_hash":  12345,
 			"data_points": 10,
 		}
 
 		// Second request (should have same data)
 		response2 := map[string]interface{}{
-			"query_hash": 12345,
+			"query_hash":  12345,
 			"data_points": 10,
 		}
 
@@ -510,7 +510,7 @@ func TestAPIDataConsistency(t *testing.T) {
 			currentTime := logs[i]["timestamp"]
 			// Logs should be in descending order or equal
 			assert.True(t, currentTime.(time.Time).Before(prevTime.(time.Time)) ||
-					   currentTime.(time.Time).Equal(prevTime.(time.Time)))
+				currentTime.(time.Time).Equal(prevTime.(time.Time)))
 			prevTime = currentTime
 		}
 	})

@@ -110,12 +110,12 @@ func TestConfigValidateProductionURLs(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cfg := &Config{
-				Environment:       tt.environment,
-				APIBaseURL:        tt.apiBaseURL,
-				FrontendURL:       tt.frontendURL,
-				DatabaseURL:       "postgres://test",
-				TimescaleURL:      "postgres://test",
-				JWTSecret:         "test-secret",
+				Environment:        tt.environment,
+				APIBaseURL:         tt.apiBaseURL,
+				FrontendURL:        tt.frontendURL,
+				DatabaseURL:        "postgres://test",
+				TimescaleURL:       "postgres://test",
+				JWTSecret:          "test-secret",
 				RegistrationSecret: "test-secret",
 			}
 

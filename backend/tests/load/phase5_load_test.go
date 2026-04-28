@@ -72,8 +72,8 @@ func BenchmarkAlertRuleEvaluation(b *testing.B) {
 	b.Run("composite_evaluation", func(b *testing.B) {
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			cond1 := (i%2) == 0
-			cond2 := (i%3) == 0
+			cond1 := (i % 2) == 0
+			cond2 := (i % 3) == 0
 			_ = cond1 && cond2
 		}
 	})

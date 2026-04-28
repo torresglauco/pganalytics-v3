@@ -97,7 +97,7 @@ func (s *Server) handleGetDatabaseQueryPerformance(c *gin.Context) {
 	// For now, return empty response as this endpoint is not yet fully implemented
 	// The frontend will gracefully handle the empty state
 	c.JSON(http.StatusOK, gin.H{
-		"queries": []interface{}{},
+		"queries":  []interface{}{},
 		"timeline": []interface{}{},
 	})
 }

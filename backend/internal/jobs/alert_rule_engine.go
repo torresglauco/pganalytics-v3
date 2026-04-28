@@ -54,7 +54,7 @@ type AlertRule struct {
 	EvaluationInterval   int             // seconds
 	ForDurationSeconds   int             // trigger only if true for N seconds
 	NotificationEnabled  bool
-	NotificationChannels []int64         // Channel IDs to notify
+	NotificationChannels []int64 // Channel IDs to notify
 	IsEnabled            bool
 	IsPaused             bool
 	CreatedAt            time.Time
@@ -69,10 +69,10 @@ type RuleCondition interface {
 
 // ThresholdCondition represents a simple threshold rule
 type ThresholdCondition struct {
-	Metric   string      `json:"metric"`
-	Operator string      `json:"operator"` // "==", "!=", ">", ">=", "<", "<="
-	Value    float64     `json:"value"`
-	Unit     string      `json:"unit,omitempty"`
+	Metric   string  `json:"metric"`
+	Operator string  `json:"operator"` // "==", "!=", ">", ">=", "<", "<="
+	Value    float64 `json:"value"`
+	Unit     string  `json:"unit,omitempty"`
 }
 
 // AnomalyCondition represents a rule triggered by anomalies
@@ -90,7 +90,7 @@ type ChangeCondition struct {
 
 // CompositeCondition represents combination of rules
 type CompositeCondition struct {
-	Operator string           `json:"operator"` // "AND", "OR"
+	Operator string            `json:"operator"` // "AND", "OR"
 	Rules    []json.RawMessage `json:"rules"`
 }
 
@@ -715,11 +715,11 @@ func (e *AlertRuleEngineJob) fireAlert(ctx context.Context, result *RuleEvaluati
 
 	// Store context as JSON
 	contextMap := map[string]interface{}{
-		"rule_id":          rule.ID,
-		"rule_name":        rule.Name,
-		"current_value":    result.CurrentValue,
-		"threshold_value":  result.ThresholdValue,
-		"evaluation_time":  result.EvaluatedAt,
+		"rule_id":         rule.ID,
+		"rule_name":       rule.Name,
+		"current_value":   result.CurrentValue,
+		"threshold_value": result.ThresholdValue,
+		"evaluation_time": result.EvaluatedAt,
 	}
 	contextJSON, _ := json.Marshal(contextMap)
 	alert.Context = contextJSON

@@ -302,9 +302,9 @@ func TestCreateSilence_InvalidSilenceType(t *testing.T) {
 	service := NewSilenceService(db)
 
 	testCases := []struct {
-		name         string
-		silenceType  string
-		shouldFail   bool
+		name        string
+		silenceType string
+		shouldFail  bool
 	}{
 		{"valid type: rule", "rule", false},
 		{"valid type: instance", "instance", false},

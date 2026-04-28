@@ -35,10 +35,10 @@ func (s *Server) handleGetVacuumRecommendations(c *gin.Context) {
 	recommendations := []map[string]interface{}{}
 
 	c.JSON(http.StatusOK, gin.H{
-		"database_id":      databaseID,
-		"recommendations":  recommendations,
-		"count":            len(recommendations),
-		"limit":            limit,
+		"database_id":     databaseID,
+		"recommendations": recommendations,
+		"count":           len(recommendations),
+		"limit":           limit,
 	})
 }
 
@@ -64,12 +64,12 @@ func (s *Server) handleGetVacuumTableRecommendation(c *gin.Context) {
 		"database_id": databaseID,
 		"table_name":  tableName,
 		"recommendation": map[string]interface{}{
-			"id":                   0,
-			"recommendation_type":  "full_vacuum",
-			"dead_tuples_ratio":    0.0,
-			"estimated_gain":       0,
-			"last_vacuum":          nil,
-			"last_autovacuum":      nil,
+			"id":                  0,
+			"recommendation_type": "full_vacuum",
+			"dead_tuples_ratio":   0.0,
+			"estimated_gain":      0,
+			"last_vacuum":         nil,
+			"last_autovacuum":     nil,
 		},
 		"autovacuum_config": []interface{}{},
 	})
@@ -129,8 +129,8 @@ func (s *Server) handleGetVacuumTuningSuggestions(c *gin.Context) {
 
 	// Return tuning suggestions
 	c.JSON(http.StatusOK, gin.H{
-		"database_id":          databaseID,
-		"suggestions":          []interface{}{},
+		"database_id":           databaseID,
+		"suggestions":           []interface{}{},
 		"estimated_improvement": 0.0,
 	})
 }

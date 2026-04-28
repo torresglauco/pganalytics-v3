@@ -25,7 +25,7 @@ func generateCSRFToken() string {
 	b := make([]byte, 32)
 	_, err := rand.Read(b)
 	if err != nil {
-		panic(err)  // This should never happen in production
+		panic(err) // This should never happen in production
 	}
 	return fmt.Sprintf("%x", b)
 }
@@ -757,35 +757,35 @@ func (s *Server) handleLogin(c *gin.Context) {
 	)
 
 	// ✅ NEW: Set JWT token as httpOnly cookie (secure, not accessible via JS)
-	isSecure := s.config.IsProduction()  // HTTPS only in production
+	isSecure := s.config.IsProduction() // HTTPS only in production
 	c.SetCookie(
-		"auth_token",              // cookie name
-		loginResp.Token,            // token value
-		900,                        // max age: 15 minutes
-		"/",                        // path
-		"",                         // domain (empty = current domain)
-		isSecure,                   // secure: HTTPS only in production
-		true,                       // httpOnly: NOT accessible via JavaScript (prevents XSS)
+		"auth_token",    // cookie name
+		loginResp.Token, // token value
+		900,             // max age: 15 minutes
+		"/",             // path
+		"",              // domain (empty = current domain)
+		isSecure,        // secure: HTTPS only in production
+		true,            // httpOnly: NOT accessible via JavaScript (prevents XSS)
 	)
 
 	// ✅ NEW: Generate and set CSRF token (accessible to JS for request headers)
 	csrfToken := generateCSRFToken()
 	c.SetCookie(
-		"csrf_token",              // cookie name
-		csrfToken,                  // random token
-		900,                        // max age: 15 minutes
-		"/",                        // path
-		"",                         // domain (empty = current domain)
-		isSecure,                   // secure: HTTPS only in production
-		false,                      // httpOnly: FALSE - must be readable by JS for headers
+		"csrf_token", // cookie name
+		csrfToken,    // random token
+		900,          // max age: 15 minutes
+		"/",          // path
+		"",           // domain (empty = current domain)
+		isSecure,     // secure: HTTPS only in production
+		false,        // httpOnly: FALSE - must be readable by JS for headers
 	)
 
 	// ✅ UPDATED: Return response without token in JSON (token is in cookie now)
 	response := gin.H{
-		"message":     "Login successful",
-		"csrf_token":  csrfToken,  // Return CSRF token for frontend to use in headers
-		"user":        loginResp.User,
-		"expires_at":  loginResp.ExpiresAt,
+		"message":    "Login successful",
+		"csrf_token": csrfToken, // Return CSRF token for frontend to use in headers
+		"user":       loginResp.User,
+		"expires_at": loginResp.ExpiresAt,
 	}
 
 	c.JSON(http.StatusOK, response)
@@ -809,24 +809,24 @@ func (s *Server) handleLogout(c *gin.Context) {
 
 	// ✅ Clear auth_token cookie (httpOnly)
 	c.SetCookie(
-		"auth_token",              // cookie name
-		"",                         // empty value
-		-1,                         // max age: -1 deletes the cookie
-		"/",                        // path
-		"",                         // domain
-		s.config.IsProduction(),    // secure
-		true,                       // httpOnly
+		"auth_token",            // cookie name
+		"",                      // empty value
+		-1,                      // max age: -1 deletes the cookie
+		"/",                     // path
+		"",                      // domain
+		s.config.IsProduction(), // secure
+		true,                    // httpOnly
 	)
 
 	// ✅ Clear csrf_token cookie
 	c.SetCookie(
-		"csrf_token",              // cookie name
-		"",                         // empty value
-		-1,                         // max age: -1 deletes the cookie
-		"/",                        // path
-		"",                         // domain
-		s.config.IsProduction(),    // secure
-		false,                      // httpOnly
+		"csrf_token",            // cookie name
+		"",                      // empty value
+		-1,                      // max age: -1 deletes the cookie
+		"/",                     // path
+		"",                      // domain
+		s.config.IsProduction(), // secure
+		false,                   // httpOnly
 	)
 
 	s.logger.Info("User logout successful")
@@ -900,11 +900,11 @@ func (s *Server) handleRefreshToken(c *gin.Context) {
 	c.SetCookie(
 		"auth_token",
 		loginResp.Token,
-		900,   // 15 minutes
+		900, // 15 minutes
 		"/",
 		"",
 		isSecure,
-		true,  // httpOnly
+		true, // httpOnly
 	)
 
 	// ✅ NEW: Regenerate CSRF token
@@ -912,11 +912,11 @@ func (s *Server) handleRefreshToken(c *gin.Context) {
 	c.SetCookie(
 		"csrf_token",
 		csrfToken,
-		900,   // 15 minutes
+		900, // 15 minutes
 		"/",
 		"",
 		isSecure,
-		false,  // httpOnly: FALSE - must be readable by JS
+		false, // httpOnly: FALSE - must be readable by JS
 	)
 
 	// ✅ UPDATED: Return response without token in JSON

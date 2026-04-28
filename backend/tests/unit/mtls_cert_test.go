@@ -13,8 +13,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/torresglauco/pganalytics-v3/backend/internal/auth"
 	"github.com/google/uuid"
+	"github.com/torresglauco/pganalytics-v3/backend/internal/auth"
 )
 
 // TestComputeCertificateThumbprint tests the SHA256 thumbprint computation

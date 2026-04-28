@@ -385,10 +385,10 @@ func (s *Server) handleGetExtensionMetrics(c *gin.Context) {
 func (s *Server) handleGetMetrics(c *gin.Context) {
 	// Return mock/empty metrics data for frontend
 	c.JSON(http.StatusOK, gin.H{
-		"topErrors": []gin.H{},
-		"errorCount": 0,
+		"topErrors":    []gin.H{},
+		"errorCount":   0,
 		"warningCount": 0,
-		"infoCount": 0,
+		"infoCount":    0,
 	})
 }
 

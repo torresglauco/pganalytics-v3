@@ -47,8 +47,8 @@ func TestEstimateVacuumImpact(t *testing.T) {
 
 	// Large table impact (20% of DB) - should have higher impact
 	impact = calc.EstimateVacuumImpact(1_000_000_000, 200_000_000)
-	assert.Greater(t, impact.DiskIOIncrease, 1.0) // Definitely > 1.0
-	assert.Greater(t, impact.QuerySlowdownFactor, 1.0) // Definitely > 1.0
+	assert.Greater(t, impact.DiskIOIncrease, 1.0)                                     // Definitely > 1.0
+	assert.Greater(t, impact.QuerySlowdownFactor, 1.0)                                // Definitely > 1.0
 	assert.True(t, impact.DiskIOIncrease >= 2.0 || impact.QuerySlowdownFactor >= 1.1) // At least one is significant
 }
 
@@ -108,29 +108,29 @@ func TestCalculateAutovacuumEfficiency(t *testing.T) {
 
 	// Perfect autovacuum - matches expected churn
 	efficiency := calc.CalculateAutovacuumEfficiency(
-		1_000_000,      // table size
-		10.0,           // 10% dead tuples
-		1.0,            // vacuum 1 day ago
-		10_000,         // 10k tuples/day churn
+		1_000_000, // table size
+		10.0,      // 10% dead tuples
+		1.0,       // vacuum 1 day ago
+		10_000,    // 10k tuples/day churn
 	)
 	assert.Greater(t, efficiency, 0.0)
 	assert.LessOrEqual(t, efficiency, 200.0)
 
 	// Falling behind - actual dead > expected
 	efficiency = calc.CalculateAutovacuumEfficiency(
-		1_000_000,      // table size
-		50.0,           // 50% dead (behind)
-		1.0,            // vacuum 1 day ago
-		10_000,         // expected only 10k
+		1_000_000, // table size
+		50.0,      // 50% dead (behind)
+		1.0,       // vacuum 1 day ago
+		10_000,    // expected only 10k
 	)
 	assert.Less(t, efficiency, 100.0) // Less efficient than ideal
 
 	// Ahead of schedule
 	efficiency = calc.CalculateAutovacuumEfficiency(
-		1_000_000,      // table size
-		1.0,            // only 1% dead (ahead)
-		1.0,            // vacuum 1 day ago
-		100_000,        // high churn expected
+		1_000_000, // table size
+		1.0,       // only 1% dead (ahead)
+		1.0,       // vacuum 1 day ago
+		100_000,   // high churn expected
 	)
 	assert.Greater(t, efficiency, 100.0) // More efficient than expected
 }

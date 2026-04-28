@@ -93,10 +93,10 @@ func (mr *MigrationRunner) loadMigrations() ([]Migration, error) {
 	if migrationsPath == "" {
 		// Try common locations
 		possiblePaths := []string{
-			"/app/migrations",              // Docker container mounted path
-			"./migrations",                 // Current directory
-			"../migrations",                // Parent directory
-			"../../migrations",             // Two levels up
+			"/app/migrations",  // Docker container mounted path
+			"./migrations",     // Current directory
+			"../migrations",    // Parent directory
+			"../../migrations", // Two levels up
 		}
 
 		for _, path := range possiblePaths {
@@ -423,10 +423,10 @@ func (mr *MigrationRunner) GetExecutedMigrations(ctx context.Context) ([]map[str
 		}
 
 		migrations = append(migrations, map[string]interface{}{
-			"version":             version,
-			"description":         description,
-			"executed_at":         executedAt,
-			"execution_time_ms":   executionTimeMs,
+			"version":           version,
+			"description":       description,
+			"executed_at":       executedAt,
+			"execution_time_ms": executionTimeMs,
 		})
 	}
 

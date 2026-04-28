@@ -701,8 +701,8 @@ func (s *Server) logAuthEvent(ctx context.Context, userID int, action string, su
 
 // PasswordChangeRequiredResponse indicates if password change is required
 type PasswordChangeRequiredResponse struct {
-	PasswordChangeRequired bool `json:"password_change_required"`
-	Message               string `json:"message,omitempty"`
+	PasswordChangeRequired bool   `json:"password_change_required"`
+	Message                string `json:"message,omitempty"`
 }
 
 // @Summary Check Password Change Requirement

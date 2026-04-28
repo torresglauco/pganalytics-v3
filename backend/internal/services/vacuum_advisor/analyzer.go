@@ -8,8 +8,8 @@ import (
 
 // VacuumAnalyzer provides VACUUM recommendations and analysis
 type VacuumAnalyzer struct {
-	db              interface{} // Would be *storage.PostgresDB in production
-	costCalculator  *CostCalculator
+	db             interface{} // Would be *storage.PostgresDB in production
+	costCalculator *CostCalculator
 }
 
 // NewVacuumAnalyzer creates a new VACUUM analyzer

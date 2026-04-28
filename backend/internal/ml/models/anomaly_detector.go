@@ -17,12 +17,12 @@ type MetricBaseline struct {
 }
 
 type AnomalyAlert struct {
-	MetricName  string    `json:"metric_name"`
+	MetricName   string    `json:"metric_name"`
 	CurrentValue float64   `json:"current_value"`
-	Baseline    float64   `json:"baseline"`
-	ZScore      float64   `json:"z_score"`
-	Timestamp   time.Time `json:"timestamp"`
-	Severity    string    `json:"severity"` // low, medium, high
+	Baseline     float64   `json:"baseline"`
+	ZScore       float64   `json:"z_score"`
+	Timestamp    time.Time `json:"timestamp"`
+	Severity     string    `json:"severity"` // low, medium, high
 }
 
 func NewAnomalyDetector() *AnomalyDetector {
@@ -53,12 +53,12 @@ func (ad *AnomalyDetector) Detect(metricName string, value float64) (*AnomalyAle
 		}
 
 		return &AnomalyAlert{
-			MetricName:  metricName,
+			MetricName:   metricName,
 			CurrentValue: value,
-			Baseline:    baseline.Mean,
-			ZScore:      zScore,
-			Timestamp:   time.Now(),
-			Severity:    severity,
+			Baseline:     baseline.Mean,
+			ZScore:       zScore,
+			Timestamp:    time.Now(),
+			Severity:     severity,
 		}, true
 	}
 

@@ -41,27 +41,27 @@ func (s *Server) handleGetIndexAdvisorRecommendations(c *gin.Context) {
 		s.logger.Warn("Failed to get index recommendations", zap.Error(err), zap.String("database_id", databaseID))
 		// Return empty list instead of error - recommendations may not be available for this database yet
 		c.JSON(http.StatusOK, gin.H{
-			"database_id":      databaseID,
-			"recommendations":  []interface{}{},
-			"count":            0,
+			"database_id":     databaseID,
+			"recommendations": []interface{}{},
+			"count":           0,
 		})
 		return
 	}
 
 	if len(recommendations) == 0 {
 		c.JSON(http.StatusOK, gin.H{
-			"database_id":      databaseID,
-			"recommendations":  []interface{}{},
-			"count":            0,
+			"database_id":     databaseID,
+			"recommendations": []interface{}{},
+			"count":           0,
 		})
 		return
 	}
 
 	// Return response with recommendations
 	c.JSON(http.StatusOK, gin.H{
-		"database_id":      databaseID,
-		"recommendations":  recommendations,
-		"count":            len(recommendations),
+		"database_id":     databaseID,
+		"recommendations": recommendations,
+		"count":           len(recommendations),
 	})
 }
 
@@ -116,10 +116,10 @@ func (s *Server) handleCreateIndexFromRecommendation(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"recommendation_id": recommendationID,
-		"status":           "created",
-		"message":          "Index created successfully",
-		"table":            recommendation.TableName,
-		"columns":          recommendation.ColumnNames,
+		"status":            "created",
+		"message":           "Index created successfully",
+		"table":             recommendation.TableName,
+		"columns":           recommendation.ColumnNames,
 	})
 }
 
@@ -161,10 +161,11 @@ func (s *Server) handleGetUnusedIndexes(c *gin.Context) {
 	// LIMIT $1
 
 	c.JSON(http.StatusOK, gin.H{
-		"database_id":     databaseID,
-		"unused_indexes":  unusedIndexes,
-		"count":           len(unusedIndexes),
-		"note":            "Implement GetUnusedIndexes in storage layer for full functionality",
+		"database_id":    databaseID,
+		"unused_indexes": unusedIndexes,
+		"count":          len(unusedIndexes),
+		"limit":          limit,
+		"note":           "Implement GetUnusedIndexes in storage layer for full functionality",
 	})
 }
 

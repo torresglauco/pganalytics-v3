@@ -11,11 +11,11 @@ import (
 // TestThresholdConditionEvaluation tests threshold-based rule evaluation
 func TestThresholdConditionEvaluation(t *testing.T) {
 	tests := []struct {
-		name       string
-		operator   string
-		threshold  float64
-		value      float64
-		wantFires  bool
+		name      string
+		operator  string
+		threshold float64
+		value     float64
+		wantFires bool
 	}{
 		{
 			name:      "greater than - fires",
@@ -180,10 +180,10 @@ func TestCompositeConditionEvaluation(t *testing.T) {
 // TestAlertDeduplication tests fingerprint-based alert deduplication
 func TestAlertDeduplication(t *testing.T) {
 	tests := []struct {
-		name              string
-		ruleID            int64
-		severity          string
-		wantFingerprint   string
+		name            string
+		ruleID          int64
+		severity        string
+		wantFingerprint string
 	}{
 		{
 			name:            "threshold alert",
@@ -210,10 +210,10 @@ func TestAlertDeduplication(t *testing.T) {
 // TestAlertStateTransition tests alert state machine
 func TestAlertStateTransition(t *testing.T) {
 	tests := []struct {
-		name        string
+		name         string
 		currentState string
-		condition   bool
-		wantState   string
+		condition    bool
+		wantState    string
 	}{
 		{
 			name:         "normal to firing",
@@ -246,14 +246,14 @@ func TestAlertStateTransition(t *testing.T) {
 // TestRuleEvaluationMetrics tests metrics collection
 func TestRuleEvaluationMetrics(t *testing.T) {
 	metrics := &AlertRuleEngineMetrics{
-		RulesEvaluated:    15,
-		RulesFired:        3,
-		AlertsCreated:     3,
-		AlertsResolved:    1,
-		AlertsDedup:       1,
-		ExecutionTime:     500 * time.Millisecond,
-		ErrorCount:        0,
-		CacheHitRate:      0.95,
+		RulesEvaluated: 15,
+		RulesFired:     3,
+		AlertsCreated:  3,
+		AlertsResolved: 1,
+		AlertsDedup:    1,
+		ExecutionTime:  500 * time.Millisecond,
+		ErrorCount:     0,
+		CacheHitRate:   0.95,
 	}
 
 	assert.Equal(t, 15, metrics.RulesEvaluated)
@@ -363,7 +363,6 @@ func transitionAlertState(currentState string, condition bool) string {
 	}
 	return "resolved"
 }
-
 
 // TestRule for testing purposes (not using actual AlertRule struct)
 type TestRule struct {

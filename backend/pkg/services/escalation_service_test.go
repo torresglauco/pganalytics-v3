@@ -12,11 +12,11 @@ import (
 
 // MockEscalationDB implements the EscalationDB interface for testing
 type MockEscalationDB struct {
-	policies          map[int64]*models.EscalationPolicy
-	escalationStates  map[int64]*models.EscalationState
-	nextPolicyID      int64
-	nextStateID       int64
-	mu                sync.Mutex
+	policies         map[int64]*models.EscalationPolicy
+	escalationStates map[int64]*models.EscalationState
+	nextPolicyID     int64
+	nextStateID      int64
+	mu               sync.Mutex
 }
 
 // NewMockEscalationDB creates a new MockEscalationDB

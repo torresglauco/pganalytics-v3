@@ -142,10 +142,10 @@ func TestRecommendationTypeSelection(t *testing.T) {
 	ctx := context.Background()
 
 	testCases := []struct {
-		name               string
-		deadRatio          float64
-		autovacuumEnabled  bool
-		expectedType       string
+		name              string
+		deadRatio         float64
+		autovacuumEnabled bool
+		expectedType      string
 	}{
 		{
 			name:              "High dead ratio with autovacuum",

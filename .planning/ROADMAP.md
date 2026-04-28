@@ -40,8 +40,8 @@
 5. All test files follow naming convention `*_test.go` and execute with `go test ./...`
 
 **Plans:**
-- [ ] 02-01-PLAN.md — Code quality infrastructure (golangci-lint config, gitleaks setup)
-- [ ] 02-02-PLAN.md — HTTP status codes test suite
+- [x] 02-01-PLAN.md — Code quality infrastructure (golangci-lint config, gitleaks setup)
+- [x] 02-02-PLAN.md — HTTP status codes test suite
 - [x] 02-03-PLAN.md — Mock documentation and enhanced auth/collector boundary tests
 - [ ] 02-04-PLAN.md — User management permission boundary tests
 - [ ] 02-05-PLAN.md — Instance version/configuration validation tests

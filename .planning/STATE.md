@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: milestone
 status: unknown
-last_updated: "2026-04-28T17:57:54.906Z"
+last_updated: "2026-04-28T19:56:00Z"
 progress:
   total_phases: 4
   completed_phases: 2
-  total_plans: 7
-  completed_plans: 7
+  total_plans: 10
+  completed_plans: 8
 ---
 
 # Project State: pganalytics-v3
@@ -17,12 +17,12 @@ progress:
 
 **Core Value:** Enable database teams to proactively identify and fix performance issues before they impact production systems.
 
-**Current Focus:** Phase 02 — Backend Integration Testing & Code Quality
+**Current Focus:** Phase 03 — Database Testing
 
 ## Current Position
 
-Phase: 02 (Backend Integration Testing & Code Quality) — EXECUTING
-Plan: 5 of 6
+Phase: 03 (Database Testing) — EXECUTING
+Plan: 2 of 3
 
 ## Performance Metrics
 
@@ -32,6 +32,7 @@ Plan: 5 of 6
 | Security Score | 8.5+ | 8.0 (after Phase 1) |
 | Test Pass Rate | 100% | 100% (existing tests) |
 | Linting Errors | 0 | 0 (after 02-01) |
+| Phase 03 P01 | 10min | 2 tasks | 5 files |
 | Phase 02 P05 | 21 | 1 tasks | 1 files |
 | Phase 02-backend-integration-testing-code-quality P04 | 22min | 2 tasks | 3 files |
 | Phase 02 P06 | 35 | 3 tasks | 6 files |
@@ -75,6 +76,13 @@ Plan: 5 of 6
   - Added instance ID validation tests (7 ID scenarios including SQL injection)
   - Total: 278 lines added, 985 lines in test file
 
+- **v1.1 Phase 03 Plan 01:** Database Testing Infrastructure
+  - Installed testcontainers-go v0.42.0 with PostgreSQL module
+  - Created TestDB wrapper with automatic container lifecycle management
+  - Built test data factories for databases, collectors, instances, users
+  - Implemented assertion helpers for tables, columns, indexes, foreign keys
+  - Total: 210 lines added in testutil package
+
 ### Key Decisions Made
 
 - Focus v1.1 on comprehensive testing before new features
@@ -89,6 +97,8 @@ Plan: 5 of 6
 - Allow multiple acceptable status codes for edge cases
 - Use EngineVersion field (not PGVersion) for PostgreSQL version in instance tests
 - URL-encode SQL injection payloads in HTTP path tests to avoid parsing errors
+- Use testcontainers-go for isolated PostgreSQL containers instead of external database
+- Use wait.ForLog strategy for container readiness check (more reliable than simple timeout)
 
 ### Known Issues / Blockers
 
@@ -103,9 +113,9 @@ Plan: 5 of 6
 
 ## Session Continuity
 
-**Last Session:** 2026-04-28T17:51:32.936Z
-**Activity:** Completed 02-05-PLAN.md (Instance Version & Configuration Tests)
-**Next Action:** Continue with 02-04-PLAN.md or 02-06-PLAN.md
+**Last Session:** 2026-04-28T19:56:00Z
+**Activity:** Completed 03-01-PLAN.md (Database Testing Infrastructure)
+**Next Action:** Continue with 03-02-PLAN.md (Database Tests)
 
 ### Quick Context for Next Session
 
@@ -113,19 +123,19 @@ Plan: 5 of 6
 **Stack:** Go backend, TypeScript/React frontend, PostgreSQL database
 **Current State:** v1.0 security hardening complete, v1.1 testing phase in progress
 
-**Phase 2 Goal:** Backend integration testing + code quality foundation
+**Phase 3 Goal:** Database testing with isolated containers
 
-- 9 requirements to address
-- Success = API tests passing, zero lint warnings, no hardcoded secrets
-- Foundation for all subsequent testing phases
+- Testcontainers infrastructure ready for use
+- Test utilities package provides fixtures and assertions
+- Ready to write database integration tests
 
 **Files to Review:**
 
 - `/Users/glauco.torres/git/pganalytics-v3/.planning/ROADMAP.md` - Full phase structure
 - `/Users/glauco.torres/git/pganalytics-v3/.planning/REQUIREMENTS.md` - All v1.1 requirements
+- `/Users/glauco.torres/git/pganalytics-v3/backend/tests/database/testutil/` - Test utilities
 - `/Users/glauco.torres/git/pganalytics-v3/backend/tests/integration/` - Existing boundary tests
-- `/Users/glauco.torres/git/pganalytics-v3/backend/tests/mocks/README.md` - Mock library documentation
 
 ---
 
-*State updated: 2026-04-28 after 02-02 completion*
+*State updated: 2026-04-28 after 03-01 completion*

@@ -3,6 +3,7 @@ package integration
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -412,4 +413,142 @@ func TestDeleteCollectorBoundary_InvalidUUID(t *testing.T) {
 	// Invalid UUID should return 400
 	assert.True(t, w.Code == http.StatusBadRequest || w.Code == http.StatusUnauthorized,
 		"Invalid UUID format should return 400")
+}
+
+// ============================================================================
+// ADDITIONAL BOUNDARY TESTS: SQL Injection Prevention
+// ============================================================================
+
+func TestCollectorRegisterBoundary_SQLInjectionInName(t *testing.T) {
+	router, _, _ := newTestEnv(t)
+
+	sqlPayloads := []string{
+		"collector'; DROP TABLE collectors; --",
+		"collector' OR '1'='1",
+		"collector\" OR \"1\"=\"1",
+		"collector; INSERT INTO collectors VALUES ('malicious')",
+	}
+
+	for i, payload := range sqlPayloads {
+		t.Run(fmt.Sprintf("SQL_Payload_%d", i), func(t *testing.T) {
+			registerReq := models.CollectorRegisterRequest{
+				Name:     payload,
+				Hostname: "collector-01.example.com",
+			}
+
+			body, _ := json.Marshal(registerReq)
+			req := httptest.NewRequest("POST", "/api/v1/collectors/register", bytes.NewBuffer(body))
+			req.Header.Set("Content-Type", "application/json")
+			req.Header.Set("X-Registration-Secret", "test-secret")
+
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, req)
+
+			// SQL injection should be safely handled
+			assert.True(t, w.Code >= 200 && w.Code < 500,
+				"SQL injection should be handled safely without 5xx error")
+		})
+	}
+}
+
+func TestCollectorRegisterBoundary_SQLInjectionInHostname(t *testing.T) {
+	router, _, _ := newTestEnv(t)
+
+	registerReq := models.CollectorRegisterRequest{
+		Name:     "collector-01",
+		Hostname: "host'; DROP TABLE collectors; --.example.com",
+	}
+
+	body, _ := json.Marshal(registerReq)
+	req := httptest.NewRequest("POST", "/api/v1/collectors/register", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Registration-Secret", "test-secret")
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	// SQL injection in hostname should be safely handled
+	assert.True(t, w.Code >= 200 && w.Code < 500,
+		"SQL injection in hostname should be handled safely")
+}
+
+// ============================================================================
+// ADDITIONAL BOUNDARY TESTS: Input Validation Edge Cases
+// ============================================================================
+
+func TestCollectorRegisterBoundary_UnicodeInName(t *testing.T) {
+	router, _, _ := newTestEnv(t)
+
+	registerReq := models.CollectorRegisterRequest{
+		Name:     "collector-\u00e9\u00e8\u00ea", // Unicode accented characters
+		Hostname: "collector-01.example.com",
+	}
+
+	body, _ := json.Marshal(registerReq)
+	req := httptest.NewRequest("POST", "/api/v1/collectors/register", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Registration-Secret", "test-secret")
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	// Unicode characters should be accepted
+	assert.True(t, w.Code == http.StatusOK || w.Code == http.StatusBadRequest,
+		"Unicode in collector name should be handled")
+}
+
+func TestCollectorRegisterBoundary_NewlineInName(t *testing.T) {
+	router, _, _ := newTestEnv(t)
+
+	registerReq := models.CollectorRegisterRequest{
+		Name:     "collector\nwith\nnewlines",
+		Hostname: "collector-01.example.com",
+	}
+
+	body, _ := json.Marshal(registerReq)
+	req := httptest.NewRequest("POST", "/api/v1/collectors/register", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Registration-Secret", "test-secret")
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	// Newlines should be handled
+	assert.True(t, w.Code >= 200 && w.Code < 500,
+		"Newlines in name should be handled safely")
+}
+
+func TestMetricsPushBoundary_MissingCollectorID(t *testing.T) {
+	router, _, _ := newTestEnv(t)
+
+	jsonData := map[string]interface{}{
+		"hostname":      "collector-01.example.com",
+		"timestamp":     time.Now(),
+		"metrics_count": 5,
+		"metrics":       []interface{}{},
+	}
+
+	body, _ := json.Marshal(jsonData)
+	req := httptest.NewRequest("POST", "/api/v1/metrics/push", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	// Missing collector_id should be rejected
+	assert.True(t, w.Code == http.StatusBadRequest || w.Code == http.StatusUnauthorized,
+		"Missing collector_id should return 400 or 401")
+}
+
+func TestCollectorGetBoundary_UUIDWithBraces(t *testing.T) {
+	router, _, _ := newTestEnv(t)
+
+	// UUID with braces (common formatting)
+	req := httptest.NewRequest("GET", "/api/v1/collectors/{550e8400-e29b-41d4-a716-446655440000}", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	// UUID with braces should be handled (may return 400, 404, or 401 depending on auth)
+	assert.True(t, w.Code == http.StatusBadRequest || w.Code == http.StatusNotFound || w.Code == http.StatusUnauthorized,
+		"UUID with braces should be rejected or return 404/401")
 }

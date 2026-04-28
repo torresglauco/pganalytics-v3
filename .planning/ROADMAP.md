@@ -70,7 +70,9 @@
 5. Time-series tests validate timestamp ordering across timezones (UTC, PST, EST conversions) with correct results
 
 **Plans:**
-- TBD
+- [ ] 03-01-PLAN.md — Test utilities infrastructure (testcontainers setup, fixtures, helpers)
+- [ ] 03-02-PLAN.md — Transaction and query validation tests (TEST-07, TEST-08)
+- [ ] 03-03-PLAN.md — Connection pool, migration, and time-series tests (TEST-09, TEST-10, TEST-11)
 
 ---
 
@@ -133,8 +135,8 @@
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 2. Backend Integration Testing & Code Quality | 1/6 | Executing | 02-03 |
-| 3. Database Testing | 0/1 | Not started | - |
+| 2. Backend Integration Testing & Code Quality | 3/6 | Executing | 02-03 |
+| 3. Database Testing | 0/3 | Planned | - |
 | 4. Frontend Integration Testing & Quality | 0/1 | Not started | - |
 | 5. CI/CD Integration & Coverage Reporting | 0/1 | Not started | - |
 
@@ -177,4 +179,4 @@ Phase 1 (COMPLETE) - Security hardening
 ---
 
 *Roadmap created: 2026-04-28*
-*Last updated: 2026-04-28 after Phase 2 planning*
+*Last updated: 2026-04-28 after Phase 3 planning*

@@ -3,6 +3,7 @@ package integration
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -585,4 +586,109 @@ func TestChangePasswordBoundary_VeryLongNewPassword(t *testing.T) {
 	// Should handle gracefully (not crash)
 	assert.True(t, w.Code >= 200 && w.Code < 500,
 		"Should not cause server error (5xx)")
+}
+
+// ============================================================================
+// ADDITIONAL BOUNDARY TESTS: Token Validation
+// ============================================================================
+
+func TestLoginBoundary_MalformedJSON(t *testing.T) {
+	router, _, _ := newTestEnv(t)
+
+	req := httptest.NewRequest("POST", "/api/v1/auth/login", bytes.NewBuffer([]byte("{not valid json")))
+	req.Header.Set("Content-Type", "application/json")
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.True(t, w.Code == http.StatusBadRequest || w.Code == http.StatusUnauthorized,
+		"Malformed JSON should return 400")
+}
+
+func TestLoginBoundary_ContentTypeXML(t *testing.T) {
+	router, _, _ := newTestEnv(t)
+
+	req := httptest.NewRequest("POST", "/api/v1/auth/login", bytes.NewBuffer([]byte("<user>test</user>")))
+	req.Header.Set("Content-Type", "application/xml")
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	// Should handle non-JSON content type
+	assert.True(t, w.Code >= 400,
+		"Non-JSON content type should be rejected")
+}
+
+func TestLoginBoundary_LargeRequestBody(t *testing.T) {
+	router, _, _ := newTestEnv(t)
+
+	// Create a large request body
+	largeData := strings.Repeat("a", 100000)
+	loginReq := models.LoginRequest{
+		Username: largeData,
+		Password: "password123",
+	}
+
+	body, _ := json.Marshal(loginReq)
+	req := httptest.NewRequest("POST", "/api/v1/auth/login", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	// Should handle large request gracefully
+	assert.True(t, w.Code >= 200 && w.Code < 500,
+		"Large request body should not cause 5xx error")
+}
+
+func TestLoginBoundary_XSSInUsername(t *testing.T) {
+	router, _, _ := newTestEnv(t)
+
+	xssPayloads := []string{
+		"<script>alert('xss')</script>",
+		"<img src=x onerror=alert('xss')>",
+		"javascript:alert('xss')",
+		"<svg onload=alert('xss')>",
+	}
+
+	for i, payload := range xssPayloads {
+		t.Run(fmt.Sprintf("XSS_Payload_%d", i), func(t *testing.T) {
+			loginReq := models.LoginRequest{
+				Username: payload,
+				Password: "password123",
+			}
+
+			body, _ := json.Marshal(loginReq)
+			req := httptest.NewRequest("POST", "/api/v1/auth/login", bytes.NewBuffer(body))
+			req.Header.Set("Content-Type", "application/json")
+
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, req)
+
+			// XSS payload should be safely handled (not executed)
+			assert.True(t, w.Code == http.StatusUnauthorized || w.Code == http.StatusBadRequest,
+				"XSS payload should be safely rejected")
+		})
+	}
+}
+
+func TestLoginBoundary_UnicodeNormalization(t *testing.T) {
+	router, _, _ := newTestEnv(t)
+
+	// Test with Unicode characters that might bypass filters
+	loginReq := models.LoginRequest{
+		Username: "testuser\u0000", // Null byte
+		Password: "password123",
+	}
+
+	body, _ := json.Marshal(loginReq)
+	req := httptest.NewRequest("POST", "/api/v1/auth/login", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	// Should handle Unicode safely
+	assert.True(t, w.Code >= 200 && w.Code < 500,
+		"Unicode characters should be handled safely")
 }

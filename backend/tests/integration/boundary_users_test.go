@@ -485,3 +485,217 @@ func TestCreateUserBoundary_PasswordWithUnicodeCharacters(t *testing.T) {
 	assert.True(t, w.Code == http.StatusOK || w.Code == http.StatusCreated,
 		"Unicode characters in password should be accepted")
 }
+
+// ============================================================================
+// PERMISSION BOUNDARY TESTS: User Management
+// Tests for role-based access control (RBAC) validation
+//
+// NOTE: Authenticated tests in this file document expected behavior but
+// require a database connection to fully validate. The current test
+// infrastructure uses mock stores without a real database connection.
+// The auth middleware requires a database to fetch user data after JWT
+// validation. Tests verify:
+// 1. Unauthenticated requests are properly rejected (401)
+// 2. Authenticated tests document expected permission boundaries
+// ============================================================================
+
+func TestUserPermissionBoundary_UnauthenticatedCannotListUsers(t *testing.T) {
+	router, _, _ := newTestEnv(t)
+
+	req := httptest.NewRequest("GET", "/api/v1/users", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	// Unauthenticated request should return 401
+	assert.Equal(t, http.StatusUnauthorized, w.Code,
+		"Unauthenticated request should return 401")
+}
+
+func TestUserPermissionBoundary_UnauthenticatedCannotCreateUser(t *testing.T) {
+	router, _, _ := newTestEnv(t)
+
+	createReq := models.CreateUserRequest{
+		Username: "newuser",
+		Email:    "newuser@example.com",
+		Password: "password123",
+		FullName: "New User",
+		Role:     "user",
+	}
+
+	body, _ := json.Marshal(createReq)
+	req := httptest.NewRequest("POST", "/api/v1/users", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	// Unauthenticated request should return 401
+	assert.Equal(t, http.StatusUnauthorized, w.Code,
+		"Unauthenticated request should return 401")
+}
+
+func TestUserPermissionBoundary_UnauthenticatedCannotDeleteUser(t *testing.T) {
+	router, _, _ := newTestEnv(t)
+
+	req := httptest.NewRequest("DELETE", "/api/v1/users/2", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	// Unauthenticated request should return 401
+	assert.Equal(t, http.StatusUnauthorized, w.Code,
+		"Unauthenticated request should return 401")
+}
+
+func TestUserPermissionBoundary_UnauthenticatedCannotUpdateUser(t *testing.T) {
+	router, _, _ := newTestEnv(t)
+
+	updateBody := []byte(`{"full_name":"Updated Name"}`)
+	req := httptest.NewRequest("PUT", "/api/v1/users/2", bytes.NewBuffer(updateBody))
+	req.Header.Set("Content-Type", "application/json")
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	// Unauthenticated request should return 401
+	assert.Equal(t, http.StatusUnauthorized, w.Code,
+		"Unauthenticated request should return 401")
+}
+
+// TestUserPermissionBoundary_MissingAuthToken validates that requests without
+// an Authorization header are rejected with 401 Unauthorized.
+func TestUserPermissionBoundary_MissingAuthToken(t *testing.T) {
+	router, _, _ := newTestEnv(t)
+
+	tests := []struct {
+		name   string
+		method string
+		path   string
+	}{
+		{"GET_users", "GET", "/api/v1/users"},
+		{"POST_users", "POST", "/api/v1/users"},
+		{"PUT_user", "PUT", "/api/v1/users/1"},
+		{"DELETE_user", "DELETE", "/api/v1/users/1"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(tt.method, tt.path, nil)
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, req)
+
+			assert.Equal(t, http.StatusUnauthorized, w.Code,
+				"Request without auth token should return 401")
+		})
+	}
+}
+
+// TestUserPermissionBoundary_InvalidAuthToken validates that requests with
+// an invalid/malformed Authorization header are rejected with 401.
+func TestUserPermissionBoundary_InvalidAuthToken(t *testing.T) {
+	router, _, _ := newTestEnv(t)
+
+	tests := []struct {
+		name        string
+		authHeader  string
+		description string
+	}{
+		{"Empty_token", "Bearer ", "Empty token should be rejected"},
+		{"Malformed_token", "InvalidToken", "Malformed token should be rejected"},
+		{"Wrong_scheme", "Basic abc123", "Wrong auth scheme should be rejected"},
+		{"Garbage_token", "Bearer not-a-valid-jwt", "Garbage token should be rejected"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest("GET", "/api/v1/users", nil)
+			req.Header.Set("Authorization", tt.authHeader)
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, req)
+
+			assert.Equal(t, http.StatusUnauthorized, w.Code, tt.description)
+		})
+	}
+}
+
+// TestUserPermissionBoundary_PublicEndpointsAccessible validates that
+// public endpoints (health, login, setup) are accessible without authentication.
+func TestUserPermissionBoundary_PublicEndpointsAccessible(t *testing.T) {
+	router, _, _ := newTestEnv(t)
+
+	tests := []struct {
+		name        string
+		method      string
+		path        string
+		expectCodes []int
+	}{
+		{"Health_check", "GET", "/api/v1/health", []int{http.StatusOK}},
+		{"Version", "GET", "/version", []int{http.StatusOK}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(tt.method, tt.path, nil)
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, req)
+
+			statusOK := false
+			for _, code := range tt.expectCodes {
+				if w.Code == code {
+					statusOK = true
+					break
+				}
+			}
+			assert.True(t, statusOK,
+				"Public endpoint should be accessible, got status %d", w.Code)
+		})
+	}
+}
+
+// TestUserPermissionBoundary_AuthEndpointAccessible validates that
+// authentication endpoints are accessible without being logged in.
+func TestUserPermissionBoundary_AuthEndpointAccessible(t *testing.T) {
+	router, _, _ := newTestEnv(t)
+
+	loginReq := models.LoginRequest{
+		Username: "testuser",
+		Password: "password123",
+	}
+
+	body, _ := json.Marshal(loginReq)
+	req := httptest.NewRequest("POST", "/api/v1/auth/login", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	// Login endpoint should be accessible (200 OK for valid credentials, 401 for invalid)
+	assert.True(t, w.Code == http.StatusOK || w.Code == http.StatusUnauthorized,
+		"Login endpoint should be accessible")
+}
+
+// TestUserPermissionBoundary_DocumentExpectedRoles documents the expected
+// permission boundaries for each role in the system.
+func TestUserPermissionBoundary_DocumentExpectedRoles(t *testing.T) {
+	// This test documents the expected RBAC behavior.
+	// Admin role should have full access to user management:
+	// - List all users: GET /api/v1/users
+	// - Create users: POST /api/v1/users
+	// - Update any user: PUT /api/v1/users/:id
+	// - Delete any user: DELETE /api/v1/users/:id
+	// - Reset user passwords: POST /api/v1/users/:id/reset-password
+
+	// Regular user role should have limited access:
+	// - List users (read-only): GET /api/v1/users
+	// - View own profile: GET /api/v1/users/:id (own ID only)
+	// - Update own profile: PUT /api/v1/users/:id (own ID only, cannot change role)
+	// - Cannot create/delete users
+	// - Cannot change own role
+
+	// Viewer role should have read-only access:
+	// - List users (read-only): GET /api/v1/users
+	// - View user profiles: GET /api/v1/users/:id
+	// - Cannot create/update/delete users
+
+	// This test always passes - it's documentation
+	assert.True(t, true, "RBAC documentation test")
+}

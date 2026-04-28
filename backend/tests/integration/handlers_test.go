@@ -238,12 +238,27 @@ func TestLoginHandler_Success(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
-	var resp models.LoginResponse
+	// Check response format - tokens are now in cookies, not in JSON body
+	var resp map[string]interface{}
 	_ = json.Unmarshal(w.Body.Bytes(), &resp)
 
-	assert.NotEmpty(t, resp.Token)
-	assert.NotEmpty(t, resp.RefreshToken)
-	assert.Equal(t, "testuser", resp.User.Username)
+	// Response should have message and user
+	assert.Equal(t, "Login successful", resp["message"])
+	assert.NotNil(t, resp["user"])
+	assert.NotEmpty(t, resp["csrf_token"])
+
+	// Check that auth_token cookie is set
+	cookies := w.Result().Cookies()
+	authTokenFound := false
+	for _, cookie := range cookies {
+		if cookie.Name == "auth_token" {
+			authTokenFound = true
+			assert.NotEmpty(t, cookie.Value)
+			assert.True(t, cookie.HttpOnly)
+			break
+		}
+	}
+	assert.True(t, authTokenFound, "auth_token cookie should be set")
 }
 
 func TestLoginHandler_InvalidCredentials(t *testing.T) {

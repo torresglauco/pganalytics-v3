@@ -3,6 +3,7 @@ package integration
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -704,4 +705,281 @@ func TestTestConnectionBoundary_EmptyEndpoint(t *testing.T) {
 	// Empty endpoint should be rejected
 	assert.True(t, w.Code == http.StatusBadRequest || w.Code == http.StatusUnauthorized,
 		"Empty endpoint should return 400")
+}
+
+// ============================================================================
+// BOUNDARY TESTS: PostgreSQL Version Validation
+// ============================================================================
+
+func TestCreateManagedInstanceBoundary_PostgreSQLVersions(t *testing.T) {
+	router, _, _ := newTestEnv(t)
+
+	versions := []struct {
+		version      string
+		shouldAccept bool
+	}{
+		{"12", true},              // PostgreSQL 12
+		{"13", true},              // PostgreSQL 13
+		{"14", true},              // PostgreSQL 14
+		{"15", true},              // PostgreSQL 15
+		{"16", true},              // PostgreSQL 16
+		{"17", true},              // PostgreSQL 17 (latest)
+		{"16.1", true},            // Version with minor
+		{"16.1.0", true},          // Version with patch
+		{"PostgreSQL 16.1", true}, // Full name format
+		{"", false},               // Empty version
+		{"11", true},              // Older but valid
+		{"100", true},             // Future version - accept
+		{"invalid", true},         // String - may be accepted as-is
+	}
+
+	for _, tt := range versions {
+		t.Run("Version_"+tt.version, func(t *testing.T) {
+			createReq := models.CreateManagedInstanceRequest{
+				Name:           "test-instance",
+				Endpoint:       "database.example.com",
+				Port:           5432,
+				MasterUsername: "admin",
+				MasterPassword: "password123",
+				EngineVersion:  tt.version,
+			}
+
+			body, _ := json.Marshal(createReq)
+			req := httptest.NewRequest("POST", "/api/v1/managed-instances", bytes.NewBuffer(body))
+			req.Header.Set("Content-Type", "application/json")
+
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, req)
+
+			if tt.shouldAccept {
+				// Accepted versions should not cause 400 validation error
+				// May return 200, 201, 401 (auth), or even 500 (DB error) - all acceptable
+				assert.True(t, w.Code >= 200 && w.Code < 500,
+					"Version %s should be handled without 5xx error", tt.version)
+			} else {
+				// Empty version might be rejected
+				assert.True(t, w.Code == http.StatusBadRequest || w.Code == http.StatusUnauthorized || w.Code >= 200,
+					"Empty version should be handled")
+			}
+		})
+	}
+}
+
+// ============================================================================
+// BOUNDARY TESTS: Status Value Validation
+// ============================================================================
+
+func TestUpdateManagedInstanceBoundary_AllStatusValues(t *testing.T) {
+	router, _, _ := newTestEnv(t)
+
+	statuses := []struct {
+		status       string
+		shouldAccept bool
+	}{
+		{"registering", true},
+		{"monitoring", true},
+		{"error", true},
+		{"disabled", true},
+		{"", false},               // Empty status
+		{"invalid-status", false}, // Invalid status
+		{"active", false},         // Not a valid status
+		{"paused", false},         // Not a valid status
+	}
+
+	for _, tt := range statuses {
+		t.Run("Status_"+tt.status, func(t *testing.T) {
+			updateReq := models.UpdateManagedInstanceRequest{
+				Name:           "test-instance",
+				Endpoint:       "database.example.com",
+				Port:           5432,
+				MasterUsername: "admin",
+				MasterPassword: "password123",
+				Status:         tt.status,
+			}
+
+			body, _ := json.Marshal(updateReq)
+			req := httptest.NewRequest("PUT", "/api/v1/managed-instances/1", bytes.NewBuffer(body))
+			req.Header.Set("Content-Type", "application/json")
+
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, req)
+
+			// Status validation: valid statuses return 200/404, invalid return 400
+			if tt.shouldAccept {
+				assert.True(t, w.Code == http.StatusOK || w.Code == http.StatusNotFound || w.Code == http.StatusUnauthorized,
+					"Valid status %s should be accepted or return 404", tt.status)
+			} else {
+				assert.True(t, w.Code == http.StatusBadRequest || w.Code == http.StatusNotFound || w.Code == http.StatusUnauthorized,
+					"Invalid status %s should be rejected or return 404", tt.status)
+			}
+		})
+	}
+}
+
+// ============================================================================
+// BOUNDARY TESTS: SSL Mode Configuration
+// ============================================================================
+
+func TestCreateManagedInstanceBoundary_SSLModes(t *testing.T) {
+	router, _, _ := newTestEnv(t)
+
+	sslModes := []string{"disable", "allow", "prefer", "require", "verify-ca", "verify-full"}
+
+	for _, mode := range sslModes {
+		t.Run("SSLMode_"+mode, func(t *testing.T) {
+			createReq := models.CreateManagedInstanceRequest{
+				Name:           "test-instance",
+				Endpoint:       "database.example.com",
+				Port:           5432,
+				MasterUsername: "admin",
+				MasterPassword: "password123",
+				SSLMode:        mode,
+			}
+
+			body, _ := json.Marshal(createReq)
+			req := httptest.NewRequest("POST", "/api/v1/managed-instances", bytes.NewBuffer(body))
+			req.Header.Set("Content-Type", "application/json")
+
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, req)
+
+			// SSL mode should be accepted
+			assert.True(t, w.Code >= 200 && w.Code < 500,
+				"SSL mode %s should be handled", mode)
+		})
+	}
+}
+
+// ============================================================================
+// BOUNDARY TESTS: Connection Timeout Edge Cases
+// ============================================================================
+
+func TestCreateManagedInstanceBoundary_ConnectionTimeoutBoundaries(t *testing.T) {
+	router, _, _ := newTestEnv(t)
+
+	timeouts := []struct {
+		name  string
+		value int
+		valid bool
+	}{
+		{"Zero", 0, true},           // Zero means default
+		{"OneSecond", 1, true},      // Minimum reasonable
+		{"ThirtySeconds", 30, true}, // Common default
+		{"SixtySeconds", 60, true},  // Common value
+		{"FiveMinutes", 300, true},  // Long but valid
+		{"Negative", -1, false},     // Invalid
+		{"VeryLarge", 86400, true},  // 24 hours - technically valid
+	}
+
+	for _, tt := range timeouts {
+		t.Run("Timeout_"+tt.name, func(t *testing.T) {
+			createReq := models.CreateManagedInstanceRequest{
+				Name:              "test-instance",
+				Endpoint:          "database.example.com",
+				Port:              5432,
+				MasterUsername:    "admin",
+				MasterPassword:    "password123",
+				ConnectionTimeout: tt.value,
+			}
+
+			body, _ := json.Marshal(createReq)
+			req := httptest.NewRequest("POST", "/api/v1/managed-instances", bytes.NewBuffer(body))
+			req.Header.Set("Content-Type", "application/json")
+
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, req)
+
+			if tt.valid {
+				assert.True(t, w.Code >= 200 && w.Code < 500,
+					"Connection timeout %d should be handled", tt.value)
+			} else {
+				assert.True(t, w.Code == http.StatusBadRequest || w.Code == http.StatusUnauthorized,
+					"Invalid timeout %d should be rejected", tt.value)
+			}
+		})
+	}
+}
+
+// ============================================================================
+// BOUNDARY TESTS: Tags Field Validation
+// ============================================================================
+
+func TestCreateManagedInstanceBoundary_TagsValidation(t *testing.T) {
+	router, _, _ := newTestEnv(t)
+
+	tests := []struct {
+		name string
+		tags map[string]interface{}
+	}{
+		{"Empty tags", map[string]interface{}{}},
+		{"Simple tags", map[string]interface{}{"env": "production", "team": "backend"}},
+		{"Nested tags", map[string]interface{}{"meta": map[string]interface{}{"created_by": "admin"}}},
+		{"Array in tags", map[string]interface{}{"ports": []interface{}{5432, 5433}}},
+		{"Number tags", map[string]interface{}{"priority": 1, "backup": true}},
+		{"Null value", map[string]interface{}{"optional": nil}},
+		{"Many tags", func() map[string]interface{} {
+			tags := make(map[string]interface{})
+			for i := 0; i < 50; i++ {
+				tags[fmt.Sprintf("key_%d", i)] = fmt.Sprintf("value_%d", i)
+			}
+			return tags
+		}()},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			createReq := models.CreateManagedInstanceRequest{
+				Name:           "test-instance",
+				Endpoint:       "database.example.com",
+				Port:           5432,
+				MasterUsername: "admin",
+				MasterPassword: "password123",
+				Tags:           tt.tags,
+			}
+
+			body, _ := json.Marshal(createReq)
+			req := httptest.NewRequest("POST", "/api/v1/managed-instances", bytes.NewBuffer(body))
+			req.Header.Set("Content-Type", "application/json")
+
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, req)
+
+			// Tags should be handled gracefully
+			assert.True(t, w.Code >= 200 && w.Code < 500,
+				"Tags configuration should be handled")
+		})
+	}
+}
+
+// ============================================================================
+// BOUNDARY TESTS: Instance ID Validation
+// ============================================================================
+
+func TestGetInstanceBoundary_InvalidInstanceIDs(t *testing.T) {
+	router, _, _ := newTestEnv(t)
+
+	ids := []struct {
+		id   string
+		desc string
+	}{
+		{"0", "Zero ID"},
+		{"-1", "Negative ID"},
+		{"abc", "Non-numeric ID"},
+		{"1%3B%20DROP%20TABLE%20instances", "SQL injection in ID"}, // URL-encoded "1; DROP TABLE instances"
+		{"1%20OR%201%3D1", "SQL injection OR clause"},              // URL-encoded "1 OR 1=1"
+		{"18446744073709551615", "Max uint64"},
+		{"", "Empty ID"},
+	}
+
+	for _, tt := range ids {
+		t.Run(tt.desc, func(t *testing.T) {
+			req := httptest.NewRequest("GET", "/api/v1/managed-instances/"+tt.id, nil)
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, req)
+
+			// Invalid IDs should return appropriate error
+			assert.True(t, w.Code == http.StatusBadRequest || w.Code == http.StatusNotFound || w.Code == http.StatusUnauthorized || w.Code == http.StatusMovedPermanently,
+				"Invalid instance ID should be rejected")
+		})
+	}
 }

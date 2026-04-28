@@ -40,7 +40,12 @@
 5. All test files follow naming convention `*_test.go` and execute with `go test ./...`
 
 **Plans:**
-- TBD
+- [ ] 02-01-PLAN.md — Code quality infrastructure (golangci-lint config, gitleaks setup)
+- [ ] 02-02-PLAN.md — HTTP status codes test suite
+- [ ] 02-03-PLAN.md — Mock documentation and enhanced auth/collector boundary tests
+- [ ] 02-04-PLAN.md — User management permission boundary tests
+- [ ] 02-05-PLAN.md — Instance version/configuration validation tests
+- [ ] 02-06-PLAN.md — Final verification and coverage baseline
 
 ---
 
@@ -128,7 +133,7 @@
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 2. Backend Integration Testing & Code Quality | 0/1 | Not started | - |
+| 2. Backend Integration Testing & Code Quality | 0/6 | Planning complete | - |
 | 3. Database Testing | 0/1 | Not started | - |
 | 4. Frontend Integration Testing & Quality | 0/1 | Not started | - |
 | 5. CI/CD Integration & Coverage Reporting | 0/1 | Not started | - |
@@ -172,4 +177,4 @@ Phase 1 (COMPLETE) - Security hardening
 ---
 
 *Roadmap created: 2026-04-28*
-*Last updated: 2026-04-28*
+*Last updated: 2026-04-28 after Phase 2 planning*

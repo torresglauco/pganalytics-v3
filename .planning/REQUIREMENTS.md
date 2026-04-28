@@ -18,8 +18,8 @@ Requirements for Testing & Validation milestone. Focuses on comprehensive test c
 
 ### Database Testing
 
-- [ ] **TEST-07**: Database transaction handling verified (commits, rollbacks, nested transactions)
-- [ ] **TEST-08**: Query validation tested with edge cases (empty results, null values, large datasets)
+- [x] **TEST-07**: Database transaction handling verified (commits, rollbacks, nested transactions)
+- [x] **TEST-08**: Query validation tested with edge cases (empty results, null values, large datasets)
 - [ ] **TEST-09**: Connection pool management tested under concurrent load
 - [ ] **TEST-10**: Database schema migrations validated (no data loss, backward compatibility)
 - [ ] **TEST-11**: Time-series data handling tested (timestamp ordering, timezone conversions)
@@ -85,8 +85,8 @@ Deferred to future release. Tracked but not in current roadmap.
 | TEST-04 | Phase 2 | Complete |
 | TEST-05 | Phase 2 | Complete |
 | TEST-06 | Phase 2 | Complete |
-| TEST-07 | Phase 3 | Pending |
-| TEST-08 | Phase 3 | Pending |
+| TEST-07 | Phase 3 | Complete |
+| TEST-08 | Phase 3 | Complete |
 | TEST-09 | Phase 3 | Pending |
 | TEST-10 | Phase 3 | Pending |
 | TEST-11 | Phase 3 | Pending |

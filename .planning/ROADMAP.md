@@ -130,7 +130,9 @@
 6. Codebase contains zero unused imports, variables, or functions (observable via linter output)
 
 **Plans:**
-- TBD
+- [ ] 05-01-PLAN.md — Unified CI workflow with coverage reporting (QUAL-05, TEST-17, TEST-19, TEST-20)
+- [ ] 05-02-PLAN.md — Unused code detection configuration (QUAL-06)
+- [ ] 05-03-PLAN.md — Branch protection and quality gates (TEST-18)
 
 ---
 
@@ -141,7 +143,7 @@
 | 2. Backend Integration Testing & Code Quality | 3/6 | Executing | 02-03 |
 | 3. Database Testing | 3/3 | Complete | 03-03 |
 | 4. Frontend Integration Testing & Quality | 0/4 | Planned | - |
-| 5. CI/CD Integration & Coverage Reporting | 0/1 | Not started | - |
+| 5. CI/CD Integration & Coverage Reporting | 0/3 | Planned | - |
 
 ---
 
@@ -182,4 +184,4 @@ Phase 1 (COMPLETE) - Security hardening
 ---
 
 *Roadmap created: 2026-04-28*
-*Last updated: 2026-04-28 after Phase 4 planning*
+*Last updated: 2026-04-29 after Phase 5 planning*

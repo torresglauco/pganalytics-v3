@@ -128,4 +128,38 @@ test.describe('Login/Logout Flow', () => {
     // Should redirect to login
     expect(page.url()).toContain('/login');
   });
+
+  test('should persist session across multiple page refreshes', async ({ page }) => {
+    await loginPage.goto();
+    await loginPage.login('admin', 'admin');
+    await loginPage.expectLoggedIn();
+
+    // First reload
+    await page.reload();
+    await expect(page).toHaveURL(/dashboard/);
+
+    // Second reload
+    await page.reload();
+    await expect(page).toHaveURL(/dashboard/);
+
+    // Third reload - session should still persist
+    await page.reload();
+    await expect(page).toHaveURL(/dashboard/);
+  });
+
+  test('should maintain auth state when opening new tab', async ({ page, context }) => {
+    await loginPage.goto();
+    await loginPage.login('admin', 'admin');
+    await loginPage.expectLoggedIn();
+
+    // Open same URL in new page (simulates new tab)
+    const newPage = await context.newPage();
+    await newPage.goto('/dashboard', { waitUntil: 'networkidle' });
+
+    // Should be authenticated in new page (cookies shared within context)
+    await expect(newPage).toHaveURL(/dashboard/);
+
+    // Cleanup
+    await newPage.close();
+  });
 });

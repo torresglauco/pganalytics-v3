@@ -38,12 +38,67 @@ export default [
         URLSearchParams: 'readonly',
         localStorage: 'readonly',
         sessionStorage: 'readonly',
-        // Node.js globals for config files
+
+        // Node.js globals for config files and test environment
         process: 'readonly',
         module: 'readonly',
         require: 'readonly',
         __dirname: 'readonly',
         __filename: 'readonly',
+        global: 'readonly',
+
+        // DOM Events
+        Event: 'readonly',
+        MessageEvent: 'readonly',
+        CloseEvent: 'readonly',
+        EventListener: 'readonly',
+        MouseEvent: 'readonly',
+        KeyboardEvent: 'readonly',
+
+        // WebSocket API
+        WebSocket: 'readonly',
+
+        // File/Blob APIs
+        Blob: 'readonly',
+        File: 'readonly',
+        FormData: 'readonly',
+
+        // Fetch API types
+        RequestInit: 'readonly',
+        Request: 'readonly',
+        Response: 'readonly',
+        Headers: 'readonly',
+
+        // DOM Element types (for TypeScript casts)
+        HTMLInputElement: 'readonly',
+        HTMLSelectElement: 'readonly',
+        HTMLTextAreaElement: 'readonly',
+        HTMLFormElement: 'readonly',
+        HTMLElement: 'readonly',
+        Element: 'readonly',
+        EventTarget: 'readonly',
+        HTMLDivElement: 'readonly',
+        HTMLButtonElement: 'readonly',
+        HTMLSpanElement: 'readonly',
+        HTMLHeadingElement: 'readonly',
+        Node: 'readonly',
+
+        // Browser dialogs
+        confirm: 'readonly',
+        prompt: 'readonly',
+        alert: 'readonly',
+
+        // Other common globals
+        AbortController: 'readonly',
+        AbortSignal: 'readonly',
+        ReadableStream: 'readonly',
+        WritableStream: 'readonly',
+
+        // Node.js types
+        NodeJS: 'readonly',
+
+        // React (for JSX)
+        React: 'readonly',
       },
     },
     plugins: {
@@ -78,6 +133,21 @@ export default [
   // Test files configuration
   {
     files: ['**/*.test.{ts,tsx}', '**/*.spec.{ts,tsx}', '**/test/**/*.ts', '**/tests/**/*.ts'],
+    languageOptions: {
+      globals: {
+        // Vitest/Jest test globals
+        describe: 'readonly',
+        it: 'readonly',
+        test: 'readonly',
+        expect: 'readonly',
+        beforeEach: 'readonly',
+        afterEach: 'readonly',
+        beforeAll: 'readonly',
+        afterAll: 'readonly',
+        vi: 'readonly',
+        jest: 'readonly',
+      },
+    },
     rules: {
       '@typescript-eslint/no-explicit-any': 'off',
       'no-console': 'off',

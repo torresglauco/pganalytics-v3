@@ -13,10 +13,10 @@ export { AlertsViewer } from './AlertsViewer';
 export { ConditionBuilder } from './ConditionBuilder';
 export { ConditionPreview } from './ConditionPreview';
 export { EscalationPolicyManager } from './EscalationPolicyManager';
-export { EscalationStepEditor, type EscalationStep } from './EscalationStepEditor';
-export { EscalationTimeline, type TimelineStep } from './EscalationTimeline';
+export { EscalationStepEditor } from './EscalationStepEditor';
+export type { EscalationStep } from './EscalationStepEditor';
+export type { EscalationStep as EscalationStepData } from './EscalationStepEditor';
+export { EscalationTimeline } from './EscalationTimeline';
+export type { TimelineStep } from './EscalationTimeline';
+export type { TimelineStep as TimelineStepData } from './EscalationTimeline';
 export { SilenceManager } from './SilenceManager';
-
-// Type aliases for clarity
-export type { EscalationStep as EscalationStepData };
-export type { TimelineStep as TimelineStepData };

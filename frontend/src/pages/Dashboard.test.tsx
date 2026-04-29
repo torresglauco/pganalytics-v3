@@ -2,6 +2,8 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { screen } from '@testing-library/react'
 import { Dashboard } from './Dashboard'
 import { render } from '../test/utils'
+import type { User } from '../types'
+import { apiClient } from '../services/api'
 
 // Mock the API module
 vi.mock('../services/api', () => ({

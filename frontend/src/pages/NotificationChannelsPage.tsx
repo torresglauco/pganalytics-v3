@@ -168,17 +168,6 @@ export const NotificationChannelsPage: React.FC = () => {
   };
 
   /**
-   * Toggle select all
-   */
-  const toggleSelectAll = () => {
-    if (selectedChannels.size === channels.length) {
-      setSelectedChannels(new Set());
-    } else {
-      setSelectedChannels(new Set(channels.map((c) => c.id)));
-    }
-  };
-
-  /**
    * Get channel icon
    */
   const getChannelIcon = (type: string) => {

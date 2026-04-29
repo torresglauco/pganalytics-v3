@@ -16,7 +16,7 @@ export const PlanTree: React.FC<PlanTreeProps> = ({ plan }) => {
                     {node['Actual Loops'] && ` (loops: ${node['Actual Loops']})`}
                     {node['Total Cost'] && ` [Cost: ${node['Total Cost']}]`}
                 </div>
-                {node['Plans']?.map((child: any, index: number) => renderNode(child, depth + 1))}
+                {node['Plans']?.map((child: any) => renderNode(child, depth + 1))}
             </div>
         );
     };

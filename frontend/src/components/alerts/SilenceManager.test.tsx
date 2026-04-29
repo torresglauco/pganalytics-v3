@@ -180,7 +180,7 @@ describe('SilenceManager', () => {
 
     const user = userEvent.setup()
 
-    const { rerender } = render(
+    render(
       <SilenceManager
         alertRuleId="rule-1"
         alertRuleName="High Error Rate"

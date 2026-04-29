@@ -251,7 +251,6 @@ describe('SignupForm', () => {
 
   it('should handle signup error', async () => {
     const user = userEvent.setup()
-    const signupError = new Error('Username already exists')
 
     vi.mocked(mockOnError).mockImplementation(() => {
       /* noop */

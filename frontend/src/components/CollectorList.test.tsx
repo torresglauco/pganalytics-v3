@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { screen, waitFor } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { CollectorList } from './CollectorList'
 import { useCollectors } from '../hooks/useCollectors'
@@ -205,11 +205,6 @@ describe('CollectorList', () => {
   })
 
   it('should show delete error message', () => {
-    const deleteError = {
-      message: 'Cannot delete collector with active metrics',
-      status_code: 400,
-    }
-
     vi.mocked(useCollectors).mockReturnValue({
       collectors: mockCollectors,
       loading: false,

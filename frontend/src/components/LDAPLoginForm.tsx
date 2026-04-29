@@ -50,11 +50,6 @@ export const LDAPLoginForm: React.FC<LDAPLoginFormProps> = ({
     }
   };
 
-  const _clearErrors = () => {
-    setLocalError(null);
-    clearError();
-  };
-
   const displayError = localError || contextError;
 
   return (

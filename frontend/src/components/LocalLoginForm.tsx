@@ -46,11 +46,6 @@ export const LocalLoginForm: React.FC<LocalLoginFormProps> = ({ onSuccess }) => 
     }
   };
 
-  const _clearErrors = () => {
-    setLocalError(null);
-    clearError();
-  };
-
   const displayError = localError || contextError;
 
   return (

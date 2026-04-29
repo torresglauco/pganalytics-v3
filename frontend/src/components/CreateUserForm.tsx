@@ -1,6 +1,5 @@
 import React, { useState } from 'react'
 import { Eye, EyeOff } from 'lucide-react'
-import { apiClient } from '../services/api'
 
 interface CreateUserFormProps {
   onSuccess: (message: string) => void

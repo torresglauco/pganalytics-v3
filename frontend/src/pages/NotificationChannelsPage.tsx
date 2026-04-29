@@ -17,7 +17,6 @@ import {
 import type { NotificationChannel } from '../types/notifications';
 import {
   listNotificationChannels,
-  deleteNotificationChannel,
   exportChannels,
   importChannels,
   bulkChannelAction,

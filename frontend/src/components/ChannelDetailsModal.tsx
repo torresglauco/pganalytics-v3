@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Trash2, CheckCircle, AlertTriangle, Copy } from 'lucide-react';
+import { X, Trash2, CheckCircle, AlertTriangle } from 'lucide-react';
 import type { NotificationChannel, DeliveryStats } from '../types/notifications';
 import {
   deleteNotificationChannel,
@@ -27,7 +27,6 @@ export const ChannelDetailsModal: React.FC<ChannelDetailsModalProps> = ({
   const [deliveries, setDeliveries] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'details' | 'stats' | 'deliveries'>(
     'details'
   );
@@ -49,7 +48,7 @@ export const ChannelDetailsModal: React.FC<ChannelDetailsModalProps> = ({
       setStats(statsData);
       setDeliveries(deliveryData.deliveries || []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load data');
+      console.error('Failed to load channel data:', err);
     } finally {
       setIsLoading(false);
     }
@@ -67,7 +66,7 @@ export const ChannelDetailsModal: React.FC<ChannelDetailsModalProps> = ({
       );
       onUpdated?.(updated);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update');
+      console.error('Failed to toggle channel:', err);
     } finally {
       setIsLoading(false);
     }
@@ -85,7 +84,7 @@ export const ChannelDetailsModal: React.FC<ChannelDetailsModalProps> = ({
       onDeleted?.(channel.id);
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete');
+      console.error('Failed to delete channel:', err);
     } finally {
       setIsDeleting(false);
     }

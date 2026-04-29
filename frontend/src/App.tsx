@@ -8,7 +8,7 @@ import { AlertsPage } from './pages/AlertsPage'
 import { ChannelsPage } from './pages/ChannelsPage'
 import { CollectorsManagement } from './pages/CollectorsManagement'
 import { SettingsAdmin } from './pages/SettingsAdmin'
-import { NotImplementedPage } from './pages/NotImplementedPage'
+// NotImplementedPage removed - no longer used
 import { QueryPerformancePage } from './pages/QueryPerformance'
 import { LogAnalysisPage } from './pages/LogAnalysisPage'
 import { IndexAdvisorPage } from './pages/IndexAdvisorPage'

@@ -1,6 +1,5 @@
 import React from 'react'
 import { Card, CardHeader, CardTitle } from '../ui/Card'
-import { Badge } from '../ui/Badge'
 
 interface Activity {
   id: string
@@ -12,19 +11,6 @@ interface Activity {
 
 interface ActivityFeedProps {
   activities: Activity[]
-}
-
-const getTypeColor = (type: string) => {
-  switch (type) {
-    case 'error':
-      return 'error'
-    case 'warning':
-      return 'warning'
-    case 'success':
-      return 'success'
-    default:
-      return 'info'
-  }
 }
 
 const getTypeIcon = (type: string) => {

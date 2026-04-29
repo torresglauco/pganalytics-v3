@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Edit2, Trash2, CheckCircle, AlertCircle, Clock } from 'lucide-react';
+import { X, Trash2, CheckCircle, AlertCircle } from 'lucide-react';
 import type { AlertRule } from '../types/alertRules';
 import {
   getAlertRule,

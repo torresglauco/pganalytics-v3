@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import { render, screen, waitFor, act, renderHook } from '@testing-library/react';
+import { waitFor, act, renderHook } from '@testing-library/react';
 import { useQueryPerformance } from '../../hooks/useQueryPerformance';
 import { useLogAnalysis } from '../../hooks/useLogAnalysis';
 
@@ -31,7 +31,7 @@ class MockWebSocket {
     }, 10);
   }
 
-  send(data: string) {
+  send(_data: string) {
     // Mock implementation
   }
 
@@ -149,13 +149,12 @@ describe('Query Performance Integration Tests', () => {
         json: async () => mockData,
       });
 
-      const { rerender, result } = renderHook(
+      const { rerender } = renderHook(
         ({ dbId }: { dbId: string }) => useQueryPerformance(dbId),
         { initialProps: { dbId: '1' } }
       );
 
       expect((global.fetch as any)).toHaveBeenCalled();
-      const firstCallCount = (global.fetch as any).mock.calls.length;
 
       vi.clearAllMocks();
       (global.fetch as any).mockResolvedValue({

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, AlertCircle, CheckCircle, AlertTriangle, Copy, ExternalLink } from 'lucide-react';
+import { X, AlertCircle, CheckCircle, AlertTriangle, ExternalLink } from 'lucide-react';
 import type { AlertIncident, AlertEvent } from '../types/alertDashboard';
 import { getAlertEvents, getRelatedAlerts } from '../api/alertDashboardApi';
 
@@ -22,7 +22,7 @@ export const AlertDetailPanel: React.FC<AlertDetailPanelProps> = ({
   const [activeTab, setActiveTab] = useState<'details' | 'events' | 'related'>(
     'details'
   );
-  const [notesInput, setNotesInput] = useState('');
+  // Notes input state removed - not currently used in UI
 
   useEffect(() => {
     loadAlertData();

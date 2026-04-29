@@ -1,5 +1,5 @@
 import React from 'react';
-import { TrendingUp, TrendingDown, AlertCircle, CheckCircle, Clock } from 'lucide-react';
+import { TrendingDown, AlertCircle, CheckCircle, Clock } from 'lucide-react';
 import type { AlertStats } from '../types/alertDashboard';
 
 interface DashboardMetricsProps {

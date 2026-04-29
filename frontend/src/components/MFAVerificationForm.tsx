@@ -13,9 +13,9 @@ interface MFAVerificationFormProps {
 
 export const MFAVerificationForm: React.FC<MFAVerificationFormProps> = ({
   method,
-  challengeId,
+  challengeId: _challengeId,
   onVerify,
-  onUseBackupCode,
+  onUseBackupCode: _onUseBackupCode,
   isLoading = false,
   error,
 }) => {

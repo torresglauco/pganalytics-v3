@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { ChevronDown, X } from 'lucide-react';
 import type {
   RuleCondition,
   ConditionType,
@@ -17,7 +16,7 @@ interface RuleConditionBuilderProps {
 export const RuleConditionBuilder: React.FC<RuleConditionBuilderProps> = ({
   condition,
   onChange,
-  databaseId,
+  databaseId: _databaseId,
 }) => {
   const [conditionType, setConditionType] = useState<ConditionType>(
     condition?.type || 'threshold'

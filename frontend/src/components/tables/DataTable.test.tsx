@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
-import { DataTable, Column } from './DataTable';
+import { DataTable } from './DataTable';
 
 // Helper to render with router
 const renderWithRouter = (initialRoute: string = '/') => {

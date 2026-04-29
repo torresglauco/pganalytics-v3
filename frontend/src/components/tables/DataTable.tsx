@@ -47,7 +47,7 @@ export const DataTable = <T extends { id: string }>({
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
 
   // Filter data
-  let filteredData = useMemo(() => {
+  const filteredData = useMemo(() => {
     let result = data;
 
     if (searchTerm) {

@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { ApiClient } from './api'
-import type { AuthResponse } from '../types'
 
 describe('ApiClient', () => {
   let client: ApiClient

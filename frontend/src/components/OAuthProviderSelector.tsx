@@ -40,7 +40,7 @@ const providers: Array<{
 
 export const OAuthProviderSelector: React.FC<OAuthProviderSelectorProps> = ({
   onBack,
-  onSuccess,
+  onSuccess: _onSuccess,
 }) => {
   const [selectedProvider, setSelectedProvider] = useState<OAuthProvider | null>(null);
   const [isLoading, setIsLoading] = useState(false);

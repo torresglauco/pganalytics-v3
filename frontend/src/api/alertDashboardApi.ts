@@ -9,7 +9,6 @@ import type {
   AlertStats,
   AlertFilters,
   AlertEvent,
-  AlertAction,
   BulkAlertActionResult,
   CorrelationSuggestion,
   AlertSuggestion,
@@ -315,7 +314,7 @@ export function subscribeToAlertUpdates(
     }
   };
 
-  ws.onerror = (event) => {
+  ws.onerror = (_event) => {
     onError(new Error('WebSocket error'));
   };
 

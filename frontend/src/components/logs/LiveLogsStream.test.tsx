@@ -62,7 +62,7 @@ describe('LiveLogsStream', () => {
     })
 
     it('should display LIVE badge when connected', () => {
-      ;(useRealtime as any).mockReturnValue(mockUseRealtime({ connected: true }))
+      (useRealtime as any).mockReturnValue(mockUseRealtime({ connected: true }))
 
       render(<LiveLogsStream instanceId={1} />)
 

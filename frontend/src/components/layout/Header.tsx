@@ -1,10 +1,8 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import clsx from 'clsx'
 import { useAuthStore } from '../../stores/authStore'
 import { useThemeStore } from '../../stores/themeStore'
 import { useNotificationStore } from '../../stores/notificationStore'
-import { Button } from '../ui/Button'
 
 export const Header: React.FC = () => {
   const navigate = useNavigate()

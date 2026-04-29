@@ -1,7 +1,10 @@
 import React, { useState } from 'react'
 import { Loader, Trash2, RefreshCw, AlertCircle } from 'lucide-react'
 import { useCollectors } from '../hooks/useCollectors'
-import type { ApiError } from '../types'
+
+interface ApiError {
+  message: string
+}
 
 export const CollectorList: React.FC = () => {
   const { collectors, loading, error, pagination, fetchCollectors, deleteCollector } = useCollectors()

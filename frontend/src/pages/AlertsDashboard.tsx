@@ -2,13 +2,10 @@ import React, { useState, useEffect } from 'react';
 import {
   AlertCircle,
   CheckCircle,
-  Clock,
-  TrendingUp,
   Download,
   Search,
   Filter,
   RefreshCw,
-  AlertTriangle,
 } from 'lucide-react';
 import type { AlertIncident, AlertStats, AlertFilters } from '../types/alertDashboard';
 import {

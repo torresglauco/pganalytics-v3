@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Trash2, Plus, X, AlertCircle, CheckCircle, Edit, Zap } from 'lucide-react'
+import { Trash2, Plus, X, CheckCircle, Edit, Zap } from 'lucide-react'
 import { CreateManagedInstanceForm } from './CreateManagedInstanceForm'
 
 interface ManagedInstance {

@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react'
-import { Trash2, Lock, Unlock, Shield, User, AlertCircle, RotateCcw, Copy, CheckCircle, Plus, X } from 'lucide-react'
+import { Trash2, Lock, Unlock, Shield, RotateCcw, Copy, CheckCircle, Plus, X } from 'lucide-react'
 import { CreateUserForm } from './CreateUserForm'
-import { apiClient } from '../services/api'
 
-interface User {
+interface UserData {
   id: number
   username: string
   email: string
@@ -19,7 +18,7 @@ interface UserManagementTableProps {
 }
 
 export const UserManagementTable: React.FC<UserManagementTableProps> = ({ onSuccess, onError }) => {
-  const [users, setUsers] = useState<User[]>([])
+  const [users, setUsers] = useState<UserData[]>([])
   const [loading, setLoading] = useState(true)
   const [deleting, setDeleting] = useState<number | null>(null)
   const [togglingStatus, setTogglingStatus] = useState<number | null>(null)
@@ -55,12 +54,8 @@ export const UserManagementTable: React.FC<UserManagementTableProps> = ({ onSucc
     }
   }
 
-  const isDefaultAdmin = (user: User): boolean => {
+  const isDefaultAdmin = (user: UserData): boolean => {
     return user.username === 'admin'
-  }
-
-  const canModifyUser = (user: User): boolean => {
-    return !isDefaultAdmin(user)
   }
 
   const deleteUser = async (userId: number, username: string) => {

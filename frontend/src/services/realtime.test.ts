@@ -8,7 +8,7 @@ class MockWebSocket {
   send = vi.fn()
   close = vi.fn()
   addEventListener = vi.fn((event: string, handler: EventListener) => {
-    ;(this as any)[`_on${event}`] = handler
+    (this as any)[`_on${event}`] = handler
   })
   removeEventListener = vi.fn()
 
@@ -20,19 +20,19 @@ class MockWebSocket {
   triggerOpen() {
     this.readyState = WebSocket.OPEN
     if ((this as any)._onopen) {
-      ;(this as any)._onopen(new Event('open'))
+      (this as any)._onopen(new Event('open'))
     }
   }
 
   triggerError() {
     if ((this as any)._onerror) {
-      ;(this as any)._onerror(new Event('error'))
+      (this as any)._onerror(new Event('error'))
     }
   }
 
   triggerMessage(data: string) {
     if ((this as any)._onmessage) {
-      ;(this as any)._onmessage(new MessageEvent('message', { data }))
+      (this as any)._onmessage(new MessageEvent('message', { data }))
     }
   }
 }

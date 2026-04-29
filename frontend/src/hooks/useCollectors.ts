@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react'
 import { apiClient } from '../services/api'
-import type { Collector, PaginatedResponse, ApiError } from '../types'
+import type { Collector, ApiError } from '../types'
 
 export interface CreateCollectorData {
   name: string

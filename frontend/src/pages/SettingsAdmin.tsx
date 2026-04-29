@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import {
   Plus,
@@ -33,20 +33,6 @@ interface ApiToken {
   expires_at: Date | null;
 }
 
-interface NotificationChannel {
-  id: string;
-  type: 'email' | 'slack' | 'pagerduty' | 'webhook';
-  name: string;
-  config: {
-    email?: string;
-    webhook_url?: string;
-    slack_channel?: string;
-    pagerduty_key?: string;
-  };
-  enabled: boolean;
-  test_status?: 'pending' | 'success' | 'failed';
-}
-
 export const SettingsAdmin: React.FC = () => {
   const location = useLocation();
   const [activeTab, setActiveTab] = useState<'users' | 'tokens' | 'notifications'>('users');
@@ -76,10 +62,10 @@ export const SettingsAdmin: React.FC = () => {
   const { users, loading, error, fetchUsers, createUser, deleteUser, resetPassword } = useUsers();
 
   // Use the useApiTokens hook
-  const { data: tokens, loading: tokensLoading, error: tokensError, fetchTokens, createToken, deleteToken } = useApiTokens();
+  const { data: tokens, loading: tokensLoading, fetchTokens, createToken, deleteToken } = useApiTokens();
 
   // Use the useChannels hook
-  const { data: channels, loading: channelsLoading, error: channelsError, fetchChannels, createChannel, deleteChannel, testChannel } = useChannels();
+  const { data: channels, loading: channelsLoading, createChannel, deleteChannel, testChannel } = useChannels();
 
   const [newUser, setNewUser] = useState({
     email: '',

@@ -11,7 +11,7 @@ interface MFASetupWizardProps {
 
 export const MFASetupWizard: React.FC<MFASetupWizardProps> = ({
   onComplete,
-  onCancel,
+  onCancel: _onCancel,
   method,
 }) => {
   const [step, setStep] = useState<'setup' | 'verify' | 'complete'>('setup');

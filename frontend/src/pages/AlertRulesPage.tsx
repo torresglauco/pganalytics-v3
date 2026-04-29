@@ -13,7 +13,7 @@ interface AlertRulesPageProps {
 
 export const AlertRulesPage: React.FC<AlertRulesPageProps> = ({
   databaseId,
-  onClose,
+  onClose: _onClose,
 }) => {
   const [rules, setRules] = useState<AlertRule[]>([]);
   const [isLoading, setIsLoading] = useState(true);

@@ -16,19 +16,6 @@ interface CollectorStatusTableProps {
   isLoading?: boolean
 }
 
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case 'OK':
-      return 'success'
-    case 'SLOW':
-      return 'warning'
-    case 'DOWN':
-      return 'error'
-    default:
-      return 'default'
-  }
-}
-
 const getStatusIcon = (status: string) => {
   switch (status) {
     case 'OK':
@@ -42,9 +29,21 @@ const getStatusIcon = (status: string) => {
   }
 }
 
+const getStatusColor = (status: string) => {
+  switch (status) {
+    case 'OK':
+      return 'success'
+    case 'SLOW':
+      return 'warning'
+    case 'DOWN':
+      return 'error'
+    default:
+      return 'default'
+  }
+}
+
 export const CollectorStatusTable: React.FC<CollectorStatusTableProps> = ({
   collectors,
-  isLoading = false,
 }) => {
   return (
     <Card>

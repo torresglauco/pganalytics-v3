@@ -2,13 +2,6 @@ import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useVacuumAdvisor } from '../hooks/useVacuumAdvisor';
 import { MainLayout } from '../components/layout/MainLayout';
-import {
-  VacuumRecommendation,
-  AutovacuumConfig,
-  AutovacuumTuningSuggestion,
-  VacuumFilter,
-  VacuumSort,
-} from '../types/vacuumAdvisor';
 
 export const VacuumAdvisorPage: React.FC = () => {
   const { databaseId } = useParams<{ databaseId: string }>();

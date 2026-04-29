@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
-import { AlertCircle, ChevronDown, Plus, X } from 'lucide-react';
+import { AlertCircle, X } from 'lucide-react';
 import type {
   CreateRuleRequest,
   RuleCondition,
-  ConditionType,
   AlertRule,
 } from '../types/alertRules';
-import { createAlertRule, validateAlertRule, testAlertRule } from '../api/alertRulesApi';
+import { createAlertRule, validateAlertRule } from '../api/alertRulesApi';
 import RuleConditionBuilder from './RuleConditionBuilder';
 import RuleTestModal from './RuleTestModal';
 
@@ -24,7 +23,7 @@ export const AlertRuleForm: React.FC<AlertRuleFormProps> = ({
   databaseId,
   initialRule,
   onCreated,
-  onUpdated,
+  onUpdated: _onUpdated,
   onCancel,
 }) => {
   // Form state
@@ -36,7 +35,7 @@ export const AlertRuleForm: React.FC<AlertRuleFormProps> = ({
   const [condition, setCondition] = useState<RuleCondition | null>(
     initialRule?.condition || null
   );
-  const [notificationChannels, setNotificationChannels] = useState<string[]>([]);
+  // Notification channels state removed - will be implemented when notification configuration is added
   const [currentStep, setCurrentStep] = useState<FormStep>('basic');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

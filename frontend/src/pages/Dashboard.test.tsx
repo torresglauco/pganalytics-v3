@@ -1,9 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { screen } from '@testing-library/react'
 import { Dashboard } from './Dashboard'
-import { apiClient } from '../services/api'
 import { render } from '../test/utils'
-import type { User } from '../types'
 
 // Mock the API module
 vi.mock('../services/api', () => ({
@@ -100,7 +98,7 @@ describe('Dashboard', () => {
 
   describe('Admin features visibility', () => {
     it('should show only Manage Collectors tab for regular users', () => {
-      ;(apiClient.getCurrentUser as ReturnType<typeof vi.fn>).mockReturnValue(regularUser)
+      (apiClient.getCurrentUser as ReturnType<typeof vi.fn>).mockReturnValue(regularUser)
 
       render(<Dashboard onLogout={mockOnLogout} />)
 
@@ -113,7 +111,7 @@ describe('Dashboard', () => {
     })
 
     it('should show all tabs for admin users', () => {
-      ;(apiClient.getCurrentUser as ReturnType<typeof vi.fn>).mockReturnValue(adminUser)
+      (apiClient.getCurrentUser as ReturnType<typeof vi.fn>).mockReturnValue(adminUser)
 
       render(<Dashboard onLogout={mockOnLogout} />)
 
@@ -124,7 +122,7 @@ describe('Dashboard', () => {
     })
 
     it('should not render ManagedInstancesTable for regular users', () => {
-      ;(apiClient.getCurrentUser as ReturnType<typeof vi.fn>).mockReturnValue(regularUser)
+      (apiClient.getCurrentUser as ReturnType<typeof vi.fn>).mockReturnValue(regularUser)
 
       render(<Dashboard onLogout={mockOnLogout} />)
 
@@ -132,7 +130,7 @@ describe('Dashboard', () => {
     })
 
     it('should not render RegistrationSecretsManager for regular users', () => {
-      ;(apiClient.getCurrentUser as ReturnType<typeof vi.fn>).mockReturnValue(regularUser)
+      (apiClient.getCurrentUser as ReturnType<typeof vi.fn>).mockReturnValue(regularUser)
 
       render(<Dashboard onLogout={mockOnLogout} />)
 
@@ -142,7 +140,7 @@ describe('Dashboard', () => {
 
   describe('Error handling', () => {
     it('should handle null user gracefully', () => {
-      ;(apiClient.getCurrentUser as ReturnType<typeof vi.fn>).mockReturnValue(null)
+      (apiClient.getCurrentUser as ReturnType<typeof vi.fn>).mockReturnValue(null)
 
       // Dashboard should still render without crashing
       render(<Dashboard onLogout={mockOnLogout} />)
@@ -151,7 +149,7 @@ describe('Dashboard', () => {
     })
 
     it('should treat null user as non-admin', () => {
-      ;(apiClient.getCurrentUser as ReturnType<typeof vi.fn>).mockReturnValue(null)
+      (apiClient.getCurrentUser as ReturnType<typeof vi.fn>).mockReturnValue(null)
 
       render(<Dashboard onLogout={mockOnLogout} />)
 

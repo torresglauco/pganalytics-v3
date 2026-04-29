@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { HealthScore } from '../types/metrics';
-import { calculateOverallHealth } from '../utils/healthCalculations';
 
 interface HealthScoreState {
   data: HealthScore | null;

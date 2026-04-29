@@ -1,6 +1,5 @@
 import React from 'react'
 import { useLogAnalysis } from '../../hooks/useLogAnalysis'
-import { LogEntry } from '../../types/logAnalysis'
 
 export const LogStream: React.FC<{ databaseId: string }> = ({ databaseId }) => {
   const { logs, connected, error } = useLogAnalysis(databaseId)

@@ -14,7 +14,7 @@ describe('RealtimeStatus', () => {
 
   describe('connection status display', () => {
     it('should render Live status when connected', () => {
-      ;(useRealtime as any).mockReturnValue({ connected: true })
+      (useRealtime as any).mockReturnValue({ connected: true })
 
       render(<RealtimeStatus />)
 
@@ -22,7 +22,7 @@ describe('RealtimeStatus', () => {
     })
 
     it('should render Polling status when disconnected', () => {
-      ;(useRealtime as any).mockReturnValue({ connected: false })
+      (useRealtime as any).mockReturnValue({ connected: false })
 
       render(<RealtimeStatus />)
 
@@ -32,7 +32,7 @@ describe('RealtimeStatus', () => {
 
   describe('visual indicators', () => {
     it('should display green dot when connected', () => {
-      ;(useRealtime as any).mockReturnValue({ connected: true })
+      (useRealtime as any).mockReturnValue({ connected: true })
 
       const { container } = render(<RealtimeStatus />)
 
@@ -44,7 +44,7 @@ describe('RealtimeStatus', () => {
     })
 
     it('should display yellow dot when disconnected', () => {
-      ;(useRealtime as any).mockReturnValue({ connected: false })
+      (useRealtime as any).mockReturnValue({ connected: false })
 
       const { container } = render(<RealtimeStatus />)
 
@@ -56,7 +56,7 @@ describe('RealtimeStatus', () => {
 
   describe('styling', () => {
     it('should have correct text color when connected', () => {
-      ;(useRealtime as any).mockReturnValue({ connected: true })
+      (useRealtime as any).mockReturnValue({ connected: true })
 
       render(<RealtimeStatus />)
 
@@ -66,7 +66,7 @@ describe('RealtimeStatus', () => {
     })
 
     it('should have correct text color when disconnected', () => {
-      ;(useRealtime as any).mockReturnValue({ connected: false })
+      (useRealtime as any).mockReturnValue({ connected: false })
 
       render(<RealtimeStatus />)
 
@@ -76,7 +76,7 @@ describe('RealtimeStatus', () => {
     })
 
     it('should be small and compact in size', () => {
-      ;(useRealtime as any).mockReturnValue({ connected: true })
+      (useRealtime as any).mockReturnValue({ connected: true })
 
       render(<RealtimeStatus />)
 
@@ -86,7 +86,7 @@ describe('RealtimeStatus', () => {
     })
 
     it('should have small dot indicator', () => {
-      ;(useRealtime as any).mockReturnValue({ connected: true })
+      (useRealtime as any).mockReturnValue({ connected: true })
 
       const { container } = render(<RealtimeStatus />)
 
@@ -98,7 +98,7 @@ describe('RealtimeStatus', () => {
 
   describe('animation', () => {
     it('should animate pulse when connected', () => {
-      ;(useRealtime as any).mockReturnValue({ connected: true })
+      (useRealtime as any).mockReturnValue({ connected: true })
 
       const { container } = render(<RealtimeStatus />)
 
@@ -108,7 +108,7 @@ describe('RealtimeStatus', () => {
     })
 
     it('should not animate when disconnected', () => {
-      ;(useRealtime as any).mockReturnValue({ connected: false })
+      (useRealtime as any).mockReturnValue({ connected: false })
 
       const { container } = render(<RealtimeStatus />)
 
@@ -120,7 +120,7 @@ describe('RealtimeStatus', () => {
 
   describe('dark mode support', () => {
     it('should have dark mode text color for connected state', () => {
-      ;(useRealtime as any).mockReturnValue({ connected: true })
+      (useRealtime as any).mockReturnValue({ connected: true })
 
       render(<RealtimeStatus />)
 
@@ -129,7 +129,7 @@ describe('RealtimeStatus', () => {
     })
 
     it('should have dark mode text color for disconnected state', () => {
-      ;(useRealtime as any).mockReturnValue({ connected: false })
+      (useRealtime as any).mockReturnValue({ connected: false })
 
       render(<RealtimeStatus />)
 
@@ -140,7 +140,7 @@ describe('RealtimeStatus', () => {
 
   describe('component structure', () => {
     it('should have flex layout with gap', () => {
-      ;(useRealtime as any).mockReturnValue({ connected: true })
+      (useRealtime as any).mockReturnValue({ connected: true })
 
       const { container } = render(<RealtimeStatus />)
 
@@ -150,7 +150,7 @@ describe('RealtimeStatus', () => {
     })
 
     it('should display dot before text', () => {
-      ;(useRealtime as any).mockReturnValue({ connected: true })
+      (useRealtime as any).mockReturnValue({ connected: true })
 
       const { container } = render(<RealtimeStatus />)
 
@@ -164,7 +164,7 @@ describe('RealtimeStatus', () => {
 
   describe('status transitions', () => {
     it('should update when connection status changes', () => {
-      ;(useRealtime as any).mockReturnValue({ connected: false })
+      (useRealtime as any).mockReturnValue({ connected: false })
       const { rerender } = render(<RealtimeStatus />)
 
       expect(screen.getByText('Polling')).toBeInTheDocument()
@@ -176,7 +176,7 @@ describe('RealtimeStatus', () => {
     })
 
     it('should change from Live to Polling', () => {
-      ;(useRealtime as any).mockReturnValue({ connected: true })
+      (useRealtime as any).mockReturnValue({ connected: true })
       const { rerender } = render(<RealtimeStatus />)
 
       expect(screen.getByText('Live')).toBeInTheDocument()
@@ -190,7 +190,7 @@ describe('RealtimeStatus', () => {
 
   describe('integration', () => {
     it('should work without additional props', () => {
-      ;(useRealtime as any).mockReturnValue({ connected: true })
+      (useRealtime as any).mockReturnValue({ connected: true })
 
       render(<RealtimeStatus />)
 
@@ -198,7 +198,7 @@ describe('RealtimeStatus', () => {
     })
 
     it('should render successfully with useRealtime hook', () => {
-      ;(useRealtime as any).mockReturnValue({
+      (useRealtime as any).mockReturnValue({
         connected: true,
         lastUpdate: '2024-03-13T12:00:00Z',
         error: null,
@@ -214,7 +214,7 @@ describe('RealtimeStatus', () => {
 
   describe('timestamp display', () => {
     it('should not display timestamp by default', () => {
-      ;(useRealtime as any).mockReturnValue({
+      (useRealtime as any).mockReturnValue({
         connected: true,
         lastUpdate: '2024-03-13T12:00:00Z',
       })
@@ -226,7 +226,7 @@ describe('RealtimeStatus', () => {
     })
 
     it('should display timestamp when showTimestamp prop is true', () => {
-      ;(useRealtime as any).mockReturnValue({
+      (useRealtime as any).mockReturnValue({
         connected: true,
         lastUpdate: '2024-03-13T12:00:00Z',
       })
@@ -238,7 +238,7 @@ describe('RealtimeStatus', () => {
     })
 
     it('should not display timestamp when lastUpdate is null', () => {
-      ;(useRealtime as any).mockReturnValue({
+      (useRealtime as any).mockReturnValue({
         connected: true,
         lastUpdate: null,
       })
@@ -250,7 +250,7 @@ describe('RealtimeStatus', () => {
     })
 
     it('should display timestamp with correct styling', () => {
-      ;(useRealtime as any).mockReturnValue({
+      (useRealtime as any).mockReturnValue({
         connected: true,
         lastUpdate: '2024-03-13T12:00:00Z',
       })
@@ -265,7 +265,7 @@ describe('RealtimeStatus', () => {
     })
 
     it('should display timestamp with dark mode support', () => {
-      ;(useRealtime as any).mockReturnValue({
+      (useRealtime as any).mockReturnValue({
         connected: true,
         lastUpdate: '2024-03-13T12:00:00Z',
       })
@@ -279,7 +279,7 @@ describe('RealtimeStatus', () => {
     })
 
     it('should work with disconnected state and timestamp', () => {
-      ;(useRealtime as any).mockReturnValue({
+      (useRealtime as any).mockReturnValue({
         connected: false,
         lastUpdate: '2024-03-13T12:00:00Z',
       })

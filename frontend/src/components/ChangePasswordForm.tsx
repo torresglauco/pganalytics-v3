@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { AlertCircle, CheckCircle, Lock } from 'lucide-react'
+import { AlertCircle, Lock } from 'lucide-react'
 
 interface ChangePasswordFormProps {
   onSuccess: (message: string) => void

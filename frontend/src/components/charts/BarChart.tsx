@@ -8,7 +8,6 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-  Cell,
 } from 'recharts';
 
 export interface BarChartDataPoint {
@@ -48,8 +47,8 @@ export const BarChart: React.FC<BarChartProps> = ({
   showGrid = true,
   showLegend = true,
   showTooltip = true,
-  xAxisLabel,
-  yAxisLabel,
+  xAxisLabel: _xAxisLabel,
+  yAxisLabel: _yAxisLabel,
   colors = ['#06b6d4', '#10b981', '#f59e0b', '#f43f5e'],
 }) => {
   // Use provided colors or cycle through default colors

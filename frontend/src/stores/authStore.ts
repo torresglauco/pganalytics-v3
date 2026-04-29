@@ -30,7 +30,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   error: null,
 
   setUser: (user) => set({ user }),
-  setToken: (token) => {
+  setToken: (_token) => {
     // WHY: Token is stored in httpOnly cookie by backend.
     // We set an empty string to indicate "logged in" without
     // storing the actual token, which is in the secure cookie.

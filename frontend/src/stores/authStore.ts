@@ -20,8 +20,10 @@ interface AuthState {
 
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
-  // ❌ REMOVED: localStorage.getItem('auth_token')
-  // ✅ NEW: Token is now in httpOnly cookie, not in localStorage
+  // WHY: Token is stored in httpOnly cookie by backend for security.
+  // httpOnly cookies cannot be accessed by JavaScript, preventing XSS
+  // token theft. The frontend only tracks authentication state, not
+  // the token itself. Backend validates the cookie on each request.
   token: null,
   isAuthenticated: false,
   isLoading: false,
@@ -29,17 +31,18 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   setUser: (user) => set({ user }),
   setToken: (token) => {
-    // ❌ REMOVED: localStorage.setItem('auth_token', token)
-    // ✅ NEW: Token is stored in httpOnly cookie by backend
-    // Frontend only tracks that user is authenticated
+    // WHY: Token is stored in httpOnly cookie by backend.
+    // We set an empty string to indicate "logged in" without
+    // storing the actual token, which is in the secure cookie.
     set({ token: '', isAuthenticated: true })
   },
   setAuthenticated: (isAuthenticated) => set({ isAuthenticated }),
   setLoading: (isLoading) => set({ isLoading }),
   setError: (error) => set({ error }),
   logout: () => {
-    // ❌ REMOVED: localStorage.removeItem('auth_token')
-    // ✅ NEW: Backend clears httpOnly cookie on logout
+    // WHY: We clear frontend state, but the httpOnly cookie is cleared
+    // by the backend's /auth/logout endpoint. This ensures the cookie
+    // is properly invalidated on the server side.
     set({
       user: null,
       token: null,

@@ -55,7 +55,9 @@ export function useCollectors() {
   const createCollector = useCallback(async (data: CreateCollectorData) => {
     try {
       setError(null)
-      // Transform frontend form data to API format
+      // WHY: Transform frontend form data to API format.
+      // The form uses 'host' and 'name' fields, but the API expects
+      // 'hostname' and 'description'. We set defaults for required fields.
       const payload = {
         hostname: data.host,
         environment: 'production',
@@ -63,7 +65,8 @@ export function useCollectors() {
         description: data.name,
       }
       const response = await apiClient.registerCollector(payload, 'sk_default_secret')
-      // Refetch collectors after successful creation
+      // WHY: Refetch after creation to get the server-generated ID and
+      // ensure UI is in sync with backend state.
       await fetchCollectors()
       return response
     } catch (err) {
@@ -77,6 +80,9 @@ export function useCollectors() {
     try {
       setError(null)
       await apiClient.deleteCollector(id)
+      // WHY: We use local state filtering instead of refetching after delete
+      // to provide immediate UI feedback and reduce API calls. If the delete
+      // fails, the error is thrown and the UI can handle it appropriately.
       setCollectors((prev) => prev.filter((c) => c.id !== id))
     } catch (err) {
       const apiError = err as ApiError

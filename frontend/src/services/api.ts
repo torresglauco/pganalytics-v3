@@ -20,11 +20,17 @@ export class ApiClient {
       headers: {
         'Content-Type': 'application/json',
       },
-      // ✅ NEW: Enable sending cookies with requests (httpOnly auth_token)
+      // WHY: Enable sending/receiving cookies with cross-origin requests.
+      // Required for httpOnly auth_token cookie to be sent automatically
+      // by the browser on every request.
       withCredentials: true,
     })
 
-    // ✅ UPDATED: Add request interceptor for CSRF token (not auth token)
+    // WHY: We use double-submit cookie pattern for CSRF protection.
+    // The backend sets a csrf_token cookie, and we include it in the X-CSRF-Token
+    // header for state-changing requests (POST, PUT, DELETE, PATCH).
+    // This prevents CSRF attacks because malicious sites cannot read
+    // the cookie value due to same-origin policy.
     this.client.interceptors.request.use((config) => {
       // Get CSRF token from cookie and add to request headers
       const csrfToken = this.getCsrfTokenFromCookie()
@@ -32,9 +38,9 @@ export class ApiClient {
         config.headers['X-CSRF-Token'] = csrfToken
       }
 
-      // ❌ REMOVED: No longer read from localStorage
-      // The auth_token is now sent automatically via cookies (withCredentials: true)
-
+      // WHY: The auth_token is stored in httpOnly cookie by backend.
+      // httpOnly cookies cannot be accessed by JavaScript, preventing XSS
+      // token theft. The cookie is sent automatically via withCredentials: true.
       return config
     })
 
@@ -52,7 +58,9 @@ export class ApiClient {
     )
   }
 
-  // ✅ NEW: Helper to get CSRF token from cookie
+  // WHY: CSRF token is read from cookies for double-submit pattern.
+  // Unlike the auth_token (httpOnly), the csrf_token is readable by JS
+  // so we can extract it and send it in the request header.
   private getCsrfTokenFromCookie(): string | null {
     const name = 'csrf_token='
     const decodedCookie = decodeURIComponent(document.cookie)
@@ -67,7 +75,9 @@ export class ApiClient {
     return null
   }
 
-  // ✅ NEW: Check if request method needs CSRF protection
+  // WHY: CSRF protection is only needed for state-changing operations.
+  // GET, HEAD, and OPTIONS are idempotent and don't modify server state,
+  // so they don't need CSRF tokens. This follows OWASP recommendations.
   private isMethodThatNeedsCsrf(method?: string): boolean {
     if (!method) return false
     const method_lower = method.toLowerCase()

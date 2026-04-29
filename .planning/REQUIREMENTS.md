@@ -38,15 +38,15 @@ Requirements for Testing & Validation milestone. Focuses on comprehensive test c
 - [x] **QUAL-02**: TypeScript code passes ESLint with strict config
 - [x] **QUAL-03**: No hardcoded credentials, secrets, or sensitive data in codebase
 - [x] **QUAL-04**: Code comments explain "why" not "what" for complex logic
-- [ ] **QUAL-05**: Test coverage reports generated and tracked (target 80%+)
-- [ ] **QUAL-06**: Unused imports, variables, and functions removed
+- [x] **QUAL-05**: Test coverage reports generated and tracked (target 80%+)
+- [x] **QUAL-06**: Unused imports, variables, and functions removed
 
 ### Testing Infrastructure
 
-- [ ] **TEST-17**: Test suite runs in CI/CD pipeline automatically
+- [x] **TEST-17**: Test suite runs in CI/CD pipeline automatically
 - [ ] **TEST-18**: Test failures block deployment (pipeline gates)
-- [ ] **TEST-19**: Coverage reports published after each test run
-- [ ] **TEST-20**: Test execution time documented (identify slow tests)
+- [x] **TEST-19**: Coverage reports published after each test run
+- [x] **TEST-20**: Test execution time documented (identify slow tests)
 - [x] **TEST-21**: Mock/stub libraries configured for external dependencies
 
 ## v2 Requirements
@@ -99,12 +99,12 @@ Deferred to future release. Tracked but not in current roadmap.
 | QUAL-02 | Phase 4 | Complete |
 | QUAL-03 | Phase 2 | Complete |
 | QUAL-04 | Phase 4 | Complete |
-| QUAL-05 | Phase 5 | Pending |
-| QUAL-06 | Phase 5 | Pending |
-| TEST-17 | Phase 5 | Pending |
+| QUAL-05 | Phase 5 | Complete |
+| QUAL-06 | Phase 5 | Complete |
+| TEST-17 | Phase 5 | Complete |
 | TEST-18 | Phase 5 | Pending |
-| TEST-19 | Phase 5 | Pending |
-| TEST-20 | Phase 5 | Pending |
+| TEST-19 | Phase 5 | Complete |
+| TEST-20 | Phase 5 | Complete |
 | TEST-21 | Phase 2 | Complete |
 
 **Coverage:**

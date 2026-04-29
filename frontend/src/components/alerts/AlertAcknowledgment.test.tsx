@@ -140,7 +140,7 @@ describe('AlertAcknowledgment', () => {
     })
 
     const user = userEvent.setup()
-    const { rerender } = render(<AlertAcknowledgment alertId="alert-1" isAcknowledged={false} />)
+    render(<AlertAcknowledgment alertId="alert-1" isAcknowledged={false} />)
 
     const button = screen.getByRole('button', { name: /Acknowledge/i })
     await user.click(button)

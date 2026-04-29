@@ -19,7 +19,7 @@ export const LDAPLoginForm: React.FC<LDAPLoginFormProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
 
-  const { loginLDAP, error: contextError, clearError } = useAuth();
+  const { loginLDAP, error: contextError } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

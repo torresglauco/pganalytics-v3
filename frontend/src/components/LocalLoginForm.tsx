@@ -15,7 +15,7 @@ export const LocalLoginForm: React.FC<LocalLoginFormProps> = ({ onSuccess }) => 
   const [isLoading, setIsLoading] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
 
-  const { loginLocal, error: contextError, clearError } = useAuth();
+  const { loginLocal, error: contextError } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

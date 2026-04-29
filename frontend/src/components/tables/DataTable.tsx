@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { ChevronUp, ChevronDown, Search } from 'lucide-react';
 
 export interface Column<T> {
@@ -30,9 +31,19 @@ export const DataTable = <T extends { id: string }>({
   title,
   emptyMessage = 'No data found',
 }: DataTableProps<T>) => {
-  const [sortKey, setSortKey] = useState<keyof T | null>(null);
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
-  const [searchTerm, setSearchTerm] = useState('');
+  // URL state synchronization for persistent filters/sort across navigation
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Sort key from URL or null
+  const sortKey = (searchParams.get('sort') as keyof T) || null;
+
+  // Sort order from URL or default 'asc'
+  const sortOrder = (searchParams.get('order') as 'asc' | 'desc') || 'asc';
+
+  // Search term from URL or empty string
+  const searchTerm = searchParams.get('search') || '';
+
+  // selectedRows stays as useState (not URL-backed, transient selection)
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
 
   // Filter data
@@ -66,12 +77,19 @@ export const DataTable = <T extends { id: string }>({
   }, [filteredData, sortKey, sortOrder]);
 
   const toggleSort = (key: keyof T) => {
+    const newParams = new URLSearchParams(searchParams);
+
     if (sortKey === key) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+      // Toggle order if same column
+      const newOrder = sortOrder === 'asc' ? 'desc' : 'asc';
+      newParams.set('order', newOrder);
     } else {
-      setSortKey(key);
-      setSortOrder('asc');
+      // New column, set sort and default to asc
+      newParams.set('sort', String(key));
+      newParams.set('order', 'asc');
     }
+
+    setSearchParams(newParams, { replace: true });
   };
 
   const toggleAllRows = () => {
@@ -114,7 +132,16 @@ export const DataTable = <T extends { id: string }>({
             type="text"
             placeholder="Search..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => {
+              const value = e.target.value;
+              const newParams = new URLSearchParams(searchParams);
+              if (value) {
+                newParams.set('search', value);
+              } else {
+                newParams.delete('search');
+              }
+              setSearchParams(newParams, { replace: true });
+            }}
             className="w-full pl-10 pr-4 py-2 border border-pg-slate/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-pg-cyan"
           />
         </div>

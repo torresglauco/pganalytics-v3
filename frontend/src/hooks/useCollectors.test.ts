@@ -175,4 +175,94 @@ describe('useCollectors', () => {
       totalPages: 2,
     })
   })
+
+  it('should handle network error gracefully', async () => {
+    vi.mocked(apiClient.listCollectors).mockRejectedValue(new Error('Network Error'))
+
+    const { result } = renderHook(() => useCollectors())
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false)
+    })
+
+    expect(result.current.error).toBeTruthy()
+    expect(result.current.error?.message).toBe('Network Error')
+    expect(result.current.collectors).toEqual([])
+  })
+
+  it('should handle 401 unauthorized error', async () => {
+    const authError = {
+      message: 'Unauthorized',
+      status_code: 401,
+    }
+
+    vi.mocked(apiClient.listCollectors).mockRejectedValue(authError)
+
+    const { result } = renderHook(() => useCollectors())
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false)
+    })
+
+    expect(result.current.error).toEqual(authError)
+    expect(result.current.error?.status_code).toBe(401)
+    expect(result.current.collectors).toEqual([])
+  })
+
+  it('should handle 403 forbidden error', async () => {
+    const forbiddenError = {
+      message: 'Access denied',
+      status_code: 403,
+    }
+
+    vi.mocked(apiClient.listCollectors).mockRejectedValue(forbiddenError)
+
+    const { result } = renderHook(() => useCollectors())
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false)
+    })
+
+    expect(result.current.error).toEqual(forbiddenError)
+    expect(result.current.error?.status_code).toBe(403)
+    expect(result.current.collectors).toEqual([])
+  })
+
+  it('should handle 404 not found error', async () => {
+    const notFoundError = {
+      message: 'Resource not found',
+      status_code: 404,
+    }
+
+    vi.mocked(apiClient.listCollectors).mockRejectedValue(notFoundError)
+
+    const { result } = renderHook(() => useCollectors())
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false)
+    })
+
+    expect(result.current.error).toEqual(notFoundError)
+    expect(result.current.error?.status_code).toBe(404)
+    expect(result.current.collectors).toEqual([])
+  })
+
+  it('should handle 400 bad request error', async () => {
+    const badRequestError = {
+      message: 'Invalid request parameters',
+      status_code: 400,
+    }
+
+    vi.mocked(apiClient.listCollectors).mockRejectedValue(badRequestError)
+
+    const { result } = renderHook(() => useCollectors())
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false)
+    })
+
+    expect(result.current.error).toEqual(badRequestError)
+    expect(result.current.error?.status_code).toBe(400)
+    expect(result.current.collectors).toEqual([])
+  })
 })

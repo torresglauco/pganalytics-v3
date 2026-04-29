@@ -14,12 +14,13 @@ linters:
     - govet         # Report suspicious constructs
     - ineffassign   # Detect unused assignments
     - misspell      # Find misspelled words
+    - unused        # Detect unused constants, variables, functions, types
 
   # Disable linters with pre-existing issues (document for follow-up)
   # See: 02-01-SUMMARY.md for list of issues to address in future phases
+  # Note: 'unused' linter is now ENABLED - 17 unused items must be cleaned up
   disable:
     - staticcheck   # 19 style/deprecation warnings
-    - unused        # 17 unused field/function warnings (placeholder implementations)
     - errcheck      # Pre-existing unchecked errors
     - bodyclose     # Pre-existing body close issues
     - gosec         # Security audit needed
@@ -42,4 +43,4 @@ formatters:
 # - S1024: use time.Until instead of Sub
 # - S1000: simple channel send/receive
 # - ST1023: omit type in declaration
-# - 17 unused fields/functions in placeholder implementations
+# - UNUSED: 17 unused fields/functions detected by unused linter (NOW ENFORCED IN CI)

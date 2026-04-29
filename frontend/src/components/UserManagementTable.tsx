@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Trash2, Lock, Unlock, Shield, RotateCcw, Copy, CheckCircle, Plus, X } from 'lucide-react'
+import { Trash2, Lock, Unlock, Shield, RotateCcw, Copy, CheckCircle, Plus, X, User } from 'lucide-react'
 import { CreateUserForm } from './CreateUserForm'
 
 interface UserData {
@@ -86,7 +86,7 @@ export const UserManagementTable: React.FC<UserManagementTableProps> = ({ onSucc
     }
   }
 
-  const toggleUserStatus = async (user: User) => {
+  const toggleUserStatus = async (user: UserData) => {
     setTogglingStatus(user.id)
     try {
       const response = await fetch(`/api/v1/users/${user.id}`, {

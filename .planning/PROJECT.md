@@ -32,9 +32,16 @@ Enable database teams to proactively identify and fix performance issues before 
 
 ---
 
-## Next Milestone: v1.2 (Planned)
+## Current Milestone: v1.2 Performance Optimization
 
-**Focus:** TBD - To be defined in `/gsd:new-milestone`
+**Goal:** Accelerate query/API response times for dashboard, query analysis, and index advisor operations.
+
+**Target Features:**
+- Query optimization through indexing and execution plan improvements
+- API response time reduction for slow endpoints
+- Database connection pooling and caching strategies
+- Performance monitoring and bottleneck identification
+- Optimization of common dashboard aggregations and time-series queries
 
 ## Requirements
 
@@ -81,4 +88,16 @@ Enable database teams to proactively identify and fix performance issues before 
 
 ---
 
-*Last updated: 2026-04-28 after Phase 1 completion - starting Milestone v1.1*
+---
+
+## Key Decisions
+
+| Decision | Rationale | Outcome |
+|----------|-----------|---------|
+| Performance optimization without feature loss | Keep all existing functionality, just make it faster | — In Progress |
+| Focus on user-reported slow operations | Priority: dashboard, query analysis, index advisor | — In Progress |
+| Measure success by operational speed | Not a specific %, just visibly faster than current state | — In Progress |
+
+---
+
+*Last updated: 2026-04-30 after v1.1 completion - starting Milestone v1.2*

@@ -277,6 +277,12 @@ func (s *Server) RegisterRoutes(router *gin.Engine) {
 	router.GET("/api/v1/health", s.handleHealth)
 	router.GET("/version", s.handleVersion)
 
+	// System routes (no auth required for monitoring)
+	system := router.Group("/api/v1/system")
+	{
+		system.GET("/pool-metrics", s.handleGetPoolMetrics)
+	}
+
 	// WebSocket route (JWT auth required, handled in handler)
 	router.GET("/api/v1/ws", s.handleWebSocket)
 

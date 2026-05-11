@@ -85,6 +85,26 @@ func (s *Server) handleVersion(c *gin.Context) {
 	})
 }
 
+// @Summary Get Pool Metrics
+// @Description Get connection pool statistics for monitoring
+// @Tags System
+// @Produce json
+// @Success 200 {object} gin.H
+// @Router /api/v1/system/pool-metrics [get]
+func (s *Server) handleGetPoolMetrics(c *gin.Context) {
+	poolMetrics := gin.H{}
+
+	if s.postgres != nil {
+		poolMetrics["postgres"] = s.postgres.GetAllPoolMetrics()
+	}
+
+	if s.timescale != nil {
+		poolMetrics["timescale"] = s.timescale.GetPoolMetrics()
+	}
+
+	c.JSON(http.StatusOK, poolMetrics)
+}
+
 // ============================================================================
 // AUTHENTICATION ENDPOINTS
 // ============================================================================

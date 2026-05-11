@@ -88,12 +88,13 @@ Plans:
   3. System uses pgx v5 connection pooling for all database operations
   4. User can monitor connection pool status showing open, idle, and in-use connections
   5. User can profile application performance on-demand via pprof endpoints
-**Plans**: 3 plans
+**Plans**: 4 plans
 
 Plans:
-- [ ] 06-01: Migrate from lib/pq to pgx v5 with connection pooling
+- [ ] 06-01: Migrate from lib/pq to pgx v5 with connection pooling and read-only pool
 - [ ] 06-02: Implement slow query identification and timeline
-- [ ] 06-03: Add performance monitoring and profiling endpoints
+- [ ] 06-03: Enable pprof and Prometheus histograms
+- [ ] 06-04: Add metrics middleware and API endpoints
 
 ### Phase 07: Caching Infrastructure
 **Goal**: Users experience faster API responses through intelligent caching
@@ -145,7 +146,7 @@ Phases execute in numeric order: 06 → 07 → 08 → 09
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 06. Query Optimization Foundation | v1.2 | 0/3 | Not started | - |
+| 06. Query Optimization Foundation | v1.2 | 0/4 | Not started | - |
 | 07. Caching Infrastructure | v1.2 | 0/2 | Not started | - |
 | 08. Dashboard Optimization | v1.2 | 0/2 | Not started | - |
 | 09. Index Intelligence | v1.2 | 0/2 | Not started | - |

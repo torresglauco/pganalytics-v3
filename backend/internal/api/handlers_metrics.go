@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/torresglauco/pganalytics-v3/backend/internal/metrics"
 	apperrors "github.com/torresglauco/pganalytics-v3/backend/pkg/errors"
 	"github.com/torresglauco/pganalytics-v3/backend/pkg/models"
 )
@@ -422,4 +423,84 @@ func (s *Server) handleGetErrorTrend(c *gin.Context) {
 func (s *Server) handleGetLogDistribution(c *gin.Context) {
 	// Return mock log distribution data for frontend
 	c.JSON(http.StatusOK, []gin.H{})
+}
+
+// ============================================================================
+// QUERY PERFORMANCE METRICS ENDPOINTS
+// ============================================================================
+
+// handleGetQueryStats returns query performance statistics
+// GET /api/v1/metrics/query-stats
+func (s *Server) handleGetQueryStats(c *gin.Context) {
+	stats := metrics.GetGlobalQueryStats()
+
+	c.JSON(http.StatusOK, gin.H{
+		"count":           stats.Count,
+		"min_duration":    stats.MinDuration.String(),
+		"max_duration":    stats.MaxDuration.String(),
+		"avg_duration":    stats.AvgDuration.String(),
+		"p50":             stats.P50.String(),
+		"p95":             stats.P95.String(),
+		"p99":             stats.P99.String(),
+		"min_duration_ms": stats.MinDuration.Milliseconds(),
+		"max_duration_ms": stats.MaxDuration.Milliseconds(),
+		"avg_duration_ms": stats.AvgDuration.Milliseconds(),
+		"p50_ms":          stats.P50.Milliseconds(),
+		"p95_ms":          stats.P95.Milliseconds(),
+		"p99_ms":          stats.P99.Milliseconds(),
+	})
+}
+
+// handleGetHistogramBuckets returns histogram bucket configuration
+// GET /api/v1/metrics/histogram-buckets
+func (s *Server) handleGetHistogramBuckets(c *gin.Context) {
+	buckets := metrics.HistogramBuckets()
+	labels := metrics.PercentileLabels()
+
+	bucketInfo := make([]gin.H, len(buckets))
+	for i, b := range buckets {
+		bucketInfo[i] = gin.H{
+			"seconds": b,
+			"label":   labels[b],
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"buckets":     bucketInfo,
+		"description": "Histogram buckets capture latency from 1ms to 10s",
+	})
+}
+
+// handleGetMetricsSummary returns a combined metrics summary
+// GET /api/v1/metrics/summary
+func (s *Server) handleGetMetricsSummary(c *gin.Context) {
+	queryStats := metrics.GetGlobalQueryStats()
+	poolMetrics := gin.H{}
+
+	if s.postgres != nil {
+		poolMetrics["postgres"] = s.postgres.GetAllPoolMetrics()
+	}
+	if s.timescale != nil {
+		poolMetrics["timescale"] = s.timescale.GetPoolMetrics()
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"query_stats": gin.H{
+			"count":           queryStats.Count,
+			"min_duration":    queryStats.MinDuration.String(),
+			"max_duration":    queryStats.MaxDuration.String(),
+			"avg_duration":    queryStats.AvgDuration.String(),
+			"p50":             queryStats.P50.String(),
+			"p95":             queryStats.P95.String(),
+			"p99":             queryStats.P99.String(),
+			"min_duration_ms": queryStats.MinDuration.Milliseconds(),
+			"max_duration_ms": queryStats.MaxDuration.Milliseconds(),
+			"avg_duration_ms": queryStats.AvgDuration.Milliseconds(),
+			"p50_ms":          queryStats.P50.Milliseconds(),
+			"p95_ms":          queryStats.P95.Milliseconds(),
+			"p99_ms":          queryStats.P99.Milliseconds(),
+		},
+		"pool_metrics": poolMetrics,
+		"timestamp":    time.Now().UTC().Format(time.RFC3339),
+	})
 }

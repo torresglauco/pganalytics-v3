@@ -384,6 +384,10 @@ func (s *Server) RegisterRoutes(router *gin.Engine) {
 			metrics.GET("", s.AuthMiddleware(), s.handleGetMetrics)
 			metrics.GET("/error-trend", s.AuthMiddleware(), s.handleGetErrorTrend)
 			metrics.GET("/log-distribution", s.AuthMiddleware(), s.handleGetLogDistribution)
+			// Query performance metrics (for monitoring)
+			metrics.GET("/query-stats", s.handleGetQueryStats)
+			metrics.GET("/histogram-buckets", s.handleGetHistogramBuckets)
+			metrics.GET("/summary", s.handleGetMetricsSummary)
 		}
 
 		// Log Ingest routes

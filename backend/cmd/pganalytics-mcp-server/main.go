@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 
-	_ "github.com/lib/pq"
+	_ "github.com/jackc/pgx/v5/stdlib" // pgx driver for database/sql
 	"github.com/torresglauco/pganalytics-v3/backend/internal/mcp/handlers"
 	"github.com/torresglauco/pganalytics-v3/backend/internal/mcp/server"
 	"github.com/torresglauco/pganalytics-v3/backend/internal/mcp/transport"
@@ -24,8 +24,8 @@ func main() {
 		dbURL = "postgres://localhost/pganalytics"
 	}
 
-	// Connect to database
-	db, err := sql.Open("postgres", dbURL)
+	// Connect to database using pgx driver
+	db, err := sql.Open("pgx", dbURL)
 	if err != nil {
 		log.Printf("Warning: Could not connect to database: %v", err)
 		// Continue without DB - will use mock data

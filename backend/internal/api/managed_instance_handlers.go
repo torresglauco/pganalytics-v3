@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	_ "github.com/lib/pq"
 	apperrors "github.com/torresglauco/pganalytics-v3/backend/pkg/errors"
 	"github.com/torresglauco/pganalytics-v3/backend/pkg/models"
 	"go.uber.org/zap"

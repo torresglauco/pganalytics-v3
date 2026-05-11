@@ -16,6 +16,8 @@ vendor/
 *.test
 *.out
 coverage.html
+pganalytics-api
+pganalytics-mcp-server
 
 # IDE
 .vscode/

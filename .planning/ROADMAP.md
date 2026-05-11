@@ -91,7 +91,7 @@ Plans:
 **Plans**: 4 plans
 
 Plans:
-- [ ] 06-01: Migrate from lib/pq to pgx v5 with connection pooling and read-only pool
+- [x] 06-01: Migrate from lib/pq to pgx v5 with connection pooling and read-only pool
 - [ ] 06-02: Implement slow query identification and timeline
 - [ ] 06-03: Enable pprof and Prometheus histograms
 - [ ] 06-04: Add metrics middleware and API endpoints
@@ -146,7 +146,7 @@ Phases execute in numeric order: 06 → 07 → 08 → 09
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 06. Query Optimization Foundation | v1.2 | 0/4 | Not started | - |
+| 06. Query Optimization Foundation | v1.2 | 1/4 | In Progress | 2026-05-11 |
 | 07. Caching Infrastructure | v1.2 | 0/2 | Not started | - |
 | 08. Dashboard Optimization | v1.2 | 0/2 | Not started | - |
 | 09. Index Intelligence | v1.2 | 0/2 | Not started | - |

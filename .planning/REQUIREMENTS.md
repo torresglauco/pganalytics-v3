@@ -27,9 +27,9 @@ Requirements for Performance Optimization milestone. Each maps to roadmap phases
 ### API Performance
 
 - [ ] **API-01**: User experiences faster API responses through response caching
-- [ ] **API-02**: System uses pgx v5 connection pooling for 2-3x query performance
-- [ ] **API-03**: Dashboard queries use dedicated read-only connection pool
-- [ ] **API-04**: User can monitor connection pool metrics (open, idle, in-use connections)
+- [x] **API-02**: System uses pgx v5 connection pooling for 2-3x query performance
+- [x] **API-03**: Dashboard queries use dedicated read-only connection pool
+- [x] **API-04**: User can monitor connection pool metrics (open, idle, in-use connections)
 
 ### Dashboard Optimization
 
@@ -156,9 +156,9 @@ Explicitly excluded. Documented to prevent scope creep.
 | IDX-03 | Phase 09 | Pending |
 | IDX-04 | Phase 09 | Pending |
 | API-01 | Phase 07 | Pending |
-| API-02 | Phase 06 | Pending |
-| API-03 | Phase 06 | Pending |
-| API-04 | Phase 06 | Pending |
+| API-02 | Phase 06 | Complete |
+| API-03 | Phase 06 | Complete |
+| API-04 | Phase 06 | Complete |
 | DASH-01 | Phase 08 | Pending |
 | DASH-02 | Phase 08 | Pending |
 | DASH-03 | Phase 08 | Pending |

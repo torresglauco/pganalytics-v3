@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"net/http"
+	_ "net/http/pprof" // Enable pprof endpoints at /debug/pprof/*
 	"os"
 	"os/signal"
 	"syscall"

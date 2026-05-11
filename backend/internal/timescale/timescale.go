@@ -7,41 +7,62 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5/stdlib"
 	_ "github.com/lib/pq"
+	"github.com/torresglauco/pganalytics-v3/backend/internal/storage"
 	apperrors "github.com/torresglauco/pganalytics-v3/backend/pkg/errors"
 )
 
-// TimescaleDB wraps a TimescaleDB connection for time-series metrics
+// TimescaleDB wraps a TimescaleDB connection for time-series metrics with pgxpool
 type TimescaleDB struct {
-	db *sql.DB
+	pool *pgxpool.Pool
+	db   *sql.DB // sql.DB wrapper for compatibility with existing code
 }
 
-// NewTimescaleDB creates a new TimescaleDB connection
+// NewTimescaleDB creates a new TimescaleDB connection with pgxpool
 func NewTimescaleDB(connString string) (*TimescaleDB, error) {
-	db, err := sql.Open("postgres", connString)
-	if err != nil {
-		return nil, apperrors.DatabaseError("open timescale connection", err.Error())
-	}
-
-	// Test the connection
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	if err := db.PingContext(ctx); err != nil {
+	// Parse connection config for pgxpool
+	config, err := pgxpool.ParseConfig(connString)
+	if err != nil {
+		return nil, apperrors.DatabaseError("parse timescale config", err.Error())
+	}
+
+	// TimescaleDB gets smaller pool (metrics time-series)
+	config.MaxConns = 25
+	config.MinConns = 5
+	config.MaxConnLifetime = 5 * time.Minute
+	config.MaxConnIdleTime = 5 * time.Minute
+
+	// Create the connection pool
+	pool, err := pgxpool.NewWithConfig(ctx, config)
+	if err != nil {
+		return nil, apperrors.DatabaseError("create timescale pool", err.Error())
+	}
+
+	// Test the connection
+	if err := pool.Ping(ctx); err != nil {
 		return nil, apperrors.DatabaseError("ping timescale", err.Error())
 	}
 
-	// Configure connection pool
-	db.SetMaxOpenConns(25)
-	db.SetMaxIdleConns(5)
-	db.SetConnMaxLifetime(5 * time.Minute)
+	// Create sql.DB wrapper for compatibility with existing code using database/sql
+	db := stdlib.OpenDBFromPool(pool)
 
-	return &TimescaleDB{db: db}, nil
+	return &TimescaleDB{pool: pool, db: db}, nil
 }
 
 // Close closes the database connection
 func (t *TimescaleDB) Close() error {
-	return t.db.Close()
+	if t.db != nil {
+		_ = t.db.Close()
+	}
+	if t.pool != nil {
+		t.pool.Close()
+	}
+	return nil
 }
 
 // Health checks the TimescaleDB health
@@ -50,6 +71,22 @@ func (t *TimescaleDB) Health(ctx context.Context) bool {
 	defer cancel()
 
 	return t.db.PingContext(ctx) == nil
+}
+
+// GetPoolMetrics returns connection pool statistics
+func (t *TimescaleDB) GetPoolMetrics() storage.PoolMetrics {
+	if t.pool == nil {
+		return storage.PoolMetrics{}
+	}
+	stat := t.pool.Stat()
+	return storage.PoolMetrics{
+		OpenConns:    stat.TotalConns(),
+		IdleConns:    stat.IdleConns(),
+		InUseConns:   stat.AcquiredConns(),
+		MaxOpenConns: stat.MaxConns(),
+		WaitCount:    stat.EmptyAcquireCount(),
+		WaitDuration: stat.AcquireDuration().Milliseconds(),
+	}
 }
 
 // ============================================================================

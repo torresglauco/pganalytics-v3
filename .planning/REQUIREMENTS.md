@@ -1,9 +1,53 @@
-# Requirements: pganalytics-v3 v1.1
+# Requirements: pganalytics-v3
 
-**Defined:** 2026-04-28
+**Defined:** 2026-04-28 (v1.1), 2026-05-11 (v1.2)
 **Core Value:** Enable database teams to proactively identify and fix performance issues before they impact production systems.
 
-## v1.1 Requirements
+---
+
+## v1.2 Requirements (Performance Optimization)
+
+Requirements for Performance Optimization milestone. Each maps to roadmap phases.
+
+### Query Optimization
+
+- [ ] **QRY-01**: User can view top N slow queries by mean_time from pg_stat_statements
+- [ ] **QRY-02**: User can see query performance timeline with historical trends
+- [ ] **QRY-03**: User receives automated detection of query plan anti-patterns (Seq Scan, nested loops)
+- [ ] **QRY-04**: User can view grouped similar queries with different parameters (fingerprinting)
+- [ ] **QRY-05**: User can view query execution statistics (calls, total_time, rows, mean_time)
+
+### Index Intelligence
+
+- [ ] **IDX-01**: User can view index usage statistics from pg_stat_user_indexes
+- [ ] **IDX-02**: User can see unused indexes that may be candidates for removal
+- [ ] **IDX-03**: User receives index impact estimation before creating new indexes
+- [ ] **IDX-04**: User can view recommended indexes with estimated benefit scores
+
+### API Performance
+
+- [ ] **API-01**: User experiences faster API responses through response caching
+- [ ] **API-02**: System uses pgx v5 connection pooling for 2-3x query performance
+- [ ] **API-03**: Dashboard queries use dedicated read-only connection pool
+- [ ] **API-04**: User can monitor connection pool metrics (open, idle, in-use connections)
+
+### Dashboard Optimization
+
+- [ ] **DASH-01**: User sees instant dashboard loads through pre-computed aggregations
+- [ ] **DASH-02**: System uses TimescaleDB continuous aggregates for time-series queries
+- [ ] **DASH-03**: User can view historical metrics without full table scans
+- [ ] **DASH-04**: Background worker pre-computes dashboard metrics on schedule
+
+### Performance Monitoring
+
+- [ ] **MON-01**: User can access pprof endpoints for on-demand performance profiling
+- [ ] **MON-02**: User can view Prometheus metrics for API response time histograms
+- [ ] **MON-03**: User can monitor query duration percentiles (P50, P95, P99)
+- [ ] **MON-04**: User can view cache hit/miss rates for performance tuning
+
+---
+
+## v1.1 Requirements (Testing & Validation) ✓ Complete
 
 Requirements for Testing & Validation milestone. Focuses on comprehensive test coverage and code quality.
 
@@ -49,9 +93,23 @@ Requirements for Testing & Validation milestone. Focuses on comprehensive test c
 - [x] **TEST-20**: Test execution time documented (identify slow tests)
 - [x] **TEST-21**: Mock/stub libraries configured for external dependencies
 
+---
+
 ## v2 Requirements
 
 Deferred to future release. Tracked but not in current roadmap.
+
+### Real-Time Features
+
+- **REAL-01**: User receives real-time dashboard metrics via WebSocket
+- **REAL-02**: User sees live query execution updates
+- **REAL-03**: User receives instant alert notifications in browser
+
+### Advanced Optimization
+
+- **ADV-01**: System automatically creates recommended indexes (with user approval)
+- **ADV-02**: System rewrites queries for better performance
+- **ADV-03**: User receives query optimization suggestions with auto-apply option
 
 ### Performance Testing
 
@@ -61,21 +119,61 @@ Deferred to future release. Tracked but not in current roadmap.
 
 ### Advanced Testing
 
-- **ADV-01**: Chaos engineering tests (failure injection)
-- **ADV-02**: Security penetration testing
-- **ADV-03**: Accessibility testing (WCAG compliance)
+- **ADV-TEST-01**: Chaos engineering tests (failure injection)
+- **ADV-TEST-02**: Security penetration testing
+- **ADV-TEST-03**: Accessibility testing (WCAG compliance)
+
+---
 
 ## Out of Scope
 
+Explicitly excluded. Documented to prevent scope creep.
+
 | Feature | Reason |
 |---------|--------|
-| New features or UI enhancements | Focus is on stability, not feature expansion |
-| End-to-end test automation (full user flows) | Requires completed features; covered in feature phases |
-| Performance optimization | Separate phase after testing validates baseline |
-| Logging and monitoring improvements | Addressed in DevOps/infrastructure phase |
+| Automatic index creation | Risk of breaking production, require user approval workflow not in scope |
+| Query rewriting | Error-prone, may change query semantics, requires domain expert review |
+| Real-time dashboard metrics | Requires WebSocket infrastructure, high complexity, defer to v2 |
+| Redis mandatory integration | Single-instance deployments don't need distributed cache, keep optional |
+| Multi-tenant performance isolation | Not a current deployment scenario, revisit if needed |
 | Mobile app testing | Mobile app not in scope for v1 |
 
+---
+
 ## Traceability
+
+### v1.2 Requirements (Performance Optimization)
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| QRY-01 | Phase 06 | Pending |
+| QRY-02 | Phase 06 | Pending |
+| QRY-03 | Phase 09 | Pending |
+| QRY-04 | Phase 09 | Pending |
+| QRY-05 | Phase 06 | Pending |
+| IDX-01 | Phase 06 | Pending |
+| IDX-02 | Phase 09 | Pending |
+| IDX-03 | Phase 09 | Pending |
+| IDX-04 | Phase 09 | Pending |
+| API-01 | Phase 07 | Pending |
+| API-02 | Phase 06 | Pending |
+| API-03 | Phase 06 | Pending |
+| API-04 | Phase 06 | Pending |
+| DASH-01 | Phase 08 | Pending |
+| DASH-02 | Phase 08 | Pending |
+| DASH-03 | Phase 08 | Pending |
+| DASH-04 | Phase 08 | Pending |
+| MON-01 | Phase 06 | Pending |
+| MON-02 | Phase 06 | Pending |
+| MON-03 | Phase 06 | Pending |
+| MON-04 | Phase 07 | Pending |
+
+**v1.2 Coverage:**
+- v1.2 requirements: 21 total
+- Mapped to phases: 21
+- Unmapped: 0 ✓
+
+### v1.1 Requirements (Testing & Validation)
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
@@ -107,12 +205,12 @@ Deferred to future release. Tracked but not in current roadmap.
 | TEST-20 | Phase 5 | Complete |
 | TEST-21 | Phase 2 | Complete |
 
-**Coverage:**
+**v1.1 Coverage:**
 - v1.1 requirements: 27 total
 - Mapped to phases: 27
 - Unmapped: 0 ✓
 
 ---
 
-*Requirements defined: 2026-04-28*
-*Last updated: 2026-04-28 after ROADMAP.md creation - corrected requirement count*
+*Requirements defined: 2026-04-28 (v1.1), 2026-05-11 (v1.2)*
+*Last updated: 2026-05-11 after v1.2 milestone definition*

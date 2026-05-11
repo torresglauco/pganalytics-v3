@@ -469,7 +469,14 @@ func (s *Server) RegisterRoutes(router *gin.Engine) {
 		// Query timeline routes
 		timeline := api.Group("/queries")
 		{
-			timeline.GET("/:query_hash/timeline", s.AuthMiddleware(), s.handleGetQueryTimeline)
+			timeline.GET("/:query_hash/timeline", s.AuthMiddleware(), s.handleGetDatabaseQueryTimeline)
+		}
+
+		// Database query performance routes
+		databases := api.Group("/databases")
+		{
+			databases.GET("/:id/slow-queries", s.AuthMiddleware(), s.handleGetDatabaseSlowQueries)
+			databases.GET("/:id/index-stats", s.AuthMiddleware(), s.handleGetDatabaseIndexStats)
 		}
 
 		// ========================================================================

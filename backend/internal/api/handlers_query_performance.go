@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/torresglauco/pganalytics-v3/backend/internal/services/query_performance"
+	"github.com/torresglauco/pganalytics-v3/backend/internal/storage"
 	"go.uber.org/zap"
 )
 
@@ -100,4 +102,128 @@ func (s *Server) handleGetDatabaseQueryPerformance(c *gin.Context) {
 		"queries":  []interface{}{},
 		"timeline": []interface{}{},
 	})
+}
+
+// handleGetSlowQueries returns top slow queries for a database
+// GET /api/v1/databases/:id/slow-queries?limit=20
+func (s *Server) handleGetDatabaseSlowQueries(c *gin.Context) {
+	databaseIDStr := c.Param("id")
+	databaseID, err := strconv.Atoi(databaseIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid database ID"})
+		return
+	}
+
+	limitStr := c.DefaultQuery("limit", "20")
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil || limit < 1 {
+		limit = 20
+	}
+	if limit > 100 {
+		limit = 100
+	}
+
+	// Check if postgres database is available
+	if s.postgres == nil {
+		s.logger.Error("PostgreSQL database not initialized")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database not available"})
+		return
+	}
+
+	service := query_performance.NewService(
+		storage.NewQueryPerformanceStore(s.postgres),
+		s.logger,
+	)
+
+	response, err := service.GetSlowQueries(c.Request.Context(), databaseID, limit)
+	if err != nil {
+		s.logger.Error("Failed to get slow queries",
+			zap.Error(err),
+			zap.Int("database_id", databaseID),
+		)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve slow queries"})
+		return
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
+// handleGetDatabaseQueryTimeline returns historical performance for a query
+// GET /api/v1/queries/:hash/timeline?hours=24
+func (s *Server) handleGetDatabaseQueryTimeline(c *gin.Context) {
+	queryHash := c.Param("hash")
+	if queryHash == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Query hash required"})
+		return
+	}
+
+	hoursStr := c.DefaultQuery("hours", "24")
+	hours, err := strconv.Atoi(hoursStr)
+	if err != nil || hours < 1 {
+		hours = 24
+	}
+
+	// Check if postgres database is available
+	if s.postgres == nil {
+		s.logger.Error("PostgreSQL database not initialized")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database not available"})
+		return
+	}
+
+	service := query_performance.NewService(
+		storage.NewQueryPerformanceStore(s.postgres),
+		s.logger,
+	)
+
+	response, err := service.GetQueryTimeline(c.Request.Context(), queryHash, hours)
+	if err != nil {
+		s.logger.Error("Failed to get query timeline",
+			zap.Error(err),
+			zap.String("query_hash", queryHash),
+		)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve query timeline"})
+		return
+	}
+
+	if len(response.DataPoints) == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "No timeline data found for this query"})
+		return
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
+// handleGetDatabaseIndexStats returns index usage statistics for a database
+// GET /api/v1/databases/:id/index-stats
+func (s *Server) handleGetDatabaseIndexStats(c *gin.Context) {
+	databaseIDStr := c.Param("id")
+	databaseID, err := strconv.Atoi(databaseIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid database ID"})
+		return
+	}
+
+	// Check if postgres database is available
+	if s.postgres == nil {
+		s.logger.Error("PostgreSQL database not initialized")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database not available"})
+		return
+	}
+
+	service := query_performance.NewService(
+		storage.NewQueryPerformanceStore(s.postgres),
+		s.logger,
+	)
+
+	response, err := service.GetIndexStats(c.Request.Context(), databaseID)
+	if err != nil {
+		s.logger.Error("Failed to get index stats",
+			zap.Error(err),
+			zap.Int("database_id", databaseID),
+		)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve index statistics"})
+		return
+	}
+
+	c.JSON(http.StatusOK, response)
 }

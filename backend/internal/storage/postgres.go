@@ -20,8 +20,9 @@ import (
 
 // PostgresDB wraps a PostgreSQL database connection with pgxpool
 type PostgresDB struct {
-	pool *pgxpool.Pool
-	db   *sql.DB // sql.DB wrapper for compatibility with existing code
+	pool         *pgxpool.Pool
+	readOnlyPool *ReadOnlyPool // Dedicated read-only pool for dashboard queries
+	db           *sql.DB       // sql.DB wrapper for compatibility with existing code
 }
 
 // NewPostgresDB creates a new PostgreSQL database connection with pgxpool
@@ -100,7 +101,14 @@ func NewPostgresDB(connString string) (*PostgresDB, error) {
 		fmt.Fprintf(os.Stderr, "Warning: Migration execution encountered error (may be non-critical): %v\n", err)
 	}
 
-	return &PostgresDB{pool: pool, db: db}, nil
+	// Create read-only pool for dashboard queries
+	readOnlyPool, err := NewReadOnlyPool(connString)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: Failed to create read-only pool: %v\n", err)
+		// Continue without read-only pool - not fatal
+	}
+
+	return &PostgresDB{pool: pool, readOnlyPool: readOnlyPool, db: db}, nil
 }
 
 // runMigrations executes pending database migrations
@@ -123,6 +131,9 @@ func (p *PostgresDB) Close() error {
 	}
 	if p.pool != nil {
 		p.pool.Close()
+	}
+	if p.readOnlyPool != nil {
+		_ = p.readOnlyPool.Close()
 	}
 	return nil
 }
@@ -155,6 +166,22 @@ func (p *PostgresDB) GetPoolMetrics() PoolMetrics {
 		WaitCount:    stat.EmptyAcquireCount(),
 		WaitDuration: stat.AcquireDuration().Milliseconds(),
 	}
+}
+
+// GetReadOnlyPool returns the read-only pool for dashboard queries
+func (p *PostgresDB) GetReadOnlyPool() *ReadOnlyPool {
+	return p.readOnlyPool
+}
+
+// GetAllPoolMetrics returns metrics for both primary and read-only pools
+func (p *PostgresDB) GetAllPoolMetrics() map[string]PoolMetrics {
+	metrics := map[string]PoolMetrics{
+		"primary": p.GetPoolMetrics(),
+	}
+	if p.readOnlyPool != nil {
+		metrics["read_only"] = p.readOnlyPool.GetPoolMetrics()
+	}
+	return metrics
 }
 
 // ExecContext executes a SQL statement and returns the result

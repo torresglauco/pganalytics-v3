@@ -10,50 +10,51 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/lib/pq"
 	apperrors "github.com/torresglauco/pganalytics-v3/backend/pkg/errors"
 	"github.com/torresglauco/pganalytics-v3/backend/pkg/models"
 	"go.uber.org/zap"
 )
 
-// PostgresDB wraps a PostgreSQL database connection
+// PostgresDB wraps a PostgreSQL database connection with pgxpool
 type PostgresDB struct {
-	db *sql.DB
+	pool *pgxpool.Pool
+	db   *sql.DB // sql.DB wrapper for compatibility with existing code
 }
 
-// NewPostgresDB creates a new PostgreSQL database connection
+// NewPostgresDB creates a new PostgreSQL database connection with pgxpool
 func NewPostgresDB(connString string) (*PostgresDB, error) {
-	db, err := sql.Open("postgres", connString)
-	if err != nil {
-		return nil, apperrors.DatabaseError("open connection", err.Error())
-	}
-
-	// Test the connection
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	if err := db.PingContext(ctx); err != nil {
-		return nil, apperrors.DatabaseError("ping database", err.Error())
+	// Parse connection config for pgxpool
+	config, err := pgxpool.ParseConfig(connString)
+	if err != nil {
+		return nil, apperrors.DatabaseError("parse config", err.Error())
 	}
 
 	// Configure connection pool (Phase 4 scalability - optimized for 500+ collectors)
 	// Reading from environment variables set by Helm/config
 
 	// Max open connections (from config, default: 100 for 500+ collectors)
-	maxConns := 100
+	maxConns := int32(100)
 	if maxConnsEnv := os.Getenv("MAX_DATABASE_CONNS"); maxConnsEnv != "" {
-		if m, err := strconv.Atoi(maxConnsEnv); err == nil && m > 0 {
-			maxConns = m
+		if m, err := strconv.ParseInt(maxConnsEnv, 10, 32); err == nil && m > 0 {
+			maxConns = int32(m)
 		}
 	}
+	config.MaxConns = maxConns
 
-	// Max idle connections (from config, default: 20 for better resource usage)
-	maxIdle := 20
+	// Min connections (equivalent to max idle in lib/pq, default: 20)
+	minConns := int32(20)
 	if maxIdleEnv := os.Getenv("MAX_IDLE_DATABASE_CONNS"); maxIdleEnv != "" {
-		if m, err := strconv.Atoi(maxIdleEnv); err == nil && m > 0 {
-			maxIdle = m
+		if m, err := strconv.ParseInt(maxIdleEnv, 10, 32); err == nil && m > 0 {
+			minConns = int32(m)
 		}
 	}
+	config.MinConns = minConns
 
 	// Connection max lifetime (from config, default: 15 minutes to prevent stale connections)
 	connMaxLifetime := 15 * time.Minute
@@ -62,6 +63,7 @@ func NewPostgresDB(connString string) (*PostgresDB, error) {
 			connMaxLifetime = d
 		}
 	}
+	config.MaxConnLifetime = connMaxLifetime
 
 	// Connection max idle time (from config, default: 10 minutes)
 	connMaxIdleTime := 10 * time.Minute
@@ -70,11 +72,21 @@ func NewPostgresDB(connString string) (*PostgresDB, error) {
 			connMaxIdleTime = d
 		}
 	}
+	config.MaxConnIdleTime = connMaxIdleTime
 
-	db.SetMaxOpenConns(maxConns)
-	db.SetMaxIdleConns(maxIdle)
-	db.SetConnMaxLifetime(connMaxLifetime)
-	db.SetConnMaxIdleTime(connMaxIdleTime)
+	// Create the connection pool
+	pool, err := pgxpool.NewWithConfig(ctx, config)
+	if err != nil {
+		return nil, apperrors.DatabaseError("create pool", err.Error())
+	}
+
+	// Test the connection
+	if err := pool.Ping(ctx); err != nil {
+		return nil, apperrors.DatabaseError("ping database", err.Error())
+	}
+
+	// Create sql.DB wrapper for compatibility with existing code using database/sql
+	db := stdlib.OpenDBFromPool(pool)
 
 	// Set search_path to include pganalytics schema
 	if _, err := db.ExecContext(ctx, "SET search_path TO pganalytics, public"); err != nil {
@@ -88,7 +100,7 @@ func NewPostgresDB(connString string) (*PostgresDB, error) {
 		fmt.Fprintf(os.Stderr, "Warning: Migration execution encountered error (may be non-critical): %v\n", err)
 	}
 
-	return &PostgresDB{db: db}, nil
+	return &PostgresDB{pool: pool, db: db}, nil
 }
 
 // runMigrations executes pending database migrations
@@ -106,7 +118,13 @@ func runMigrations(ctx context.Context, db *sql.DB) error {
 
 // Close closes the database connection
 func (p *PostgresDB) Close() error {
-	return p.db.Close()
+	if p.db != nil {
+		_ = p.db.Close()
+	}
+	if p.pool != nil {
+		p.pool.Close()
+	}
+	return nil
 }
 
 // GetDB returns the underlying sql.DB connection
@@ -121,6 +139,22 @@ func (p *PostgresDB) Health(ctx context.Context) bool {
 	defer cancel()
 
 	return p.db.PingContext(ctx) == nil
+}
+
+// GetPoolMetrics returns connection pool statistics
+func (p *PostgresDB) GetPoolMetrics() PoolMetrics {
+	if p.pool == nil {
+		return PoolMetrics{}
+	}
+	stat := p.pool.Stat()
+	return PoolMetrics{
+		OpenConns:    stat.TotalConns(),
+		IdleConns:    stat.IdleConns(),
+		InUseConns:   stat.AcquiredConns(),
+		MaxOpenConns: stat.MaxConns(),
+		WaitCount:    stat.EmptyAcquireCount(),
+		WaitDuration: stat.AcquireDuration().Milliseconds(),
+	}
 }
 
 // ExecContext executes a SQL statement and returns the result

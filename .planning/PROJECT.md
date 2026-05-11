@@ -49,55 +49,51 @@ Enable database teams to proactively identify and fix performance issues before 
 
 - ✓ Security fixes and hardened authentication (v1.0)
 - ✓ E2E test infrastructure (v1.0)
-- ✓ Integration test suites (v1.1 - Phase 2, 3, 4)
-- ✓ Database transaction and query validation (v1.1 - Phase 3)
-- ✓ Frontend component and integration tests (v1.1 - Phase 4)
-- ✓ Code quality improvements (v1.1 - Phase 2, 4)
-- ✓ CI/CD validation pipeline (v1.1 - Phase 5)
-- ✓ Multi-version PostgreSQL support (prior)
-- ✓ Core dashboard and monitoring features (prior)
+- ✓ Integration test suites (v1.1)
+- ✓ Database transaction and query validation (v1.1)
+- ✓ Frontend component and integration tests (v1.1)
+- ✓ Code quality improvements (v1.1)
+- ✓ CI/CD validation pipeline (v1.1)
+- ✓ All 27 v1.1 requirements verified
 
-### Out of Scope (v1.1)
+### Active (v1.2)
 
-- New features or UI enhancements (focus: stability not features)
-- Performance optimization of existing queries (separate phase)
-- Migration to alternative testing frameworks (use current stack)
+- [ ] Query optimization (slow queries, timeline, fingerprinting)
+- [ ] Index intelligence (usage stats, impact estimation)
+- [ ] API performance (pgx v5, connection pooling, caching)
+- [ ] Dashboard optimization (continuous aggregates)
+- [ ] Performance monitoring (pprof, Prometheus metrics)
+
+### Out of Scope
+
+- Automatic index creation (production risk)
+- Query rewriting (may change semantics)
+- Real-time dashboard metrics (v2+)
 
 ## Context
 
-- **Current State:** v1.1 milestone complete - 4 phases executed, all 27 requirements verified. Ready for v1.2 planning.
-- **Team:** 1-2 senior engineers available for next phase
-- **Stack:** Go backend, TypeScript/React frontend, PostgreSQL/TimescaleDB database, Playwright for E2E
-- **Testing Infrastructure:** Comprehensive integration test suites, Codecov coverage reporting, GitHub CI/CD automation, testcontainers for isolated DB testing
+- **Current State:** v1.2 milestone initialized - 4 phases planned, 21 requirements defined
+- **Team:** 1-2 senior engineers available
+- **Stack:** Go backend, TypeScript/React frontend, PostgreSQL/TimescaleDB, Playwright for E2E
+- **Testing Infrastructure:** 200+ backend tests, 38 database tests, 60+ frontend tests, CI/CD with coverage
 
 ## Constraints
 
-- **Timeline**: 2-3 weeks estimated for full completion
-- **Coverage Target**: 80%+ code coverage (from current baseline)
-- **Tech Stack**: Go (backend), TypeScript (frontend), existing test frameworks
-- **Quality Gate**: All tests must pass, no silent failures, explicit assertions
+- **Timeline**: 2-3 weeks estimated
+- **Coverage Target**: 80%+ code coverage
+- **Tech Stack**: Go (backend), TypeScript (frontend), pgx v5 (new)
+- **Quality Gate**: All tests must pass, performance improvements measurable
 
 ## Key Decisions
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Focus on integration tests (Phase 2) before feature development | Stability foundation required before scaling | — Pending |
-| Use existing test frameworks (Go testing, Playwright) | Minimize setup, maximize team productivity | ✓ Good |
-| 80%+ coverage target | Enterprise-grade reliability requirement | — Pending |
-| Include frontend, backend, and database layers equally | Comprehensive quality across full stack | — Pending |
+| Migrate to pgx v5 | 2-3x performance over lib/pq, native pooling | — In Progress |
+| Read/write pool separation | Optimize dashboard queries independently | — In Progress |
+| TimescaleDB continuous aggregates | Pre-compute time-series, instant dashboards | — In Progress |
+| Preserve existing functionality | Performance optimization without feature loss | — In Progress |
+| Focus on slow operations | Priority: dashboard, query analysis, index advisor | — In Progress |
 
 ---
 
----
-
-## Key Decisions
-
-| Decision | Rationale | Outcome |
-|----------|-----------|---------|
-| Performance optimization without feature loss | Keep all existing functionality, just make it faster | — In Progress |
-| Focus on user-reported slow operations | Priority: dashboard, query analysis, index advisor | — In Progress |
-| Measure success by operational speed | Not a specific %, just visibly faster than current state | — In Progress |
-
----
-
-*Last updated: 2026-04-30 after v1.1 completion - starting Milestone v1.2*
+*Last updated: 2026-05-11 after v1.2 milestone initialization*

@@ -567,3 +567,183 @@ func calculateHitRate(m cache.CacheMetrics) float64 {
 	}
 	return float64(m.Hits) / float64(total) * 100
 }
+
+// ============================================================================
+// DASHBOARD AGGREGATE METRICS ENDPOINTS
+// ============================================================================
+
+// @Summary Get Dashboard Database Stats
+// @Description Get pre-computed database statistics from TimescaleDB aggregates
+// @Tags Dashboard
+// @Produce json
+// @Security Bearer
+// @Param collector_id query string true "Collector ID"
+// @Param time_range query string false "Time range (1h, 24h, 7d, 30d)" default(24h)
+// @Success 200 {object} timescale.DatabaseStatsAggregate
+// @Failure 400 {object} apperrors.AppError
+// @Failure 503 {object} apperrors.AppError
+// @Router /api/v1/dashboard/database-stats [get]
+func (s *Server) handleGetDashboardDatabaseStats(c *gin.Context) {
+	collectorIDStr := c.Query("collector_id")
+	if collectorIDStr == "" {
+		errResp := apperrors.BadRequest("Missing collector_id", "collector_id query parameter is required")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	collectorID, err := uuid.Parse(collectorIDStr)
+	if err != nil {
+		errResp := apperrors.BadRequest("Invalid collector ID", err.Error())
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	// Check if TimescaleDB is available
+	if s.timescale == nil {
+		errResp := apperrors.ServiceUnavailable("TimescaleDB not available", "Dashboard aggregates require TimescaleDB connection")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	// Get time range with default
+	timeRange := c.DefaultQuery("time_range", "24h")
+
+	// Validate time range
+	validRanges := map[string]bool{"1h": true, "24h": true, "7d": true, "30d": true}
+	if !validRanges[timeRange] {
+		timeRange = "24h" // Default to 24h if invalid
+	}
+
+	ctx := c.Request.Context()
+	stats, err := s.timescale.GetDashboardDatabaseStats(ctx, collectorID, timeRange)
+	if err != nil {
+		c.JSON(err.(*apperrors.AppError).StatusCode, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"stats":      stats,
+		"time_range": timeRange,
+		"count":      len(stats),
+	})
+}
+
+// @Summary Get Dashboard Table Stats
+// @Description Get pre-computed table statistics from TimescaleDB aggregates
+// @Tags Dashboard
+// @Produce json
+// @Security Bearer
+// @Param collector_id query string true "Collector ID"
+// @Param time_range query string false "Time range (1h, 24h, 7d, 30d)" default(24h)
+// @Param limit query int false "Result limit" default(100)
+// @Success 200 {object} timescale.TableStatsAggregate
+// @Failure 400 {object} apperrors.AppError
+// @Failure 503 {object} apperrors.AppError
+// @Router /api/v1/dashboard/table-stats [get]
+func (s *Server) handleGetDashboardTableStats(c *gin.Context) {
+	collectorIDStr := c.Query("collector_id")
+	if collectorIDStr == "" {
+		errResp := apperrors.BadRequest("Missing collector_id", "collector_id query parameter is required")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	collectorID, err := uuid.Parse(collectorIDStr)
+	if err != nil {
+		errResp := apperrors.BadRequest("Invalid collector ID", err.Error())
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	// Check if TimescaleDB is available
+	if s.timescale == nil {
+		errResp := apperrors.ServiceUnavailable("TimescaleDB not available", "Dashboard aggregates require TimescaleDB connection")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	// Get time range with default
+	timeRange := c.DefaultQuery("time_range", "24h")
+
+	// Validate time range
+	validRanges := map[string]bool{"1h": true, "24h": true, "7d": true, "30d": true}
+	if !validRanges[timeRange] {
+		timeRange = "24h" // Default to 24h if invalid
+	}
+
+	// Get limit with default and max
+	limit := 100
+	if l, err := strconv.Atoi(c.DefaultQuery("limit", "100")); err == nil && l > 0 && l <= 1000 {
+		limit = l
+	}
+
+	ctx := c.Request.Context()
+	stats, err := s.timescale.GetDashboardTableStats(ctx, collectorID, timeRange, limit)
+	if err != nil {
+		c.JSON(err.(*apperrors.AppError).StatusCode, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"stats":      stats,
+		"time_range": timeRange,
+		"count":      len(stats),
+		"limit":      limit,
+	})
+}
+
+// @Summary Get Dashboard System Stats
+// @Description Get pre-computed system statistics from TimescaleDB aggregates
+// @Tags Dashboard
+// @Produce json
+// @Security Bearer
+// @Param collector_id query string true "Collector ID"
+// @Param time_range query string false "Time range (1h, 24h, 7d, 30d)" default(24h)
+// @Success 200 {object} timescale.SysstatAggregate
+// @Failure 400 {object} apperrors.AppError
+// @Failure 503 {object} apperrors.AppError
+// @Router /api/v1/dashboard/system-stats [get]
+func (s *Server) handleGetDashboardSysstat(c *gin.Context) {
+	collectorIDStr := c.Query("collector_id")
+	if collectorIDStr == "" {
+		errResp := apperrors.BadRequest("Missing collector_id", "collector_id query parameter is required")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	collectorID, err := uuid.Parse(collectorIDStr)
+	if err != nil {
+		errResp := apperrors.BadRequest("Invalid collector ID", err.Error())
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	// Check if TimescaleDB is available
+	if s.timescale == nil {
+		errResp := apperrors.ServiceUnavailable("TimescaleDB not available", "Dashboard aggregates require TimescaleDB connection")
+		c.JSON(errResp.StatusCode, errResp)
+		return
+	}
+
+	// Get time range with default
+	timeRange := c.DefaultQuery("time_range", "24h")
+
+	// Validate time range
+	validRanges := map[string]bool{"1h": true, "24h": true, "7d": true, "30d": true}
+	if !validRanges[timeRange] {
+		timeRange = "24h" // Default to 24h if invalid
+	}
+
+	ctx := c.Request.Context()
+	stats, err := s.timescale.GetDashboardSysstat(ctx, collectorID, timeRange)
+	if err != nil {
+		c.JSON(err.(*apperrors.AppError).StatusCode, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"stats":      stats,
+		"time_range": timeRange,
+		"count":      len(stats),
+	})
+}

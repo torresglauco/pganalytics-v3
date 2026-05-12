@@ -26,7 +26,7 @@ services:
 
   # TimescaleDB for time-series metrics storage
   timescale:
-    image: postgres:16-bullseye
+    image: timescale/timescaledb:2.15.0-pg16
     container_name: pganalytics-timescale
     init: true
     environment:

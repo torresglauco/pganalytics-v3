@@ -398,6 +398,14 @@ func (s *Server) RegisterRoutes(router *gin.Engine) {
 			metrics.GET("/summary", s.handleGetMetricsSummary)
 		}
 
+		// Dashboard endpoints for pre-computed aggregate metrics
+		dashboard := api.Group("/dashboard")
+		{
+			dashboard.GET("/database-stats", s.AuthMiddleware(), s.handleGetDashboardDatabaseStats)
+			dashboard.GET("/table-stats", s.AuthMiddleware(), s.handleGetDashboardTableStats)
+			dashboard.GET("/system-stats", s.AuthMiddleware(), s.handleGetDashboardSysstat)
+		}
+
 		// Log Ingest routes
 		logs := api.Group("/logs")
 		{

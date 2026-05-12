@@ -178,6 +178,19 @@ func main() {
 		logger.Error("Failed to start health check scheduler", zap.Error(err))
 	}
 
+	// Start dashboard aggregation worker if TimescaleDB is available
+	var dashboardWorker *jobs.DashboardAggregationWorker
+	if timescaleDB != nil {
+		dashboardWorker = jobs.NewDashboardAggregationWorker(
+			timescaleDB,
+			cacheManager,
+			logger,
+		)
+		if err := dashboardWorker.Start(); err != nil {
+			logger.Warn("Failed to start dashboard aggregation worker", zap.Error(err))
+		}
+	}
+
 	// Create HTTP server
 	httpServer := &http.Server{
 		Addr:           ":" + getEnvInt("PORT", "8080"),
@@ -206,6 +219,13 @@ func main() {
 	if healthCheckScheduler.IsRunning() {
 		if err := healthCheckScheduler.Stop(30 * time.Second); err != nil {
 			logger.Error("Error stopping health check scheduler", zap.Error(err))
+		}
+	}
+
+	// Stop dashboard aggregation worker
+	if dashboardWorker != nil {
+		if err := dashboardWorker.Stop(10 * time.Second); err != nil {
+			logger.Error("Failed to stop dashboard aggregation worker", zap.Error(err))
 		}
 	}
 

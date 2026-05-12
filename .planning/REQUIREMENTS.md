@@ -34,7 +34,7 @@ Requirements for Performance Optimization milestone. Each maps to roadmap phases
 ### Dashboard Optimization
 
 - [ ] **DASH-01**: User sees instant dashboard loads through pre-computed aggregations
-- [ ] **DASH-02**: System uses TimescaleDB continuous aggregates for time-series queries
+- [x] **DASH-02**: System uses TimescaleDB continuous aggregates for time-series queries
 - [ ] **DASH-03**: User can view historical metrics without full table scans
 - [ ] **DASH-04**: Background worker pre-computes dashboard metrics on schedule
 
@@ -160,7 +160,7 @@ Explicitly excluded. Documented to prevent scope creep.
 | API-03 | Phase 06 | Complete |
 | API-04 | Phase 06 | Complete |
 | DASH-01 | Phase 08 | Pending |
-| DASH-02 | Phase 08 | Pending |
+| DASH-02 | Phase 08 | Complete |
 | DASH-03 | Phase 08 | Pending |
 | DASH-04 | Phase 08 | Pending |
 | MON-01 | Phase 06 | Complete |

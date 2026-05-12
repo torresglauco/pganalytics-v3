@@ -13,6 +13,7 @@ import (
 	"github.com/torresglauco/pganalytics-v3/backend/internal/config"
 	"github.com/torresglauco/pganalytics-v3/backend/internal/crypto"
 	"github.com/torresglauco/pganalytics-v3/backend/internal/metrics"
+	"github.com/torresglauco/pganalytics-v3/backend/internal/middleware"
 	"github.com/torresglauco/pganalytics-v3/backend/internal/ml"
 	"github.com/torresglauco/pganalytics-v3/backend/internal/services/log_analysis"
 	"github.com/torresglauco/pganalytics-v3/backend/internal/session"
@@ -274,6 +275,12 @@ func (s *Server) RegisterRoutes(router *gin.Engine) {
 	router.Use(s.RequestIDMiddleware())
 	router.Use(s.SecurityHeadersMiddleware())
 	router.Use(metrics.PrometheusMiddleware()) // Prometheus metrics for all requests
+
+	// Add cache middleware (after Prometheus, before routes)
+	// Only applies to configured endpoints with GET requests
+	if s.cacheManager != nil {
+		router.Use(middleware.CacheMiddleware(s.cacheManager, s.logger))
+	}
 
 	// Health check (no auth required)
 	router.GET("/api/v1/health", s.handleHealth)

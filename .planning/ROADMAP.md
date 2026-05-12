@@ -118,11 +118,12 @@ Plans:
   2. System uses TimescaleDB continuous aggregates for time-series queries
   3. User can view historical metrics without triggering slow full-table scans
   4. Dashboard metrics are pre-computed by background worker on schedule
-**Plans**: 2 plans
+**Plans**: 3 plans
 
 Plans:
 - [x] 08-01: Create TimescaleDB continuous aggregates
 - [x] 08-02: Implement dashboard pre-computation worker
+- [x] 08-03: Wire aggregate queries to API handlers (gap closure)
 
 ### Phase 09: Index Intelligence
 **Goal**: Users receive instant, actionable index recommendations with impact estimation

@@ -43,7 +43,7 @@ Requirements for Performance Optimization milestone. Each maps to roadmap phases
 - [x] **MON-01**: User can access pprof endpoints for on-demand performance profiling
 - [x] **MON-02**: User can view Prometheus metrics for API response time histograms
 - [ ] **MON-03**: User can monitor query duration percentiles (P50, P95, P99)
-- [ ] **MON-04**: User can view cache hit/miss rates for performance tuning
+- [x] **MON-04**: User can view cache hit/miss rates for performance tuning
 
 ---
 
@@ -166,7 +166,7 @@ Explicitly excluded. Documented to prevent scope creep.
 | MON-01 | Phase 06 | Complete |
 | MON-02 | Phase 06 | Complete |
 | MON-03 | Phase 06 | Pending |
-| MON-04 | Phase 07 | Pending |
+| MON-04 | Phase 07 | Complete |
 
 **v1.2 Coverage:**
 - v1.2 requirements: 21 total

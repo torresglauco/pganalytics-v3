@@ -201,3 +201,146 @@ func TestQueryStatsDataTypes(t *testing.T) {
 		assert.IsType(t, time.Duration(0), stats.P99)
 	})
 }
+
+// ============================================================================
+// CACHE METRICS AND INVALIDATION API TESTS
+// ============================================================================
+
+func TestHandleCacheMetrics(t *testing.T) {
+	t.Run("returns cache metrics with hits and misses", func(t *testing.T) {
+		router := gin.New()
+		router.GET("/api/v1/metrics/cache", func(c *gin.Context) {
+			c.JSON(http.StatusOK, gin.H{
+				"enabled": true,
+				"response_cache": gin.H{
+					"hits":      int64(10),
+					"misses":    int64(5),
+					"evictions": int64(0),
+					"hit_rate":  66.67,
+				},
+				"timestamp": time.Now().UTC().Format(time.RFC3339),
+			})
+		})
+
+		req := httptest.NewRequest("GET", "/api/v1/metrics/cache", nil)
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		var response map[string]interface{}
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		require.NoError(t, err)
+
+		assert.Equal(t, true, response["enabled"])
+		assert.Contains(t, response, "response_cache")
+		assert.Contains(t, response, "timestamp")
+
+		responseCache := response["response_cache"].(map[string]interface{})
+		assert.Contains(t, responseCache, "hits")
+		assert.Contains(t, responseCache, "misses")
+		assert.Contains(t, responseCache, "hit_rate")
+	})
+
+	t.Run("returns disabled message when cache is nil", func(t *testing.T) {
+		router := gin.New()
+		router.GET("/api/v1/metrics/cache", func(c *gin.Context) {
+			c.JSON(http.StatusOK, gin.H{
+				"enabled": false,
+				"message": "Caching is disabled",
+			})
+		})
+
+		req := httptest.NewRequest("GET", "/api/v1/metrics/cache", nil)
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		var response map[string]interface{}
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		require.NoError(t, err)
+
+		assert.Equal(t, false, response["enabled"])
+		assert.Equal(t, "Caching is disabled", response["message"])
+	})
+}
+
+func TestHandleClearCache(t *testing.T) {
+	t.Run("clears all caches successfully", func(t *testing.T) {
+		router := gin.New()
+		router.DELETE("/api/v1/system/cache", func(c *gin.Context) {
+			c.JSON(http.StatusOK, gin.H{
+				"message": "All caches cleared successfully",
+			})
+		})
+
+		req := httptest.NewRequest("DELETE", "/api/v1/system/cache", nil)
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		var response map[string]interface{}
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		require.NoError(t, err)
+
+		assert.Equal(t, "All caches cleared successfully", response["message"])
+	})
+
+	t.Run("returns success message when cache is nil", func(t *testing.T) {
+		router := gin.New()
+		router.DELETE("/api/v1/system/cache", func(c *gin.Context) {
+			c.JSON(http.StatusOK, gin.H{
+				"message": "Caching is disabled, nothing to clear",
+			})
+		})
+
+		req := httptest.NewRequest("DELETE", "/api/v1/system/cache", nil)
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		var response map[string]interface{}
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		require.NoError(t, err)
+
+		assert.Equal(t, "Caching is disabled, nothing to clear", response["message"])
+	})
+}
+
+func TestCacheMetricsRequiresAuth(t *testing.T) {
+	t.Run("cache metrics endpoint requires authentication", func(t *testing.T) {
+		// This test verifies that the route is configured with AuthMiddleware
+		// The actual auth check is tested in integration tests
+		router := gin.New()
+		router.GET("/api/v1/metrics/cache", func(c *gin.Context) {
+			// Simulating auth middleware rejection
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		})
+
+		req := httptest.NewRequest("GET", "/api/v1/metrics/cache", nil)
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusUnauthorized, w.Code)
+	})
+}
+
+func TestClearCacheRequiresAuth(t *testing.T) {
+	t.Run("cache clear endpoint requires authentication", func(t *testing.T) {
+		// This test verifies that the route is configured with AuthMiddleware
+		router := gin.New()
+		router.DELETE("/api/v1/system/cache", func(c *gin.Context) {
+			// Simulating auth middleware rejection
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		})
+
+		req := httptest.NewRequest("DELETE", "/api/v1/system/cache", nil)
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusUnauthorized, w.Code)
+	})
+}

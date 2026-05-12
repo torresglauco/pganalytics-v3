@@ -95,12 +95,14 @@ func main() {
 			cfg.CacheMaxSize,
 			cfg.FeatureCacheTTL,
 			cfg.PredictionCacheTTL,
+			cfg.QueryResultsCacheTTL,
 			logger,
 		)
 		logger.Info("Cache manager initialized",
 			zap.Int("max_size", cfg.CacheMaxSize),
 			zap.Duration("feature_ttl", cfg.FeatureCacheTTL),
 			zap.Duration("prediction_ttl", cfg.PredictionCacheTTL),
+			zap.Duration("response_ttl", cfg.QueryResultsCacheTTL),
 		)
 		defer func() { _ = cacheManager.Close() }()
 	} else {

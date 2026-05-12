@@ -13,6 +13,7 @@ type Manager struct {
 	fingerprintCache *Cache[string, interface{}]
 	explainPlanCache *Cache[string, interface{}]
 	anomalyCache     *Cache[string, interface{}]
+	responseCache    *Cache[string, []byte] // API response cache
 	logger           *zap.Logger
 }
 
@@ -21,6 +22,7 @@ func NewManager(
 	maxSize int,
 	featureCacheTTL time.Duration,
 	predictionCacheTTL time.Duration,
+	responseCacheTTL time.Duration,
 	logger *zap.Logger,
 ) *Manager {
 	return &Manager{
@@ -29,6 +31,7 @@ func NewManager(
 		fingerprintCache: NewCache[string, interface{}](10*time.Minute, maxSize),
 		explainPlanCache: NewCache[string, interface{}](30*time.Minute, maxSize),
 		anomalyCache:     NewCache[string, interface{}](5*time.Minute, maxSize),
+		responseCache:    NewCache[string, []byte](responseCacheTTL, maxSize),
 		logger:           logger,
 	}
 }
@@ -108,6 +111,26 @@ func (m *Manager) ClearAnomalies(key string) {
 	m.anomalyCache.Delete(key)
 }
 
+// GetResponseCache retrieves cached API response
+func (m *Manager) GetResponseCache(key string) ([]byte, bool) {
+	return m.responseCache.Get(key)
+}
+
+// SetResponseCache stores API response
+func (m *Manager) SetResponseCache(key string, response []byte) {
+	m.responseCache.Set(key, response)
+}
+
+// ClearResponseCache removes response cache entry
+func (m *Manager) ClearResponseCache(key string) {
+	m.responseCache.Delete(key)
+}
+
+// GetResponseMetrics returns response cache metrics
+func (m *Manager) GetResponseMetrics() CacheMetrics {
+	return m.responseCache.GetMetrics()
+}
+
 // GetMetrics returns combined cache metrics
 type ManagerMetrics struct {
 	FeatureCacheMetrics     CacheMetrics
@@ -115,6 +138,7 @@ type ManagerMetrics struct {
 	FingerprintCacheMetrics CacheMetrics
 	ExplainPlanCacheMetrics CacheMetrics
 	AnomalyCacheMetrics     CacheMetrics
+	ResponseCacheMetrics    CacheMetrics
 }
 
 // GetMetrics returns metrics for all caches
@@ -125,6 +149,7 @@ func (m *Manager) GetMetrics() ManagerMetrics {
 		FingerprintCacheMetrics: m.fingerprintCache.GetMetrics(),
 		ExplainPlanCacheMetrics: m.explainPlanCache.GetMetrics(),
 		AnomalyCacheMetrics:     m.anomalyCache.GetMetrics(),
+		ResponseCacheMetrics:    m.responseCache.GetMetrics(),
 	}
 }
 
@@ -135,6 +160,7 @@ func (m *Manager) Clear() {
 	m.fingerprintCache.Clear()
 	m.explainPlanCache.Clear()
 	m.anomalyCache.Clear()
+	m.responseCache.Clear()
 	m.logger.Info("All caches cleared")
 }
 
@@ -145,6 +171,7 @@ func (m *Manager) Close() error {
 	_ = m.fingerprintCache.Close()
 	_ = m.explainPlanCache.Close()
 	_ = m.anomalyCache.Close()
+	_ = m.responseCache.Close()
 	m.logger.Info("Cache manager closed")
 	return nil
 }

@@ -93,3 +93,92 @@ func statusToString(status int) string {
 		return "unknown"
 	}
 }
+
+// ============================================================================
+// CACHE METRICS
+// ============================================================================
+
+// CacheHitsTotal tracks total cache hits
+var CacheHitsTotal = promauto.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "pganalytics_cache_hits_total",
+		Help: "Total number of cache hits",
+	},
+	[]string{"cache_name"},
+)
+
+// CacheMissesTotal tracks total cache misses
+var CacheMissesTotal = promauto.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "pganalytics_cache_misses_total",
+		Help: "Total number of cache misses",
+	},
+	[]string{"cache_name"},
+)
+
+// CacheEvictionsTotal tracks total cache evictions
+var CacheEvictionsTotal = promauto.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "pganalytics_cache_evictions_total",
+		Help: "Total number of cache evictions",
+	},
+	[]string{"cache_name"},
+)
+
+// CacheSizeBytes tracks current cache size in bytes
+var CacheSizeBytes = promauto.NewGaugeVec(
+	prometheus.GaugeOpts{
+		Name: "pganalytics_cache_size_bytes",
+		Help: "Current cache size in bytes",
+	},
+	[]string{"cache_name"},
+)
+
+// CacheEntries tracks number of entries in cache
+var CacheEntries = promauto.NewGaugeVec(
+	prometheus.GaugeOpts{
+		Name: "pganalytics_cache_entries",
+		Help: "Number of entries in cache",
+	},
+	[]string{"cache_name"},
+)
+
+// CacheLatencySeconds tracks cache operation latency
+var CacheLatencySeconds = promauto.NewHistogramVec(
+	prometheus.HistogramOpts{
+		Name:    "pganalytics_cache_latency_seconds",
+		Help:    "Cache operation latency in seconds",
+		Buckets: []float64{.0001, .0005, .001, .005, .01, .025, .05, .1},
+	},
+	[]string{"cache_name", "operation"},
+)
+
+// RecordCacheHit increments the cache hit counter
+func RecordCacheHit(cacheName string) {
+	CacheHitsTotal.WithLabelValues(cacheName).Inc()
+}
+
+// RecordCacheMiss increments the cache miss counter
+func RecordCacheMiss(cacheName string) {
+	CacheMissesTotal.WithLabelValues(cacheName).Inc()
+}
+
+// RecordCacheEviction increments the cache eviction counter
+func RecordCacheEviction(cacheName string) {
+	CacheEvictionsTotal.WithLabelValues(cacheName).Inc()
+}
+
+// SetCacheSize updates the cache size gauge
+func SetCacheSize(cacheName string, size int) {
+	CacheSizeBytes.WithLabelValues(cacheName).Set(float64(size))
+}
+
+// SetCacheEntries updates the cache entries gauge
+func SetCacheEntries(cacheName string, entries int) {
+	CacheEntries.WithLabelValues(cacheName).Set(float64(entries))
+}
+
+// RecordCacheLatency records cache operation latency
+func RecordCacheLatency(cacheName, operation string, duration time.Duration) {
+	CacheLatencySeconds.WithLabelValues(cacheName, operation).Observe(duration.Seconds())
+}

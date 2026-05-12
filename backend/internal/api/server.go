@@ -290,6 +290,7 @@ func (s *Server) RegisterRoutes(router *gin.Engine) {
 	system := router.Group("/api/v1/system")
 	{
 		system.GET("/pool-metrics", s.handleGetPoolMetrics)
+		system.DELETE("/cache", s.AuthMiddleware(), s.handleClearCache) // Requires auth (destructive operation)
 	}
 
 	// WebSocket route (JWT auth required, handled in handler)
@@ -385,8 +386,8 @@ func (s *Server) RegisterRoutes(router *gin.Engine) {
 		{
 			// High-volume endpoint - requires collector authentication
 			metrics.POST("/push", s.CollectorAuthMiddleware(), s.handleMetricsPush)
-			// Cache metrics (protected)
-			metrics.GET("/cache", s.AuthMiddleware(), s.handleCacheMetrics)
+			// Application cache metrics (protected)
+			metrics.GET("/cache", s.AuthMiddleware(), s.handleAppCacheMetrics)
 			// General metrics endpoints for frontend dashboard
 			metrics.GET("", s.AuthMiddleware(), s.handleGetMetrics)
 			metrics.GET("/error-trend", s.AuthMiddleware(), s.handleGetErrorTrend)

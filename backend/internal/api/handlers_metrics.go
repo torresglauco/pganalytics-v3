@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/torresglauco/pganalytics-v3/backend/internal/cache"
 	"github.com/torresglauco/pganalytics-v3/backend/internal/metrics"
 	apperrors "github.com/torresglauco/pganalytics-v3/backend/pkg/errors"
 	"github.com/torresglauco/pganalytics-v3/backend/pkg/models"
@@ -503,4 +504,66 @@ func (s *Server) handleGetMetricsSummary(c *gin.Context) {
 		"pool_metrics": poolMetrics,
 		"timestamp":    time.Now().UTC().Format(time.RFC3339),
 	})
+}
+
+// ============================================================================
+// APPLICATION CACHE METRICS AND INVALIDATION ENDPOINTS
+// ============================================================================
+
+// handleAppCacheMetrics returns application cache performance metrics
+// GET /api/v1/metrics/cache
+func (s *Server) handleAppCacheMetrics(c *gin.Context) {
+	if s.cacheManager == nil {
+		c.JSON(http.StatusOK, gin.H{
+			"enabled": false,
+			"message": "Caching is disabled",
+		})
+		return
+	}
+
+	cacheMetrics := s.cacheManager.GetMetrics()
+
+	c.JSON(http.StatusOK, gin.H{
+		"enabled": true,
+		"response_cache": gin.H{
+			"hits":      cacheMetrics.ResponseCacheMetrics.Hits,
+			"misses":    cacheMetrics.ResponseCacheMetrics.Misses,
+			"evictions": cacheMetrics.ResponseCacheMetrics.Evictions,
+			"hit_rate":  calculateHitRate(cacheMetrics.ResponseCacheMetrics),
+		},
+		"feature_cache": gin.H{
+			"hits":      cacheMetrics.FeatureCacheMetrics.Hits,
+			"misses":    cacheMetrics.FeatureCacheMetrics.Misses,
+			"evictions": cacheMetrics.FeatureCacheMetrics.Evictions,
+			"hit_rate":  calculateHitRate(cacheMetrics.FeatureCacheMetrics),
+		},
+		"timestamp": time.Now().UTC().Format(time.RFC3339),
+	})
+}
+
+// handleClearCache clears all caches
+// DELETE /api/v1/system/cache
+func (s *Server) handleClearCache(c *gin.Context) {
+	if s.cacheManager == nil {
+		c.JSON(http.StatusOK, gin.H{
+			"message": "Caching is disabled, nothing to clear",
+		})
+		return
+	}
+
+	s.cacheManager.Clear()
+	s.logger.Info("Cache cleared via API")
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "All caches cleared successfully",
+	})
+}
+
+// calculateHitRate computes cache hit rate percentage
+func calculateHitRate(m cache.CacheMetrics) float64 {
+	total := m.Hits + m.Misses
+	if total == 0 {
+		return 0
+	}
+	return float64(m.Hits) / float64(total) * 100
 }

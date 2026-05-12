@@ -9,6 +9,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/torresglauco/pganalytics-v3/backend/internal/cache"
+	"github.com/torresglauco/pganalytics-v3/backend/internal/metrics"
 	"go.uber.org/zap"
 )
 
@@ -58,21 +59,30 @@ func CacheMiddleware(cacheManager *cache.Manager, logger *zap.Logger) gin.Handle
 
 		// Generate cache key
 		cacheKey := generateCacheKey(c, config)
+		startTime := time.Now()
 
 		// Try to get from cache
 		if cachedResponse, found := cacheManager.GetResponseCache(cacheKey); found {
+			latency := time.Since(startTime)
+			metrics.RecordCacheHit("response")
+			metrics.RecordCacheLatency("response", "get", latency)
 			logger.Debug("Cache hit",
 				zap.String("path", path),
 				zap.String("cache_key", cacheKey),
+				zap.Duration("latency", latency),
 			)
 			c.Data(http.StatusOK, "application/json", cachedResponse)
 			c.Abort()
 			return
 		}
 
+		latency := time.Since(startTime)
+		metrics.RecordCacheMiss("response")
+		metrics.RecordCacheLatency("response", "get", latency)
 		logger.Debug("Cache miss",
 			zap.String("path", path),
 			zap.String("cache_key", cacheKey),
+			zap.Duration("latency", latency),
 		)
 
 		// Capture response
@@ -87,6 +97,7 @@ func CacheMiddleware(cacheManager *cache.Manager, logger *zap.Logger) gin.Handle
 		// Cache successful responses only
 		if c.Writer.Status() == http.StatusOK && responseWriter.body.Len() > 0 {
 			cacheManager.SetResponseCache(cacheKey, responseWriter.body.Bytes())
+			metrics.RecordCacheLatency("response", "set", time.Since(startTime))
 			logger.Debug("Response cached",
 				zap.String("path", path),
 				zap.String("cache_key", cacheKey),

@@ -2,12 +2,15 @@ package api
 
 import (
 	"context"
+	"database/sql"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
+
+	"github.com/torresglauco/pganalytics-v3/backend/internal/services/index_advisor"
 )
 
 // ============================================================================
@@ -127,46 +130,158 @@ func (s *Server) handleCreateIndexFromRecommendation(c *gin.Context) {
 // GET /api/v1/index-advisor/database/:database_id/unused
 // This endpoint returns indexes that are not being used and could potentially be removed
 func (s *Server) handleGetUnusedIndexes(c *gin.Context) {
-	// Get database name/ID from URL parameter
-	databaseID := c.Param("database_id")
-	if databaseID == "" {
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 10*time.Second)
+	defer cancel()
+
+	// Get database ID from URL parameter
+	databaseIDStr := c.Param("database_id")
+	if databaseIDStr == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "database_id is required"})
+		return
+	}
+
+	databaseID, err := strconv.Atoi(databaseIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid database_id format"})
 		return
 	}
 
 	// Parse query parameters
 	limitStr := c.DefaultQuery("limit", "20")
 	limit, err := strconv.Atoi(limitStr)
-	if err != nil || limit < 1 || limit > 50 {
+	if err != nil || limit < 1 || limit > 100 {
 		limit = 20
 	}
 
-	// Query unused indexes from database
-	// This would call a method like GetUnusedIndexes if implemented in storage
-	// For now, we return a structured response showing what would be returned
-	unusedIndexes := []map[string]interface{}{}
+	// Get connection string for the monitored database
+	var connectionString *string
+	err = s.postgres.QueryRowContext(ctx,
+		`SELECT connection_string FROM pganalytics.postgresql_instances WHERE id = $1 AND is_active = true`,
+		databaseID,
+	).Scan(&connectionString)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			c.JSON(http.StatusNotFound, gin.H{"error": "database not found"})
+			return
+		}
+		s.logger.Error("Failed to get database connection info", zap.Error(err), zap.Int("database_id", databaseID))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get database connection info"})
+		return
+	}
 
-	// TODO: Implement GetUnusedIndexes method in PostgresDB storage layer
-	// This should query pg_stat_user_indexes for indexes with:
-	// - idx_scan = 0 (never scanned)
-	// - idx_tup_read = 0 and idx_tup_fetch = 0 (no tuples fetched)
-	// - Exclude indexes that are part of constraints (primary key, unique, foreign key)
-	// - Order by index size to prioritize removing large unused indexes
+	if connectionString == nil || *connectionString == "" {
+		c.JSON(http.StatusNotFound, gin.H{"error": "database connection not configured"})
+		return
+	}
 
-	// Placeholder query that would be executed against the target database:
-	// SELECT schemaname, tablename, indexname, idx_scan, idx_tup_read, idx_tup_fetch, pg_size_pretty(pg_relation_size(indexrelid))
-	// FROM pg_stat_user_indexes
-	// WHERE idx_scan = 0
-	// ORDER BY pg_relation_size(indexrelid) DESC
-	// LIMIT $1
+	// Connect to the monitored database
+	monitoredDB, err := sql.Open("postgres", *connectionString)
+	if err != nil {
+		s.logger.Error("Failed to connect to monitored database", zap.Error(err), zap.Int("database_id", databaseID))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to connect to monitored database"})
+		return
+	}
+	defer monitoredDB.Close()
+
+	// Use UnusedIndexDetector to find unused indexes
+	detector := index_advisor.NewUnusedIndexDetector(monitoredDB)
+	indexes, err := detector.FindUnused(ctx, limit)
+	if err != nil {
+		s.logger.Error("Failed to find unused indexes", zap.Error(err), zap.Int("database_id", databaseID))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve unused indexes"})
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"database_id":    databaseID,
-		"unused_indexes": unusedIndexes,
-		"count":          len(unusedIndexes),
-		"limit":          limit,
-		"note":           "Implement GetUnusedIndexes in storage layer for full functionality",
+		"database_id":    databaseIDStr,
+		"unused_indexes": indexes,
+		"count":          len(indexes),
 	})
+}
+
+// handleEstimateIndexImpact estimates the impact of creating an index
+// POST /api/v1/index-advisor/database/:database_id/estimate-impact
+// This endpoint uses hypopg to estimate the cost improvement of creating an index
+func (s *Server) handleEstimateIndexImpact(c *gin.Context) {
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 30*time.Second)
+	defer cancel()
+
+	// Get database ID from URL parameter
+	databaseIDStr := c.Param("database_id")
+	if databaseIDStr == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "database_id is required"})
+		return
+	}
+
+	databaseID, err := strconv.Atoi(databaseIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid database_id format"})
+		return
+	}
+
+	// Parse request body
+	var req struct {
+		TableName string   `json:"table_name" binding:"required"`
+		Columns   []string `json:"columns" binding:"required"`
+		QueryText string   `json:"query_text" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body: " + err.Error()})
+		return
+	}
+
+	// Get connection string for the monitored database
+	var connectionString *string
+	err = s.postgres.QueryRowContext(ctx,
+		`SELECT connection_string FROM pganalytics.postgresql_instances WHERE id = $1 AND is_active = true`,
+		databaseID,
+	).Scan(&connectionString)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			c.JSON(http.StatusNotFound, gin.H{"error": "database not found"})
+			return
+		}
+		s.logger.Error("Failed to get database connection info", zap.Error(err), zap.Int("database_id", databaseID))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get database connection info"})
+		return
+	}
+
+	if connectionString == nil || *connectionString == "" {
+		c.JSON(http.StatusNotFound, gin.H{"error": "database connection not configured"})
+		return
+	}
+
+	// Connect to the monitored database
+	monitoredDB, err := sql.Open("postgres", *connectionString)
+	if err != nil {
+		s.logger.Error("Failed to connect to monitored database", zap.Error(err), zap.Int("database_id", databaseID))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to connect to monitored database"})
+		return
+	}
+	defer monitoredDB.Close()
+
+	// Use HypoIndexTester to estimate impact
+	tester := index_advisor.NewHypoIndexTester(monitoredDB, s.logger)
+	impact, err := tester.EstimateImpact(ctx, req.QueryText, req.TableName, req.Columns)
+	if err != nil {
+		// Check if hypopg is not available
+		if err.Error() == "hypopg extension not installed" {
+			c.JSON(http.StatusOK, gin.H{
+				"error":           "hypopg extension not installed on monitored database",
+				"fallback_note":   "Install hypopg extension with: CREATE EXTENSION hypopg;",
+				"table_name":      req.TableName,
+				"columns":         req.Columns,
+				"improvement_pct": 0,
+			})
+			return
+		}
+		s.logger.Error("Failed to estimate index impact", zap.Error(err), zap.Int("database_id", databaseID))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to estimate index impact"})
+		return
+	}
+
+	c.JSON(http.StatusOK, impact)
 }
 
 // registerIndexAdvisorRoutes registers all Index Advisor routes
@@ -180,4 +295,7 @@ func (s *Server) registerIndexAdvisorRoutes(indexAdvisor *gin.RouterGroup) {
 
 	// Get unused indexes for a database
 	indexAdvisor.GET("/database/:database_id/unused", s.AuthMiddleware(), s.handleGetUnusedIndexes)
+
+	// Estimate index impact using hypopg
+	indexAdvisor.POST("/database/:database_id/estimate-impact", s.AuthMiddleware(), s.handleEstimateIndexImpact)
 }

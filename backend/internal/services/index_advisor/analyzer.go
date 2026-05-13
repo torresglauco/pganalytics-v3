@@ -1,6 +1,7 @@
 package index_advisor
 
 import (
+	"context"
 	"database/sql"
 )
 
@@ -97,11 +98,39 @@ func (ia *IndexAnalyzer) extractConditions(plan *QueryPlan) []Condition {
 }
 
 // FindUnusedIndexes queries the database for indexes that are not being used
-func (ia *IndexAnalyzer) FindUnusedIndexes() []string {
-	// Placeholder implementation
-	// Real implementation would query pg_stat_user_indexes to find:
-	// - Indexes with zero usage counts
-	// - Indexes with very low usage relative to table size
-	// - Duplicate indexes
-	return []string{}
+func (ia *IndexAnalyzer) FindUnusedIndexes(ctx context.Context, limit int) ([]UnusedIndex, error) {
+	detector := NewUnusedIndexDetector(ia.db)
+	return detector.FindUnused(ctx, limit)
+}
+
+// RecommendIndexWithImpact analyzes a query and recommends an index with impact estimation
+func (ia *IndexAnalyzer) RecommendIndexWithImpact(
+	ctx context.Context,
+	queryText string,
+	tableName string,
+	columns []string,
+	queryFrequency float64,
+) (*IndexRecommendation, error) {
+	tester := NewHypoIndexTester(ia.db, nil) // logger injected separately if needed
+	impact, err := tester.EstimateImpact(ctx, queryText, tableName, columns)
+	if err != nil {
+		// Fallback to basic recommendation without impact
+		return &IndexRecommendation{
+			TableName:        tableName,
+			ColumnNames:      columns,
+			IndexType:        "btree",
+			EstimatedBenefit: 0,
+		}, nil
+	}
+
+	// Calculate benefit score combining cost improvement and query frequency
+	benefit := ia.calc.EstimateBenefit(impact.ImprovementPct, queryFrequency)
+
+	return &IndexRecommendation{
+		TableName:               tableName,
+		ColumnNames:             columns,
+		IndexType:               "btree",
+		EstimatedBenefit:        benefit,
+		WeightedCostImprovement: impact.ImprovementPct,
+	}, nil
 }

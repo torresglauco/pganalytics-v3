@@ -550,6 +550,7 @@ func (s *Server) RegisterRoutes(router *gin.Engine) {
 			indexAdvisor.GET("/database/:database_id/recommendations", s.AuthMiddleware(), s.handleGetIndexAdvisorRecommendations)
 			indexAdvisor.POST("/recommendation/:recommendation_id/create", s.AuthMiddleware(), s.handleCreateIndexFromRecommendation)
 			indexAdvisor.GET("/database/:database_id/unused", s.AuthMiddleware(), s.handleGetUnusedIndexes)
+			indexAdvisor.POST("/database/:database_id/estimate-impact", s.AuthMiddleware(), s.handleEstimateIndexImpact)
 		}
 
 		// VACUUM Advisor routes (new endpoints for VACUUM recommendations)

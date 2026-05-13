@@ -499,6 +499,7 @@ func (s *Server) RegisterRoutes(router *gin.Engine) {
 		{
 			databases.GET("/:id/slow-queries", s.AuthMiddleware(), s.handleGetDatabaseSlowQueries)
 			databases.GET("/:id/index-stats", s.AuthMiddleware(), s.handleGetDatabaseIndexStats)
+			databases.GET("/:id/query-fingerprints", s.AuthMiddleware(), s.handleGetDatabaseQueryFingerprints)
 		}
 
 		// ========================================================================

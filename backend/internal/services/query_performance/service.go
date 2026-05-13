@@ -76,6 +76,23 @@ type IndexWithCategory struct {
 	Category string `json:"category"` // "unused", "low", "normal", "high"
 }
 
+// FingerprintGroup represents a group of queries with the same fingerprint
+type FingerprintGroup struct {
+	FingerprintHash string              `json:"fingerprint_hash"`
+	QueryCount      int                 `json:"query_count"`
+	TotalCalls      int64               `json:"total_calls"`
+	AvgTimeMs       float64             `json:"avg_time_ms"`
+	Queries         []storage.SlowQuery `json:"queries"`
+}
+
+// FingerprintGroupsResponse is the API response for fingerprint groups
+type FingerprintGroupsResponse struct {
+	Fingerprints []FingerprintGroup `json:"fingerprints"`
+	Total        int                `json:"total"`
+	DatabaseID   int                `json:"database_id"`
+	Limit        int                `json:"limit"`
+}
+
 // GetSlowQueries retrieves top slow queries for a database
 func (s *Service) GetSlowQueries(ctx context.Context, databaseID, limit int) (*SlowQueriesResponse, error) {
 	queries, err := s.store.GetSlowQueries(ctx, databaseID, limit)
@@ -85,6 +102,12 @@ func (s *Service) GetSlowQueries(ctx context.Context, databaseID, limit int) (*S
 			zap.Int("database_id", databaseID),
 		)
 		return nil, err
+	}
+
+	// Compute fingerprints for each query
+	fp := NewFingerprinter()
+	for i := range queries {
+		queries[i].QueryFingerprintHash = fp.Fingerprint(queries[i].QueryText)
 	}
 
 	return &SlowQueriesResponse{
@@ -202,4 +225,64 @@ func formatTimeRange(hours int) string {
 	default:
 		return "1y"
 	}
+}
+
+// GetQueriesGroupedByFingerprint returns queries grouped by fingerprint
+func (s *Service) GetQueriesGroupedByFingerprint(ctx context.Context, databaseID, limit int) (*FingerprintGroupsResponse, error) {
+	queries, err := s.store.GetSlowQueries(ctx, databaseID, limit)
+	if err != nil {
+		s.logger.Error("Failed to get queries for fingerprinting",
+			zap.Error(err),
+			zap.Int("database_id", databaseID),
+		)
+		return nil, err
+	}
+
+	// Compute fingerprints and group queries
+	fp := NewFingerprinter()
+	groups := make(map[string]*FingerprintGroup)
+
+	for _, q := range queries {
+		fpHash := fp.Fingerprint(q.QueryText)
+		q.QueryFingerprintHash = fpHash
+
+		if _, exists := groups[fpHash]; !exists {
+			groups[fpHash] = &FingerprintGroup{
+				FingerprintHash: fpHash,
+				Queries:         []storage.SlowQuery{},
+			}
+		}
+		groups[fpHash].Queries = append(groups[fpHash].Queries, q)
+		groups[fpHash].QueryCount++
+		groups[fpHash].TotalCalls += q.Calls
+	}
+
+	// Calculate average time for each group and convert to slice
+	var result []FingerprintGroup
+	for _, group := range groups {
+		var totalTime float64
+		for _, q := range group.Queries {
+			totalTime += q.MeanTime
+		}
+		if group.QueryCount > 0 {
+			group.AvgTimeMs = totalTime / float64(group.QueryCount)
+		}
+		result = append(result, *group)
+	}
+
+	// Sort by total calls descending
+	for i := 0; i < len(result); i++ {
+		for j := i + 1; j < len(result); j++ {
+			if result[j].TotalCalls > result[i].TotalCalls {
+				result[i], result[j] = result[j], result[i]
+			}
+		}
+	}
+
+	return &FingerprintGroupsResponse{
+		Fingerprints: result,
+		Total:        len(result),
+		DatabaseID:   databaseID,
+		Limit:        limit,
+	}, nil
 }

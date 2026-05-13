@@ -227,3 +227,47 @@ func (s *Server) handleGetDatabaseIndexStats(c *gin.Context) {
 
 	c.JSON(http.StatusOK, response)
 }
+
+// handleGetDatabaseQueryFingerprints returns queries grouped by fingerprint for a specific database
+// GET /api/v1/databases/:id/query-fingerprints?limit=20
+func (s *Server) handleGetDatabaseQueryFingerprints(c *gin.Context) {
+	databaseIDStr := c.Param("id")
+	databaseID, err := strconv.Atoi(databaseIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid database ID"})
+		return
+	}
+
+	limitStr := c.DefaultQuery("limit", "20")
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil || limit < 1 {
+		limit = 20
+	}
+	if limit > 100 {
+		limit = 100
+	}
+
+	// Check if postgres database is available
+	if s.postgres == nil {
+		s.logger.Error("PostgreSQL database not initialized")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database not available"})
+		return
+	}
+
+	service := query_performance.NewService(
+		storage.NewQueryPerformanceStore(s.postgres),
+		s.logger,
+	)
+
+	response, err := service.GetQueriesGroupedByFingerprint(c.Request.Context(), databaseID, limit)
+	if err != nil {
+		s.logger.Error("Failed to get query fingerprints",
+			zap.Error(err),
+			zap.Int("database_id", databaseID),
+		)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve query fingerprints"})
+		return
+	}
+
+	c.JSON(http.StatusOK, response)
+}

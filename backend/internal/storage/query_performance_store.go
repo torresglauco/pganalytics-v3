@@ -20,17 +20,18 @@ func NewQueryPerformanceStore(db *PostgresDB) *QueryPerformanceStore {
 
 // SlowQuery represents a slow query from pg_stat_statements
 type SlowQuery struct {
-	QueryID      int64   `json:"query_id"`
-	QueryHash    string  `json:"query_hash"`
-	QueryText    string  `json:"query_text"`
-	Calls        int64   `json:"calls"`
-	TotalTime    float64 `json:"total_time_ms"`
-	MeanTime     float64 `json:"mean_time_ms"`
-	MinTime      float64 `json:"min_time_ms"`
-	MaxTime      float64 `json:"max_time_ms"`
-	Rows         int64   `json:"rows"`
-	SharedBlks   int64   `json:"shared_blks_hit"`
-	DatabaseName string  `json:"database_name"`
+	QueryID              int64   `json:"query_id"`
+	QueryHash            string  `json:"query_hash"`
+	QueryFingerprintHash string  `json:"query_fingerprint_hash"`
+	QueryText            string  `json:"query_text"`
+	Calls                int64   `json:"calls"`
+	TotalTime            float64 `json:"total_time_ms"`
+	MeanTime             float64 `json:"mean_time_ms"`
+	MinTime              float64 `json:"min_time_ms"`
+	MaxTime              float64 `json:"max_time_ms"`
+	Rows                 int64   `json:"rows"`
+	SharedBlks           int64   `json:"shared_blks_hit"`
+	DatabaseName         string  `json:"database_name"`
 }
 
 // QueryTimelinePoint represents a single point in query performance timeline

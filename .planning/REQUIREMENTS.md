@@ -13,8 +13,8 @@ Requirements for Performance Optimization milestone. Each maps to roadmap phases
 
 - [ ] **QRY-01**: User can view top N slow queries by mean_time from pg_stat_statements
 - [ ] **QRY-02**: User can see query performance timeline with historical trends
-- [ ] **QRY-03**: User receives automated detection of query plan anti-patterns (Seq Scan, nested loops)
-- [ ] **QRY-04**: User can view grouped similar queries with different parameters (fingerprinting)
+- [x] **QRY-03**: User receives automated detection of query plan anti-patterns (Seq Scan, nested loops)
+- [x] **QRY-04**: User can view grouped similar queries with different parameters (fingerprinting)
 - [ ] **QRY-05**: User can view query execution statistics (calls, total_time, rows, mean_time)
 
 ### Index Intelligence
@@ -148,8 +148,8 @@ Explicitly excluded. Documented to prevent scope creep.
 |-------------|-------|--------|
 | QRY-01 | Phase 06 | Pending |
 | QRY-02 | Phase 06 | Pending |
-| QRY-03 | Phase 09 | Pending |
-| QRY-04 | Phase 09 | Pending |
+| QRY-03 | Phase 09 | Complete |
+| QRY-04 | Phase 09 | Complete |
 | QRY-05 | Phase 06 | Pending |
 | IDX-01 | Phase 06 | Pending |
 | IDX-02 | Phase 09 | Pending |

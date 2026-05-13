@@ -20,9 +20,9 @@ Requirements for Performance Optimization milestone. Each maps to roadmap phases
 ### Index Intelligence
 
 - [ ] **IDX-01**: User can view index usage statistics from pg_stat_user_indexes
-- [ ] **IDX-02**: User can see unused indexes that may be candidates for removal
-- [ ] **IDX-03**: User receives index impact estimation before creating new indexes
-- [ ] **IDX-04**: User can view recommended indexes with estimated benefit scores
+- [x] **IDX-02**: User can see unused indexes that may be candidates for removal
+- [x] **IDX-03**: User receives index impact estimation before creating new indexes
+- [x] **IDX-04**: User can view recommended indexes with estimated benefit scores
 
 ### API Performance
 
@@ -152,9 +152,9 @@ Explicitly excluded. Documented to prevent scope creep.
 | QRY-04 | Phase 09 | Complete |
 | QRY-05 | Phase 06 | Pending |
 | IDX-01 | Phase 06 | Pending |
-| IDX-02 | Phase 09 | Pending |
-| IDX-03 | Phase 09 | Pending |
-| IDX-04 | Phase 09 | Pending |
+| IDX-02 | Phase 09 | Complete |
+| IDX-03 | Phase 09 | Complete |
+| IDX-04 | Phase 09 | Complete |
 | API-01 | Phase 07 | Pending |
 | API-02 | Phase 06 | Complete |
 | API-03 | Phase 06 | Complete |

@@ -434,6 +434,17 @@ func (s *Server) RegisterRoutes(router *gin.Engine) {
 		}
 
 		// ================================================================
+		// Tenant Management Routes (SCALE-01, SCALE-02, SCALE-03, SCALE-04)
+		// ================================================================
+		tenants := api.Group("/tenants")
+		{
+			tenants.GET("", s.AuthMiddleware(), s.handleGetTenants)
+			tenants.POST("", s.AuthMiddleware(), s.handleCreateTenant)
+			tenants.GET("/:id/collectors", s.AuthMiddleware(), s.handleGetTenantCollectors)
+			tenants.POST("/:id/collectors", s.AuthMiddleware(), s.handleAssignCollectorToTenant)
+		}
+
+		// ================================================================
 		// Health Check Definitions Routes (VER-03)
 		// ================================================================
 		healthChecks := api.Group("/health-checks")

@@ -381,6 +381,12 @@ func (s *Server) RegisterRoutes(router *gin.Engine) {
 			collectors.GET("/:id/topology", s.AuthMiddleware(), s.handleGetReplicationTopology)
 
 			// ================================================================
+			// Data Classification Routes (Phase 11, DATA-01 to DATA-05)
+			// ================================================================
+			collectors.GET("/:id/classification", s.AuthMiddleware(), s.handleGetClassificationResults)
+			collectors.GET("/:id/classification/report", s.AuthMiddleware(), s.handleGetClassificationReport)
+
+			// ================================================================
 			// Version Information Routes (VER-01, VER-02, VER-04)
 			// ================================================================
 			collectors.GET("/:id/version", s.AuthMiddleware(), s.handleGetVersionInfo)
@@ -404,6 +410,17 @@ func (s *Server) RegisterRoutes(router *gin.Engine) {
 			hosts.GET("/:id/status", s.AuthMiddleware(), s.handleGetHostStatus) // Single host
 			hosts.GET("/:id/metrics", s.AuthMiddleware(), s.handleGetHostMetrics)
 			hosts.GET("/:id/inventory", s.AuthMiddleware(), s.handleGetHostInventory)
+		}
+
+		// ================================================================
+		// Data Classification Custom Patterns Routes (DATA-04)
+		// ================================================================
+		classification := api.Group("/classification")
+		{
+			classification.GET("/patterns", s.AuthMiddleware(), s.handleGetCustomPatterns)
+			classification.POST("/patterns", s.AuthMiddleware(), s.handleCreateCustomPattern)
+			classification.PUT("/patterns/:id", s.AuthMiddleware(), s.handleUpdateCustomPattern)
+			classification.DELETE("/patterns/:id", s.AuthMiddleware(), s.handleDeleteCustomPattern)
 		}
 
 		// Registration Secrets routes (admin only)

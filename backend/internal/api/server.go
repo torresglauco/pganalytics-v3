@@ -368,6 +368,17 @@ func (s *Server) RegisterRoutes(router *gin.Engine) {
 			collectors.GET("/:id/cache-hits", s.AuthMiddleware(), s.handleGetCacheMetrics)
 			collectors.GET("/:id/connections", s.AuthMiddleware(), s.handleGetConnectionMetrics)
 			collectors.GET("/:id/extensions", s.AuthMiddleware(), s.handleGetExtensionMetrics)
+
+			// ================================================================
+			// Replication Routes (Phase 10)
+			// ================================================================
+			// Streaming replication
+			collectors.GET("/:id/replication", s.AuthMiddleware(), s.handleGetReplicationMetrics)
+			collectors.GET("/:id/replication-slots", s.AuthMiddleware(), s.handleGetReplicationSlots)
+			// Logical replication
+			collectors.GET("/:id/logical-subscriptions", s.AuthMiddleware(), s.handleGetLogicalSubscriptions)
+			collectors.GET("/:id/publications", s.AuthMiddleware(), s.handleGetPublications)
+			collectors.GET("/:id/topology", s.AuthMiddleware(), s.handleGetReplicationTopology)
 		}
 
 		// Registration Secrets routes (admin only)

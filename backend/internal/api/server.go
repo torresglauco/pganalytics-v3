@@ -390,6 +390,17 @@ func (s *Server) RegisterRoutes(router *gin.Engine) {
 			collectors.GET("/:id/inventory/schema-versions", s.AuthMiddleware(), s.handleGetSchemaVersions)
 		}
 
+		// ================================================================
+		// Host Monitoring Routes (HOST-01, HOST-02, HOST-03)
+		// ================================================================
+		hosts := api.Group("/hosts")
+		{
+			hosts.GET("", s.AuthMiddleware(), s.handleGetHostStatus)            // All hosts status
+			hosts.GET("/:id/status", s.AuthMiddleware(), s.handleGetHostStatus) // Single host
+			hosts.GET("/:id/metrics", s.AuthMiddleware(), s.handleGetHostMetrics)
+			hosts.GET("/:id/inventory", s.AuthMiddleware(), s.handleGetHostInventory)
+		}
+
 		// Registration Secrets routes (admin only)
 		secrets := api.Group("/registration-secrets")
 		secrets.Use(s.AuthMiddleware())

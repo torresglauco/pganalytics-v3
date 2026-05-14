@@ -32,20 +32,39 @@ Enable database teams to proactively identify and fix performance issues before 
 
 ---
 
-## Current Milestone: v1.2 Performance Optimization
+## Current Milestone: v1.3 Monitoring & Alerting Platform
 
-**Goal:** Accelerate query/API response times for dashboard, query analysis, and index advisor operations.
+**Goal:** Comprehensive monitoring and alerting for PostgreSQL replication, host health, data classification, and multi-version support.
 
 **Target Features:**
-- Query optimization through indexing and execution plan improvements
-- API response time reduction for slow endpoints
-- Database connection pooling and caching strategies
-- Performance monitoring and bottleneck identification
-- Optimization of common dashboard aggregations and time-series queries
+
+### Replication Monitoring
+- All PostgreSQL replication types (streaming, logical, cascading)
+- Replication lag, apply lag, latency metrics
+- Standby/primary relationship tracking
+
+### Host Monitoring
+- Host status (up/down detection)
+- Host inventory (OS, resources, configuration)
+- Host health analysis
+
+### Database Inventory
+- Tables and columns inventory
+- Schema change tracking
+
+### Data Classification
+- PII detection (Personally Identifiable Information)
+- Regulated data detection
+- PCI data detection
+
+### Health Analysis
+- PostgreSQL health monitoring
+- Multi-version support (all community-supported versions)
+- Version-specific health checks
 
 ## Requirements
 
-### Validated (v1.0 & v1.1)
+### Validated (v1.0, v1.1, v1.2)
 
 - ✓ Security fixes and hardened authentication (v1.0)
 - ✓ E2E test infrastructure (v1.0)
@@ -54,35 +73,46 @@ Enable database teams to proactively identify and fix performance issues before 
 - ✓ Frontend component and integration tests (v1.1)
 - ✓ Code quality improvements (v1.1)
 - ✓ CI/CD validation pipeline (v1.1)
-- ✓ All 27 v1.1 requirements verified
+- ✓ Query optimization with pgx v5 and connection pooling (v1.2)
+- ✓ API response caching with per-endpoint TTL (v1.2)
+- ✓ TimescaleDB continuous aggregates for instant dashboards (v1.2)
+- ✓ Query fingerprinting and anti-pattern detection (v1.2)
+- ✓ Index impact estimation with hypopg (v1.2)
 
-### Active (v1.2)
+### Active (v1.3)
 
-- [ ] Query optimization (slow queries, timeline, fingerprinting)
-- [ ] Index intelligence (usage stats, impact estimation)
-- [ ] API performance (pgx v5, connection pooling, caching)
-- [ ] Dashboard optimization (continuous aggregates)
-- [ ] Performance monitoring (pprof, Prometheus metrics)
+- [ ] **Replication Monitoring**: Streaming, logical, cascading replication with lag/latency metrics
+- [ ] **Host Monitoring**: Status detection, inventory, health analysis
+- [ ] **Database Inventory**: Tables, columns, schema tracking
+- [ ] **Data Classification**: PII, regulated data, PCI detection
+- [ ] **Alerting System**: Threshold-based alerts, notification channels
+- [ ] **Multi-version Support**: All PostgreSQL community-supported versions
+- [ ] **Frontend UI**: Dashboards for all new monitoring features
+- [ ] **Testing**: Unit tests, integration tests, E2E tests for all new code
 
 ### Out of Scope
 
 - Automatic index creation (production risk)
 - Query rewriting (may change semantics)
-- Real-time dashboard metrics (v2+)
+- Real-time WebSocket streaming (v2+)
+- SMS notifications (email and Slack sufficient)
 
 ## Context
 
-- **Current State:** v1.2 milestone initialized - 4 phases planned, 21 requirements defined
+- **Current State:** v1.3 milestone initialized - expanding monitoring capabilities
 - **Team:** 1-2 senior engineers available
 - **Stack:** Go backend, TypeScript/React frontend, PostgreSQL/TimescaleDB, Playwright for E2E
-- **Testing Infrastructure:** 200+ backend tests, 38 database tests, 60+ frontend tests, CI/CD with coverage
+- **Existing Infrastructure:** Query monitoring, index analysis, dashboards, caching, connection pooling
+- **New Capabilities:** Replication monitoring, host monitoring, data classification, alerting
 
 ## Constraints
 
-- **Timeline**: 2-3 weeks estimated
+- **Timeline**: 3-4 weeks estimated
+- **Scale**: Support 2000+ PostgreSQL clusters, 5000+ hosts
 - **Coverage Target**: 80%+ code coverage
-- **Tech Stack**: Go (backend), TypeScript (frontend), pgx v5 (new)
-- **Quality Gate**: All tests must pass, performance improvements measurable
+- **Tech Stack**: Go (backend), TypeScript (frontend), pgx v5
+- **Quality Gate**: All tests must pass, unit + integration + E2E tests required
+- **Testing**: Frontend and backend must have comprehensive test coverage
 
 ## Key Decisions
 

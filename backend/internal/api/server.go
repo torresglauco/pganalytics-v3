@@ -402,7 +402,7 @@ func (s *Server) RegisterRoutes(router *gin.Engine) {
 		}
 
 		// ================================================================
-		// Host Monitoring Routes (HOST-01, HOST-02, HOST-03)
+		// Host Monitoring Routes (HOST-01, HOST-02, HOST-03, HOST-04)
 		// ================================================================
 		hosts := api.Group("/hosts")
 		{
@@ -410,6 +410,10 @@ func (s *Server) RegisterRoutes(router *gin.Engine) {
 			hosts.GET("/:id/status", s.AuthMiddleware(), s.handleGetHostStatus) // Single host
 			hosts.GET("/:id/metrics", s.AuthMiddleware(), s.handleGetHostMetrics)
 			hosts.GET("/:id/inventory", s.AuthMiddleware(), s.handleGetHostInventory)
+			// Health score routes (HOST-04)
+			hosts.GET("/:id/health", s.AuthMiddleware(), s.handleGetHealthScore)
+			hosts.GET("/:id/health/history", s.AuthMiddleware(), s.handleGetHealthScoreHistory)
+			hosts.POST("/:id/health/calculate", s.AuthMiddleware(), s.handleCalculateHealthScore)
 		}
 
 		// ================================================================

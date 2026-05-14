@@ -160,4 +160,183 @@ SELECT add_retention_policy('metrics_logical_subscriptions', INTERVAL '90 days',
 SELECT add_retention_policy('metrics_publications', INTERVAL '90 days', if_not_exists => TRUE);
 SELECT add_retention_policy('metrics_wal_receivers', INTERVAL '90 days', if_not_exists => TRUE);
 
+-- ============================================================================
+-- TABLE INVENTORY (INV-01)
+-- ============================================================================
+
+-- Create table for database table inventory with sizes and row counts
+CREATE TABLE IF NOT EXISTS metrics_table_inventory (
+    time TIMESTAMPTZ NOT NULL,
+    collector_id UUID NOT NULL REFERENCES collectors(id),
+    database_name VARCHAR(255),
+    schema_name VARCHAR(255),
+    table_name VARCHAR(255),
+    table_type VARCHAR(50),        -- BASE TABLE, VIEW
+    row_count BIGINT,
+    total_size_mb BIGINT,
+    table_size_mb BIGINT,
+    index_size_mb BIGINT,
+    toast_size_mb BIGINT,
+    has_oids BOOLEAN,
+    table_oid BIGINT,
+    PRIMARY KEY (time, collector_id, table_oid)
+);
+
+-- Create TimescaleDB hypertable for table inventory
+SELECT create_hypertable('metrics_table_inventory', 'time',
+    if_not_exists => TRUE,
+    migrate_data => FALSE);
+
+-- Create index for efficient querying by collector
+CREATE INDEX IF NOT EXISTS idx_table_inventory_collector
+    ON metrics_table_inventory (collector_id, time DESC);
+
+-- Create index for filtering by database and schema
+CREATE INDEX IF NOT EXISTS idx_table_inventory_db_schema
+    ON metrics_table_inventory (collector_id, database_name, schema_name, time DESC);
+
+-- ============================================================================
+-- COLUMN INVENTORY (INV-02)
+-- ============================================================================
+
+-- Create table for database column inventory with types
+CREATE TABLE IF NOT EXISTS metrics_column_inventory (
+    time TIMESTAMPTZ NOT NULL,
+    collector_id UUID NOT NULL REFERENCES collectors(id),
+    database_name VARCHAR(255),
+    schema_name VARCHAR(255),
+    table_name VARCHAR(255),
+    column_name VARCHAR(255),
+    data_type VARCHAR(100),
+    is_nullable BOOLEAN,
+    column_default TEXT,
+    ordinal_position INT,
+    character_max_length INT,
+    numeric_precision INT,
+    numeric_scale INT,
+    is_primary_key BOOLEAN,
+    is_foreign_key BOOLEAN,
+    PRIMARY KEY (time, collector_id, database_name, schema_name, table_name, column_name)
+);
+
+-- Create TimescaleDB hypertable for column inventory
+SELECT create_hypertable('metrics_column_inventory', 'time',
+    if_not_exists => TRUE,
+    migrate_data => FALSE);
+
+-- Create index for efficient querying by collector
+CREATE INDEX IF NOT EXISTS idx_column_inventory_collector
+    ON metrics_column_inventory (collector_id, time DESC);
+
+-- Create index for filtering by database and table
+CREATE INDEX IF NOT EXISTS idx_column_inventory_db_table
+    ON metrics_column_inventory (collector_id, database_name, table_name, time DESC);
+
+-- ============================================================================
+-- INDEX INVENTORY (INV-03)
+-- ============================================================================
+
+-- Create table for database index inventory with usage statistics
+CREATE TABLE IF NOT EXISTS metrics_index_inventory (
+    time TIMESTAMPTZ NOT NULL,
+    collector_id UUID NOT NULL REFERENCES collectors(id),
+    database_name VARCHAR(255),
+    schema_name VARCHAR(255),
+    table_name VARCHAR(255),
+    index_name VARCHAR(255),
+    index_definition TEXT,
+    index_size_mb BIGINT,
+    idx_scan BIGINT,
+    idx_tup_read BIGINT,
+    idx_tup_fetch BIGINT,
+    usage_status VARCHAR(50),      -- UNUSED, RARELY_USED, ACTIVE
+    is_primary BOOLEAN,
+    is_unique BOOLEAN,
+    index_oid BIGINT,
+    PRIMARY KEY (time, collector_id, index_oid)
+);
+
+-- Create TimescaleDB hypertable for index inventory
+SELECT create_hypertable('metrics_index_inventory', 'time',
+    if_not_exists => TRUE,
+    migrate_data => FALSE);
+
+-- Create index for efficient querying by collector
+CREATE INDEX IF NOT EXISTS idx_index_inventory_collector
+    ON metrics_index_inventory (collector_id, time DESC);
+
+-- Create index for filtering by database and table
+CREATE INDEX IF NOT EXISTS idx_index_inventory_db_table
+    ON metrics_index_inventory (collector_id, database_name, table_name, time DESC);
+
+-- ============================================================================
+-- EXTENSION INVENTORY (INV-04)
+-- ============================================================================
+
+-- Create table for database extension inventory with versions
+CREATE TABLE IF NOT EXISTS metrics_extension_inventory (
+    time TIMESTAMPTZ NOT NULL,
+    collector_id UUID NOT NULL REFERENCES collectors(id),
+    database_name VARCHAR(255),
+    extension_name VARCHAR(255),
+    extension_version VARCHAR(100),
+    extension_owner VARCHAR(255),
+    extension_schema VARCHAR(255),
+    is_relocatable BOOLEAN,
+    description TEXT,
+    PRIMARY KEY (time, collector_id, database_name, extension_name)
+);
+
+-- Create TimescaleDB hypertable for extension inventory
+SELECT create_hypertable('metrics_extension_inventory', 'time',
+    if_not_exists => TRUE,
+    migrate_data => FALSE);
+
+-- Create index for efficient querying by collector
+CREATE INDEX IF NOT EXISTS idx_extension_inventory_collector
+    ON metrics_extension_inventory (collector_id, time DESC);
+
+-- ============================================================================
+-- SCHEMA VERSIONS (INV-05)
+-- ============================================================================
+
+-- Create table for schema change tracking
+CREATE TABLE IF NOT EXISTS metrics_schema_versions (
+    time TIMESTAMPTZ NOT NULL,
+    collector_id UUID NOT NULL REFERENCES collectors(id),
+    database_name VARCHAR(255),
+    version_hash VARCHAR(64),      -- MD5 hash of all object signatures
+    change_type VARCHAR(50),       -- INIT, TABLE_ADDED, TABLE_REMOVED, TABLE_MODIFIED, etc.
+    object_type VARCHAR(50),       -- TABLE, COLUMN, INDEX, EXTENSION
+    object_name VARCHAR(255),
+    change_details TEXT,           -- JSON describing the change
+    previous_value TEXT,
+    new_value TEXT,
+    PRIMARY KEY (time, collector_id, database_name, change_type, object_name)
+);
+
+-- Create TimescaleDB hypertable for schema versions
+SELECT create_hypertable('metrics_schema_versions', 'time',
+    if_not_exists => TRUE,
+    migrate_data => FALSE);
+
+-- Create index for efficient querying by collector
+CREATE INDEX IF NOT EXISTS idx_schema_versions_collector
+    ON metrics_schema_versions (collector_id, time DESC);
+
+-- Create index for filtering by database and change type
+CREATE INDEX IF NOT EXISTS idx_schema_versions_db_type
+    ON metrics_schema_versions (collector_id, database_name, change_type, time DESC);
+
+-- ============================================================================
+-- INVENTORY RETENTION POLICIES
+-- ============================================================================
+
+-- Set retention policy for inventory tables (keep for 90 days)
+SELECT add_retention_policy('metrics_table_inventory', INTERVAL '90 days', if_not_exists => TRUE);
+SELECT add_retention_policy('metrics_column_inventory', INTERVAL '90 days', if_not_exists => TRUE);
+SELECT add_retention_policy('metrics_index_inventory', INTERVAL '90 days', if_not_exists => TRUE);
+SELECT add_retention_policy('metrics_extension_inventory', INTERVAL '90 days', if_not_exists => TRUE);
+SELECT add_retention_policy('metrics_schema_versions', INTERVAL '365 days', if_not_exists => TRUE);  -- Keep schema changes longer
+
 COMMIT;

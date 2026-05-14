@@ -23,7 +23,7 @@ Requirements for comprehensive monitoring and alerting platform. Extends existin
 - [ ] **HOST-01**: User can view host up/down status for all monitored instances
 - [ ] **HOST-02**: User can view OS metrics (CPU, memory, disk, network I/O)
 - [ ] **HOST-03**: User can view host inventory (OS version, hardware, PostgreSQL config)
-- [ ] **HOST-04**: User can view host health score based on resource utilization
+- [x] **HOST-04**: User can view host health score based on resource utilization
 - [ ] **HOST-05**: User can configure host-level alert thresholds
 
 ### Database Inventory
@@ -242,7 +242,7 @@ Explicitly excluded. Documented to prevent scope creep.
 | HOST-01 | Phase 10 | Pending |
 | HOST-02 | Phase 10 | Pending |
 | HOST-03 | Phase 10 | Pending |
-| HOST-04 | Phase 11 | Pending |
+| HOST-04 | Phase 11 | Complete |
 | HOST-05 | Phase 12 | Pending |
 | INV-01 | Phase 10 | Complete |
 | INV-02 | Phase 10 | Complete |

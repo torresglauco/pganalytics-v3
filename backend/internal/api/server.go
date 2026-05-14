@@ -391,6 +391,12 @@ func (s *Server) RegisterRoutes(router *gin.Engine) {
 			// ================================================================
 			collectors.GET("/:id/version", s.AuthMiddleware(), s.handleGetVersionInfo)
 			collectors.GET("/:id/mode", s.AuthMiddleware(), s.handleGetCollectorMode)
+
+			// ================================================================
+			// Version-Specific Health Checks Routes (VER-03)
+			// ================================================================
+			collectors.GET("/:id/health-checks", s.AuthMiddleware(), s.handleGetVersionHealthChecks)
+			collectors.POST("/:id/health-checks/run", s.AuthMiddleware(), s.handleRunVersionHealthChecks)
 		}
 
 		// ================================================================
@@ -425,6 +431,15 @@ func (s *Server) RegisterRoutes(router *gin.Engine) {
 			classification.POST("/patterns", s.AuthMiddleware(), s.handleCreateCustomPattern)
 			classification.PUT("/patterns/:id", s.AuthMiddleware(), s.handleUpdateCustomPattern)
 			classification.DELETE("/patterns/:id", s.AuthMiddleware(), s.handleDeleteCustomPattern)
+		}
+
+		// ================================================================
+		// Health Check Definitions Routes (VER-03)
+		// ================================================================
+		healthChecks := api.Group("/health-checks")
+		{
+			healthChecks.GET("", s.AuthMiddleware(), s.handleGetAllHealthChecks)
+			healthChecks.GET("/:id", s.AuthMiddleware(), s.handleGetHealthCheckByID)
 		}
 
 		// Registration Secrets routes (admin only)

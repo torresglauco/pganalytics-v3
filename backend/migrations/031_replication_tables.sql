@@ -339,4 +339,90 @@ SELECT add_retention_policy('metrics_index_inventory', INTERVAL '90 days', if_no
 SELECT add_retention_policy('metrics_extension_inventory', INTERVAL '90 days', if_not_exists => TRUE);
 SELECT add_retention_policy('metrics_schema_versions', INTERVAL '365 days', if_not_exists => TRUE);  -- Keep schema changes longer
 
+-- ============================================================================
+-- HOST METRICS (HOST-02)
+-- ============================================================================
+
+-- Create table for host OS metrics (CPU, memory, disk I/O, load average)
+-- Collected by sysstat collector plugin
+CREATE TABLE IF NOT EXISTS metrics_host_metrics (
+    time TIMESTAMPTZ NOT NULL,
+    collector_id UUID NOT NULL REFERENCES collectors(id),
+    cpu_user FLOAT,
+    cpu_system FLOAT,
+    cpu_idle FLOAT,
+    cpu_iowait FLOAT,
+    cpu_load_1m FLOAT,
+    cpu_load_5m FLOAT,
+    cpu_load_15m FLOAT,
+    memory_total_mb BIGINT,
+    memory_free_mb BIGINT,
+    memory_used_mb BIGINT,
+    memory_cached_mb BIGINT,
+    memory_used_percent FLOAT,
+    disk_total_gb BIGINT,
+    disk_used_gb BIGINT,
+    disk_free_gb BIGINT,
+    disk_used_percent FLOAT,
+    disk_io_read_ops BIGINT,
+    disk_io_write_ops BIGINT,
+    network_rx_bytes BIGINT,
+    network_tx_bytes BIGINT,
+    PRIMARY KEY (time, collector_id)
+);
+
+-- Create TimescaleDB hypertable for host metrics
+SELECT create_hypertable('metrics_host_metrics', 'time',
+    if_not_exists => TRUE,
+    migrate_data => FALSE);
+
+-- Create index for efficient querying by collector
+CREATE INDEX IF NOT EXISTS idx_host_metrics_collector
+    ON metrics_host_metrics (collector_id, time DESC);
+
+-- ============================================================================
+-- HOST INVENTORY (HOST-03)
+-- ============================================================================
+
+-- Create table for host inventory (OS version, hardware, PostgreSQL config)
+-- Collected by host_inventory_plugin
+CREATE TABLE IF NOT EXISTS metrics_host_inventory (
+    time TIMESTAMPTZ NOT NULL,
+    collector_id UUID NOT NULL REFERENCES collectors(id),
+    os_name VARCHAR(255),
+    os_version VARCHAR(100),
+    os_kernel VARCHAR(255),
+    cpu_cores INT,
+    cpu_model VARCHAR(255),
+    cpu_mhz FLOAT,
+    memory_total_mb BIGINT,
+    disk_total_gb BIGINT,
+    postgres_version VARCHAR(50),
+    postgres_edition VARCHAR(100),
+    postgres_port INT,
+    postgres_data_dir VARCHAR(500),
+    postgres_max_connections INT,
+    postgres_shared_buffers_mb INT,
+    postgres_work_mem_mb INT,
+    PRIMARY KEY (time, collector_id)
+);
+
+-- Create TimescaleDB hypertable for host inventory
+SELECT create_hypertable('metrics_host_inventory', 'time',
+    if_not_exists => TRUE,
+    migrate_data => FALSE);
+
+-- Create index for efficient querying by collector
+CREATE INDEX IF NOT EXISTS idx_host_inventory_collector
+    ON metrics_host_inventory (collector_id, time DESC);
+
+-- ============================================================================
+-- HOST METRICS AND INVENTORY RETENTION POLICIES
+-- ============================================================================
+
+-- Set retention policy for host metrics (keep for 90 days)
+SELECT add_retention_policy('metrics_host_metrics', INTERVAL '90 days', if_not_exists => TRUE);
+-- Set retention policy for host inventory (keep for 365 days - static data changes infrequently)
+SELECT add_retention_policy('metrics_host_inventory', INTERVAL '365 days', if_not_exists => TRUE);
+
 COMMIT;

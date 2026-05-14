@@ -379,6 +379,15 @@ func (s *Server) RegisterRoutes(router *gin.Engine) {
 			collectors.GET("/:id/logical-subscriptions", s.AuthMiddleware(), s.handleGetLogicalSubscriptions)
 			collectors.GET("/:id/publications", s.AuthMiddleware(), s.handleGetPublications)
 			collectors.GET("/:id/topology", s.AuthMiddleware(), s.handleGetReplicationTopology)
+
+			// ================================================================
+			// Database Inventory Routes (INV-01 through INV-05)
+			// ================================================================
+			collectors.GET("/:id/inventory/tables", s.AuthMiddleware(), s.handleGetTableInventory)
+			collectors.GET("/:id/inventory/columns", s.AuthMiddleware(), s.handleGetColumnInventory)
+			collectors.GET("/:id/inventory/indexes", s.AuthMiddleware(), s.handleGetIndexInventory)
+			collectors.GET("/:id/inventory/extensions", s.AuthMiddleware(), s.handleGetExtensionInventory)
+			collectors.GET("/:id/inventory/schema-versions", s.AuthMiddleware(), s.handleGetSchemaVersions)
 		}
 
 		// Registration Secrets routes (admin only)

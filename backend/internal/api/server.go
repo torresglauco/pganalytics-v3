@@ -269,6 +269,11 @@ func getOAuthProviderNames(configs []auth.OAuthProviderConfig) []string {
 	return names
 }
 
+// TenantContextMiddleware creates a middleware that sets tenant context for RLS
+func (s *Server) TenantContextMiddleware() gin.HandlerFunc {
+	return middleware.TenantContextMiddleware(s.postgres, s.logger)
+}
+
 // RegisterRoutes registers all API routes
 func (s *Server) RegisterRoutes(router *gin.Engine) {
 	// Apply global middleware
@@ -350,53 +355,53 @@ func (s *Server) RegisterRoutes(router *gin.Engine) {
 			// Token refresh (collector auth required)
 			collectors.POST("/refresh-token", s.CollectorAuthMiddleware(), s.handleRefreshCollectorToken)
 
-			// Protected routes
-			collectors.GET("", s.AuthMiddleware(), s.handleListCollectors)
-			collectors.GET("/:id", s.AuthMiddleware(), s.handleGetCollector)
-			collectors.DELETE("/:id", s.AuthMiddleware(), s.handleDeleteCollector)
+			// Protected routes with tenant context for RLS (SCALE-04)
+			collectors.GET("", s.AuthMiddleware(), s.TenantContextMiddleware(), s.handleListCollectors)
+			collectors.GET("/:id", s.AuthMiddleware(), s.TenantContextMiddleware(), s.handleGetCollector)
+			collectors.DELETE("/:id", s.AuthMiddleware(), s.TenantContextMiddleware(), s.handleDeleteCollector)
 
 			// Query Statistics routes
-			collectors.GET("/:id/queries/slow", s.AuthMiddleware(), s.handleGetSlowQueries)
-			collectors.GET("/:id/queries/frequent", s.AuthMiddleware(), s.handleGetFrequentQueries)
+			collectors.GET("/:id/queries/slow", s.AuthMiddleware(), s.TenantContextMiddleware(), s.handleGetSlowQueries)
+			collectors.GET("/:id/queries/frequent", s.AuthMiddleware(), s.TenantContextMiddleware(), s.handleGetFrequentQueries)
 
 			// ================================================================
 			// Metrics Collection Routes (Phase 1 & 2)
 			// ================================================================
-			collectors.GET("/:id/schema", s.AuthMiddleware(), s.handleGetSchemaMetrics)
-			collectors.GET("/:id/locks", s.AuthMiddleware(), s.handleGetLockMetrics)
-			collectors.GET("/:id/bloat", s.AuthMiddleware(), s.handleGetBloatMetrics)
-			collectors.GET("/:id/cache-hits", s.AuthMiddleware(), s.handleGetCacheMetrics)
-			collectors.GET("/:id/connections", s.AuthMiddleware(), s.handleGetConnectionMetrics)
-			collectors.GET("/:id/extensions", s.AuthMiddleware(), s.handleGetExtensionMetrics)
+			collectors.GET("/:id/schema", s.AuthMiddleware(), s.TenantContextMiddleware(), s.handleGetSchemaMetrics)
+			collectors.GET("/:id/locks", s.AuthMiddleware(), s.TenantContextMiddleware(), s.handleGetLockMetrics)
+			collectors.GET("/:id/bloat", s.AuthMiddleware(), s.TenantContextMiddleware(), s.handleGetBloatMetrics)
+			collectors.GET("/:id/cache-hits", s.AuthMiddleware(), s.TenantContextMiddleware(), s.handleGetCacheMetrics)
+			collectors.GET("/:id/connections", s.AuthMiddleware(), s.TenantContextMiddleware(), s.handleGetConnectionMetrics)
+			collectors.GET("/:id/extensions", s.AuthMiddleware(), s.TenantContextMiddleware(), s.handleGetExtensionMetrics)
 
 			// ================================================================
 			// Replication Routes (Phase 10)
 			// ================================================================
 			// Streaming replication
-			collectors.GET("/:id/replication", s.AuthMiddleware(), s.handleGetReplicationMetrics)
-			collectors.GET("/:id/replication-slots", s.AuthMiddleware(), s.handleGetReplicationSlots)
+			collectors.GET("/:id/replication", s.AuthMiddleware(), s.TenantContextMiddleware(), s.handleGetReplicationMetrics)
+			collectors.GET("/:id/replication-slots", s.AuthMiddleware(), s.TenantContextMiddleware(), s.handleGetReplicationSlots)
 			// Logical replication
-			collectors.GET("/:id/logical-subscriptions", s.AuthMiddleware(), s.handleGetLogicalSubscriptions)
-			collectors.GET("/:id/publications", s.AuthMiddleware(), s.handleGetPublications)
-			collectors.GET("/:id/topology", s.AuthMiddleware(), s.handleGetReplicationTopology)
+			collectors.GET("/:id/logical-subscriptions", s.AuthMiddleware(), s.TenantContextMiddleware(), s.handleGetLogicalSubscriptions)
+			collectors.GET("/:id/publications", s.AuthMiddleware(), s.TenantContextMiddleware(), s.handleGetPublications)
+			collectors.GET("/:id/topology", s.AuthMiddleware(), s.TenantContextMiddleware(), s.handleGetReplicationTopology)
 
 			// ================================================================
 			// Data Classification Routes (Phase 11, DATA-01 to DATA-05)
 			// ================================================================
-			collectors.GET("/:id/classification", s.AuthMiddleware(), s.handleGetClassificationResults)
-			collectors.GET("/:id/classification/report", s.AuthMiddleware(), s.handleGetClassificationReport)
+			collectors.GET("/:id/classification", s.AuthMiddleware(), s.TenantContextMiddleware(), s.handleGetClassificationResults)
+			collectors.GET("/:id/classification/report", s.AuthMiddleware(), s.TenantContextMiddleware(), s.handleGetClassificationReport)
 
 			// ================================================================
 			// Version Information Routes (VER-01, VER-02, VER-04)
 			// ================================================================
-			collectors.GET("/:id/version", s.AuthMiddleware(), s.handleGetVersionInfo)
-			collectors.GET("/:id/mode", s.AuthMiddleware(), s.handleGetCollectorMode)
+			collectors.GET("/:id/version", s.AuthMiddleware(), s.TenantContextMiddleware(), s.handleGetVersionInfo)
+			collectors.GET("/:id/mode", s.AuthMiddleware(), s.TenantContextMiddleware(), s.handleGetCollectorMode)
 
 			// ================================================================
 			// Version-Specific Health Checks Routes (VER-03)
 			// ================================================================
-			collectors.GET("/:id/health-checks", s.AuthMiddleware(), s.handleGetVersionHealthChecks)
-			collectors.POST("/:id/health-checks/run", s.AuthMiddleware(), s.handleRunVersionHealthChecks)
+			collectors.GET("/:id/health-checks", s.AuthMiddleware(), s.TenantContextMiddleware(), s.handleGetVersionHealthChecks)
+			collectors.POST("/:id/health-checks/run", s.AuthMiddleware(), s.TenantContextMiddleware(), s.handleRunVersionHealthChecks)
 		}
 
 		// ================================================================
@@ -409,39 +414,44 @@ func (s *Server) RegisterRoutes(router *gin.Engine) {
 
 		// ================================================================
 		// Host Monitoring Routes (HOST-01, HOST-02, HOST-03, HOST-04)
+		// Uses TenantContextMiddleware for RLS isolation (SCALE-04)
 		// ================================================================
 		hosts := api.Group("/hosts")
+		hosts.Use(s.AuthMiddleware(), s.TenantContextMiddleware())
 		{
-			hosts.GET("", s.AuthMiddleware(), s.handleGetHostStatus)            // All hosts status
-			hosts.GET("/:id/status", s.AuthMiddleware(), s.handleGetHostStatus) // Single host
-			hosts.GET("/:id/metrics", s.AuthMiddleware(), s.handleGetHostMetrics)
-			hosts.GET("/:id/inventory", s.AuthMiddleware(), s.handleGetHostInventory)
+			hosts.GET("", s.handleGetHostStatus)            // All hosts status
+			hosts.GET("/:id/status", s.handleGetHostStatus) // Single host
+			hosts.GET("/:id/metrics", s.handleGetHostMetrics)
+			hosts.GET("/:id/inventory", s.handleGetHostInventory)
 			// Health score routes (HOST-04)
-			hosts.GET("/:id/health", s.AuthMiddleware(), s.handleGetHealthScore)
-			hosts.GET("/:id/health/history", s.AuthMiddleware(), s.handleGetHealthScoreHistory)
-			hosts.POST("/:id/health/calculate", s.AuthMiddleware(), s.handleCalculateHealthScore)
+			hosts.GET("/:id/health", s.handleGetHealthScore)
+			hosts.GET("/:id/health/history", s.handleGetHealthScoreHistory)
+			hosts.POST("/:id/health/calculate", s.handleCalculateHealthScore)
 		}
 
 		// ================================================================
 		// Data Classification Custom Patterns Routes (DATA-04)
 		// ================================================================
 		classification := api.Group("/classification")
+		classification.Use(s.AuthMiddleware(), s.TenantContextMiddleware())
 		{
-			classification.GET("/patterns", s.AuthMiddleware(), s.handleGetCustomPatterns)
-			classification.POST("/patterns", s.AuthMiddleware(), s.handleCreateCustomPattern)
-			classification.PUT("/patterns/:id", s.AuthMiddleware(), s.handleUpdateCustomPattern)
-			classification.DELETE("/patterns/:id", s.AuthMiddleware(), s.handleDeleteCustomPattern)
+			classification.GET("/patterns", s.handleGetCustomPatterns)
+			classification.POST("/patterns", s.handleCreateCustomPattern)
+			classification.PUT("/patterns/:id", s.handleUpdateCustomPattern)
+			classification.DELETE("/patterns/:id", s.handleDeleteCustomPattern)
 		}
 
 		// ================================================================
 		// Tenant Management Routes (SCALE-01, SCALE-02, SCALE-03, SCALE-04)
+		// Note: Tenant management uses AuthMiddleware only (admin-level)
 		// ================================================================
 		tenants := api.Group("/tenants")
+		tenants.Use(s.AuthMiddleware())
 		{
-			tenants.GET("", s.AuthMiddleware(), s.handleGetTenants)
-			tenants.POST("", s.AuthMiddleware(), s.handleCreateTenant)
-			tenants.GET("/:id/collectors", s.AuthMiddleware(), s.handleGetTenantCollectors)
-			tenants.POST("/:id/collectors", s.AuthMiddleware(), s.handleAssignCollectorToTenant)
+			tenants.GET("", s.handleGetTenants)
+			tenants.POST("", s.handleCreateTenant)
+			tenants.GET("/:id/collectors", s.handleGetTenantCollectors)
+			tenants.POST("/:id/collectors", s.handleAssignCollectorToTenant)
 		}
 
 		// ================================================================

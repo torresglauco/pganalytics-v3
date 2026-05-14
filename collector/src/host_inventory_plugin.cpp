@@ -66,7 +66,10 @@ HostInventoryCollector::HostInventoryCollector(
       postgresPort_(postgresPort),
       postgresUser_(postgresUser),
       postgresPassword_(postgresPassword),
-      enabled_(true) {
+      enabled_(true),
+      postgres_version_major_(0),
+      postgres_version_minor_(0),
+      version_detected_(false) {
     hostname_ = hostname;
     collectorId_ = collectorId;
 }
@@ -85,6 +88,9 @@ json HostInventoryCollector::execute() {
         {"timestamp", getCurrentTimestamp()},
         {"hostname", hostname_}
     };
+
+    // Detect PostgreSQL version if connection is configured
+    detectPostgresVersion();
 
     // Collect OS information
     auto osInfo = collectOsInfo();
@@ -117,6 +123,50 @@ json HostInventoryCollector::execute() {
     }
 
     return result;
+}
+
+/**
+ * Detect PostgreSQL version
+ */
+int HostInventoryCollector::detectPostgresVersion() {
+#ifdef HAVE_LIBPQ
+    if (version_detected_) {
+        return postgres_version_major_;
+    }
+
+    if (postgresHost_.empty()) {
+        return 0;
+    }
+
+    PGconn* conn = connectToDatabase("postgres");
+    if (!conn) {
+        std::cerr << "Warning: Could not detect PostgreSQL version for host inventory" << std::endl;
+        return 0;
+    }
+
+    PGresult* res = PQexec(conn, "SELECT current_setting('server_version_num')::int");
+    if (PQresultStatus(res) != PGRES_TUPLES_OK) {
+        std::cerr << "Warning: Failed to get server version for host inventory" << std::endl;
+        PQclear(res);
+        PQfinish(conn);
+        return 0;
+    }
+
+    if (PQntuples(res) > 0) {
+        int version = std::stoi(PQgetvalue(res, 0, 0));
+        postgres_version_major_ = version / 10000;
+        postgres_version_minor_ = (version % 10000) / 100;
+        version_detected_ = true;
+        std::cerr << "Detected PostgreSQL version: " << postgres_version_major_ << "." << postgres_version_minor_ << std::endl;
+    }
+
+    PQclear(res);
+    PQfinish(conn);
+    return postgres_version_major_;
+
+#else
+    return 0;
+#endif
 }
 
 /**

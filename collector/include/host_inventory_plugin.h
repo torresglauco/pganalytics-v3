@@ -85,6 +85,18 @@ private:
     std::string postgresPassword_;
     bool enabled_;
 
+    // Version detection
+    int postgres_version_major_;
+    int postgres_version_minor_;
+    bool version_detected_;
+
+    /**
+     * Detect PostgreSQL version
+     * Sets postgres_version_major_ and postgres_version_minor_
+     * @return Major version number, or 0 on failure
+     */
+    int detectPostgresVersion();
+
     /**
      * Collect OS information from /etc/os-release and uname
      * @return JSON object with os_name, os_version, os_kernel

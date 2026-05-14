@@ -5,6 +5,7 @@
 - ✅ **v1.0 Security & E2E Testing** - Phases 01-04 (shipped 2026-04-22)
 - ✅ **v1.1 Testing & Validation** - Phase 05 (shipped 2026-04-30)
 - ✅ **v1.2 Performance Optimization** - Phases 06-09 (shipped 2026-05-13)
+- 🚧 **v1.3 Monitoring & Alerting Platform** - Phases 10-14 (in progress)
 
 ## Phases
 
@@ -67,42 +68,25 @@ Plans:
 
 </details>
 
-### v1.2 Performance Optimization (Complete)
-
-**Milestone Goal:** Accelerate query/API response times for dashboard, query analysis, and index advisor operations.
-
-- [x] **Phase 06: Query Optimization Foundation** - Establish optimized query infrastructure with pgx v5, connection pooling, and performance monitoring (completed 2026-05-11)
-- [x] **Phase 07: Caching Infrastructure** - Add response caching for faster API responses and reduced database load (completed 2026-05-12)
-- [x] **Phase 08: Dashboard Optimization** - Implement TimescaleDB continuous aggregates for instant dashboard loads (completed 2026-05-12)
-- [x] **Phase 09: Index Intelligence** - Add background index analysis with impact estimation (completed 2026-05-13)
-
-## Phase Details
+<details>
+<summary>✅ v1.2 Performance Optimization (Phases 06-09) - SHIPPED 2026-05-13</summary>
 
 ### Phase 06: Query Optimization Foundation
 **Goal**: Users experience faster query execution with optimized connection pooling and performance visibility
 **Depends on**: Phase 05 (CI/CD Infrastructure complete)
 **Requirements**: QRY-01, QRY-02, QRY-05, IDX-01, API-02, API-03, API-04, MON-01, MON-02, MON-03
-**Success Criteria** (what must be TRUE):
-  1. User can view top slow queries ranked by mean execution time
-  2. User can see query performance trends over time through timeline visualization
-  3. System uses pgx v5 connection pooling for all database operations
-  4. User can monitor connection pool status showing open, idle, and in-use connections
-  5. User can profile application performance on-demand via pprof endpoints
 **Plans**: 4 plans
 
 Plans:
 - [x] 06-01: Migrate from lib/pq to pgx v5 with connection pooling and read-only pool
 - [x] 06-02: Implement slow query identification and timeline
 - [x] 06-03: Enable pprof and Prometheus histograms
-- [ ] 06-04: Add metrics middleware and API endpoints
+- [x] 06-04: Add metrics middleware and API endpoints
 
 ### Phase 07: Caching Infrastructure
 **Goal**: Users experience faster API responses through intelligent caching
 **Depends on**: Phase 06 (Query Optimization Foundation)
 **Requirements**: API-01, MON-04
-**Success Criteria** (what must be TRUE):
-  1. User sees faster dashboard API responses through response caching
-  2. User can view cache hit/miss rates to understand caching effectiveness
 **Plans**: 2 plans
 
 Plans:
@@ -113,46 +97,118 @@ Plans:
 **Goal**: Users see instant dashboard loads through pre-computed aggregations
 **Depends on**: Phase 07 (Caching Infrastructure)
 **Requirements**: DASH-01, DASH-02, DASH-03, DASH-04
-**Success Criteria** (what must be TRUE):
-  1. User sees instant dashboard loads without waiting for on-demand aggregations
-  2. System uses TimescaleDB continuous aggregates for time-series queries
-  3. User can view historical metrics without triggering slow full-table scans
-  4. Dashboard metrics are pre-computed by background worker on schedule
 **Plans**: 3 plans
 
 Plans:
 - [x] 08-01: Create TimescaleDB continuous aggregates
 - [x] 08-02: Implement dashboard pre-computation worker
-- [x] 08-03: Wire aggregate queries to API handlers (gap closure)
+- [x] 08-03: Wire aggregate queries to API handlers
 
 ### Phase 09: Index Intelligence
 **Goal**: Users receive instant, actionable index recommendations with impact estimation
 **Depends on**: Phase 08 (Dashboard Optimization)
 **Requirements**: QRY-03, QRY-04, IDX-02, IDX-03, IDX-04
-**Success Criteria** (what must be TRUE):
-  1. User receives automated detection of query plan anti-patterns (Seq Scan, nested loops)
-  2. User can view grouped similar queries with different parameters (fingerprinting)
-  3. User can see unused indexes that are candidates for removal
-  4. User receives index impact estimation before creating new indexes
 **Plans**: 2 plans
 
 Plans:
 - [x] 09-01: Implement query plan analysis and fingerprinting
 - [x] 09-02: Add index recommendation engine with impact estimation
 
+</details>
+
+### 🚧 v1.3 Monitoring & Alerting Platform (In Progress)
+
+**Milestone Goal:** Comprehensive monitoring and alerting for PostgreSQL replication, host health, data classification, and multi-version support.
+
+- [ ] **Phase 10: Collector & Backend Foundation** - Replication monitoring, host monitoring, database inventory, collector architecture, multi-version support
+- [ ] **Phase 11: Data Classification & Health Analysis** - PII/PCI detection, host health scores, scalability infrastructure
+- [ ] **Phase 12: Alerting System** - Alert rules, notifications, escalation policies, notification channel management
+- [ ] **Phase 13: Frontend UI** - Dashboards for replication topology, data classification, host inventory
+- [ ] **Phase 14: Testing & Quality** - Comprehensive test coverage for all new features
+
+## Phase Details
+
+### Phase 10: Collector & Backend Foundation
+**Goal**: Users can monitor PostgreSQL replication, host status, and database inventory through a flexible collector architecture
+**Depends on**: Phase 09 (Index Intelligence complete)
+**Requirements**: REP-01, REP-02, REP-03, REP-04, HOST-01, HOST-02, HOST-03, INV-01, INV-02, INV-03, INV-04, INV-05, VER-01, VER-02, VER-04, COLL-01, COLL-02, COLL-03, COLL-04, COLL-05
+**Success Criteria** (what must be TRUE):
+  1. User can view streaming replication status with write/flush/replay lag metrics
+  2. User can view logical replication subscriptions and publications
+  3. User can view host up/down status and OS metrics (CPU, memory, disk, network)
+  4. User can view complete table and index inventory with usage statistics
+  5. Collector supports both decentralized (co-located) and centralized (remote) deployment modes
+**Plans**: TBD
+
+### Phase 11: Data Classification & Health Analysis
+**Goal**: Users can identify sensitive data and understand host/database health through automated analysis
+**Depends on**: Phase 10 (Collector & Backend Foundation)
+**Requirements**: HOST-04, DATA-01, DATA-02, DATA-03, DATA-04, DATA-05, VER-03, SCALE-01, SCALE-02, SCALE-03, SCALE-04
+**Success Criteria** (what must be TRUE):
+  1. User can view PII detection results for sensitive data patterns (CPF, CNPJ, email, phone)
+  2. User can view PCI detection results for credit card numbers
+  3. User can view host health score based on resource utilization
+  4. System supports 2000+ PostgreSQL clusters with multi-tenancy isolation
+  5. User can view version-specific health checks for PostgreSQL 11-17
+**Plans**: TBD
+
+### Phase 12: Alerting System
+**Goal**: Users receive timely notifications when metrics breach configured thresholds
+**Depends on**: Phase 11 (Data Classification & Health Analysis)
+**Requirements**: REP-05, HOST-05, ALERT-01, ALERT-02, ALERT-03, ALERT-04, ALERT-05, ALERT-06, ALERT-07, ALERT-08, UI-02, UI-05
+**Success Criteria** (what must be TRUE):
+  1. User can configure alert rules based on metric thresholds
+  2. User receives email notifications for triggered alerts
+  3. User receives Slack notifications via webhook integration
+  4. User can view alert history and acknowledge/silence active alerts
+  5. User can configure escalation policies for critical alerts
+**Plans**: TBD
+
+### Phase 13: Frontend UI
+**Goal**: Users can visualize monitoring data through intuitive dashboards and topology views
+**Depends on**: Phase 12 (Alerting System)
+**Requirements**: REP-06, UI-01, UI-03, UI-04
+**Success Criteria** (what must be TRUE):
+  1. User can view replication topology as an interactive graph
+  2. User can view data classification reports with drill-down by database/table
+  3. User can view host inventory dashboards with status and metrics
+**Plans**: TBD
+
+### Phase 14: Testing & Quality
+**Goal**: All new features have comprehensive test coverage ensuring reliability
+**Depends on**: Phase 13 (Frontend UI)
+**Requirements**: TEST-01, TEST-02, TEST-03, TEST-04, TEST-05
+**Success Criteria** (what must be TRUE):
+  1. All new collector plugins have C++ unit tests passing
+  2. All new backend services have Go unit tests passing
+  3. All new API endpoints have integration tests covering happy path and error cases
+  4. All new frontend components have tests passing
+  5. End-to-end tests cover critical user flows for monitoring features
+**Plans**: TBD
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 06 → 07 → 08 → 09
+Phases execute in numeric order: 10 → 11 → 12 → 13 → 14
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 06. Query Optimization Foundation | v1.2 | Complete | 2026-05-11 | 2026-05-11 |
-| 07. Caching Infrastructure | v1.2 | Complete | 2026-05-12 | 2026-05-12 |
-| 08. Dashboard Optimization | v1.2 | Complete | 2026-05-12 | 2026-05-12 |
-| 09. Index Intelligence | v1.2 | Complete | 2026-05-13 | 2026-05-13 |
+| 01. Security Fixes | v1.0 | 3/3 | Complete | 2026-04-22 |
+| 02. Authentication Hardening | v1.0 | 2/2 | Complete | 2026-04-22 |
+| 03. E2E Test Infrastructure | v1.0 | 2/2 | Complete | 2026-04-22 |
+| 04. Core E2E Tests | v1.0 | 3/3 | Complete | 2026-04-22 |
+| 05. CI/CD Infrastructure | v1.1 | 3/3 | Complete | 2026-04-30 |
+| 06. Query Optimization Foundation | v1.2 | 4/4 | Complete | 2026-05-11 |
+| 07. Caching Infrastructure | v1.2 | 2/2 | Complete | 2026-05-12 |
+| 08. Dashboard Optimization | v1.2 | 3/3 | Complete | 2026-05-12 |
+| 09. Index Intelligence | v1.2 | 2/2 | Complete | 2026-05-13 |
+| 10. Collector & Backend Foundation | v1.3 | 0/TBD | Not started | - |
+| 11. Data Classification & Health Analysis | v1.3 | 0/TBD | Not started | - |
+| 12. Alerting System | v1.3 | 0/TBD | Not started | - |
+| 13. Frontend UI | v1.3 | 0/TBD | Not started | - |
+| 14. Testing & Quality | v1.3 | 0/TBD | Not started | - |
 
 ---
 
-*Roadmap created: 2026-05-11*
-*Last updated: 2026-05-12*
+*Roadmap created: 2026-04-28*
+*Last updated: 2026-05-13 for v1.3 milestone initialization*

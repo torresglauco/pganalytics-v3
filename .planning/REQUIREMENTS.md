@@ -1,32 +1,120 @@
 # Requirements: pganalytics-v3
 
-**Defined:** 2026-04-28 (v1.1), 2026-05-11 (v1.2)
+**Defined:** 2026-04-28 (v1.1), 2026-05-11 (v1.2), 2026-05-13 (v1.3)
 **Core Value:** Enable database teams to proactively identify and fix performance issues before they impact production systems.
 
 ---
 
-## v1.2 Requirements (Performance Optimization)
+## v1.3 Requirements (Monitoring & Alerting Platform)
+
+Requirements for comprehensive monitoring and alerting platform. Extends existing collector and backend capabilities.
+
+### Replication Monitoring
+
+- [ ] **REP-01**: User can view streaming replication status with write/flush/replay lag metrics
+- [ ] **REP-02**: User can view logical replication subscriptions and publications
+- [ ] **REP-03**: User can view cascading replication topology (primary → standby → standby)
+- [ ] **REP-04**: User can view replication slots with WAL retention and active status
+- [ ] **REP-05**: User can view replication lag alerts when thresholds exceeded
+- [ ] **REP-06**: User can view replication topology graph visualization
+
+### Host Monitoring
+
+- [ ] **HOST-01**: User can view host up/down status for all monitored instances
+- [ ] **HOST-02**: User can view OS metrics (CPU, memory, disk, network I/O)
+- [ ] **HOST-03**: User can view host inventory (OS version, hardware, PostgreSQL config)
+- [ ] **HOST-04**: User can view host health score based on resource utilization
+- [ ] **HOST-05**: User can configure host-level alert thresholds
+
+### Database Inventory
+
+- [ ] **INV-01**: User can view complete table inventory with row counts and sizes
+- [ ] **INV-02**: User can view column inventory with data types and nullability
+- [ ] **INV-03**: User can view index inventory with usage statistics
+- [ ] **INV-04**: User can view extension inventory with versions
+- [ ] **INV-05**: User can track schema changes over time
+
+### Data Classification
+
+- [ ] **DATA-01**: User can view PII detection results (CPF, CNPJ, email, phone, names)
+- [ ] **DATA-02**: User can view PCI detection results (credit card numbers)
+- [ ] **DATA-03**: User can view LGPD/GDPR regulated data identification
+- [ ] **DATA-04**: User can configure custom detection patterns
+- [ ] **DATA-05**: User can view data classification reports by database/table
+
+### Alerting System
+
+- [ ] **ALERT-01**: User can configure alert rules based on metric thresholds
+- [ ] **ALERT-02**: User can receive email notifications for alerts
+- [ ] **ALERT-03**: User can receive Slack notifications via webhook
+- [ ] **ALERT-04**: User can configure generic webhooks for alert notifications
+- [ ] **ALERT-05**: User can integrate with PagerDuty/OpsGenie for incident management
+- [ ] **ALERT-06**: User can view alert history with timestamps
+- [ ] **ALERT-07**: User can acknowledge and silence alerts
+- [ ] **ALERT-08**: User can configure alert escalation policies
+
+### Multi-Version Support
+
+- [ ] **VER-01**: System supports PostgreSQL 13, 14, 15, 16, 17 (actively supported)
+- [ ] **VER-02**: System supports PostgreSQL 11, 12 (EOL but critical for migration)
+- [ ] **VER-03**: User can view version-specific health checks
+- [ ] **VER-04**: System adapts queries based on PostgreSQL version
+
+### Scalability
+
+- [ ] **SCALE-01**: System supports 2000+ PostgreSQL clusters
+- [ ] **SCALE-02**: System supports 5000+ monitored hosts
+- [ ] **SCALE-03**: System supports sharding/partitioning by tenant/cluster
+- [ ] **SCALE-04**: System supports multi-tenancy with logical isolation
+
+### Collector Architecture
+
+- [ ] **COLL-01**: Collector can run decentralized (same host as PostgreSQL)
+- [ ] **COLL-02**: Collector can run centralized (remote connection to RDS/cloud)
+- [ ] **COLL-03**: System supports mixed deployment (decentralized + centralized)
+- [ ] **COLL-04**: Collector has low resource footprint for co-location with PostgreSQL
+- [ ] **COLL-05**: Collector uses secure communication (TLS, authentication)
+
+### Frontend
+
+- [ ] **UI-01**: User can view replication topology graph
+- [ ] **UI-02**: User can configure alert rules via UI
+- [ ] **UI-03**: User can view data classification reports
+- [ ] **UI-04**: User can view host inventory dashboards
+- [ ] **UI-05**: User can manage notification channels
+
+### Testing
+
+- [ ] **TEST-01**: All new collector plugins have C++ unit tests
+- [ ] **TEST-02**: All new backend services have Go unit tests
+- [ ] **TEST-03**: All new API endpoints have integration tests
+- [ ] **TEST-04**: All new frontend components have tests
+- [ ] **TEST-05**: End-to-end tests cover critical user flows
+
+---
+
+## v1.2 Requirements (Performance Optimization) ✓ Complete
 
 Requirements for Performance Optimization milestone. Each maps to roadmap phases.
 
 ### Query Optimization
 
-- [ ] **QRY-01**: User can view top N slow queries by mean_time from pg_stat_statements
-- [ ] **QRY-02**: User can see query performance timeline with historical trends
+- [x] **QRY-01**: User can view top N slow queries by mean_time from pg_stat_statements
+- [x] **QRY-02**: User can see query performance timeline with historical trends
 - [x] **QRY-03**: User receives automated detection of query plan anti-patterns (Seq Scan, nested loops)
 - [x] **QRY-04**: User can view grouped similar queries with different parameters (fingerprinting)
-- [ ] **QRY-05**: User can view query execution statistics (calls, total_time, rows, mean_time)
+- [x] **QRY-05**: User can view query execution statistics (calls, total_time, rows, mean_time)
 
 ### Index Intelligence
 
-- [ ] **IDX-01**: User can view index usage statistics from pg_stat_user_indexes
+- [x] **IDX-01**: User can view index usage statistics from pg_stat_user_indexes
 - [x] **IDX-02**: User can see unused indexes that may be candidates for removal
 - [x] **IDX-03**: User receives index impact estimation before creating new indexes
 - [x] **IDX-04**: User can view recommended indexes with estimated benefit scores
 
 ### API Performance
 
-- [ ] **API-01**: User experiences faster API responses through response caching
+- [x] **API-01**: User experiences faster API responses through response caching
 - [x] **API-02**: System uses pgx v5 connection pooling for 2-3x query performance
 - [x] **API-03**: Dashboard queries use dedicated read-only connection pool
 - [x] **API-04**: User can monitor connection pool metrics (open, idle, in-use connections)
@@ -42,7 +130,7 @@ Requirements for Performance Optimization milestone. Each maps to roadmap phases
 
 - [x] **MON-01**: User can access pprof endpoints for on-demand performance profiling
 - [x] **MON-02**: User can view Prometheus metrics for API response time histograms
-- [ ] **MON-03**: User can monitor query duration percentiles (P50, P95, P99)
+- [x] **MON-03**: User can monitor query duration percentiles (P50, P95, P99)
 - [x] **MON-04**: User can view cache hit/miss rates for performance tuning
 
 ---
@@ -88,7 +176,7 @@ Requirements for Testing & Validation milestone. Focuses on comprehensive test c
 ### Testing Infrastructure
 
 - [x] **TEST-17**: Test suite runs in CI/CD pipeline automatically
-- [ ] **TEST-18**: Test failures block deployment (pipeline gates)
+- [x] **TEST-18**: Test failures block deployment (pipeline gates)
 - [x] **TEST-19**: Coverage reports published after each test run
 - [x] **TEST-20**: Test execution time documented (identify slow tests)
 - [x] **TEST-21**: Mock/stub libraries configured for external dependencies
@@ -134,28 +222,89 @@ Explicitly excluded. Documented to prevent scope creep.
 | Automatic index creation | Risk of breaking production, require user approval workflow not in scope |
 | Query rewriting | Error-prone, may change query semantics, requires domain expert review |
 | Real-time dashboard metrics | Requires WebSocket infrastructure, high complexity, defer to v2 |
-| Redis mandatory integration | Single-instance deployments don't need distributed cache, keep optional |
-| Multi-tenant performance isolation | Not a current deployment scenario, revisit if needed |
-| Mobile app testing | Mobile app not in scope for v1 |
+| SMS notifications | Email and Slack sufficient for v1.3 |
+| Mobile app | Mobile app not in scope for v1 |
 
 ---
 
 ## Traceability
 
+### v1.3 Requirements (Monitoring & Alerting Platform)
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| REP-01 | Phase 10 | Pending |
+| REP-02 | Phase 10 | Pending |
+| REP-03 | Phase 10 | Pending |
+| REP-04 | Phase 10 | Pending |
+| REP-05 | Phase 12 | Pending |
+| REP-06 | Phase 13 | Pending |
+| HOST-01 | Phase 10 | Pending |
+| HOST-02 | Phase 10 | Pending |
+| HOST-03 | Phase 10 | Pending |
+| HOST-04 | Phase 11 | Pending |
+| HOST-05 | Phase 12 | Pending |
+| INV-01 | Phase 10 | Pending |
+| INV-02 | Phase 10 | Pending |
+| INV-03 | Phase 10 | Pending |
+| INV-04 | Phase 10 | Pending |
+| INV-05 | Phase 10 | Pending |
+| DATA-01 | Phase 11 | Pending |
+| DATA-02 | Phase 11 | Pending |
+| DATA-03 | Phase 11 | Pending |
+| DATA-04 | Phase 11 | Pending |
+| DATA-05 | Phase 11 | Pending |
+| ALERT-01 | Phase 12 | Pending |
+| ALERT-02 | Phase 12 | Pending |
+| ALERT-03 | Phase 12 | Pending |
+| ALERT-04 | Phase 12 | Pending |
+| ALERT-05 | Phase 12 | Pending |
+| ALERT-06 | Phase 12 | Pending |
+| ALERT-07 | Phase 12 | Pending |
+| ALERT-08 | Phase 12 | Pending |
+| VER-01 | Phase 10 | Pending |
+| VER-02 | Phase 10 | Pending |
+| VER-03 | Phase 11 | Pending |
+| VER-04 | Phase 10 | Pending |
+| SCALE-01 | Phase 11 | Pending |
+| SCALE-02 | Phase 11 | Pending |
+| SCALE-03 | Phase 11 | Pending |
+| SCALE-04 | Phase 11 | Pending |
+| COLL-01 | Phase 10 | Pending |
+| COLL-02 | Phase 10 | Pending |
+| COLL-03 | Phase 10 | Pending |
+| COLL-04 | Phase 10 | Pending |
+| COLL-05 | Phase 10 | Pending |
+| UI-01 | Phase 13 | Pending |
+| UI-02 | Phase 12 | Pending |
+| UI-03 | Phase 13 | Pending |
+| UI-04 | Phase 13 | Pending |
+| UI-05 | Phase 12 | Pending |
+| TEST-01 | Phase 14 | Pending |
+| TEST-02 | Phase 14 | Pending |
+| TEST-03 | Phase 14 | Pending |
+| TEST-04 | Phase 14 | Pending |
+| TEST-05 | Phase 14 | Pending |
+
+**v1.3 Coverage:**
+- v1.3 requirements: 49 total
+- Mapped to phases: 49
+- Unmapped: 0 ✓
+
 ### v1.2 Requirements (Performance Optimization)
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| QRY-01 | Phase 06 | Pending |
-| QRY-02 | Phase 06 | Pending |
+| QRY-01 | Phase 06 | Complete |
+| QRY-02 | Phase 06 | Complete |
 | QRY-03 | Phase 09 | Complete |
 | QRY-04 | Phase 09 | Complete |
-| QRY-05 | Phase 06 | Pending |
-| IDX-01 | Phase 06 | Pending |
+| QRY-05 | Phase 06 | Complete |
+| IDX-01 | Phase 06 | Complete |
 | IDX-02 | Phase 09 | Complete |
 | IDX-03 | Phase 09 | Complete |
 | IDX-04 | Phase 09 | Complete |
-| API-01 | Phase 07 | Pending |
+| API-01 | Phase 07 | Complete |
 | API-02 | Phase 06 | Complete |
 | API-03 | Phase 06 | Complete |
 | API-04 | Phase 06 | Complete |
@@ -165,7 +314,7 @@ Explicitly excluded. Documented to prevent scope creep.
 | DASH-04 | Phase 08 | Complete |
 | MON-01 | Phase 06 | Complete |
 | MON-02 | Phase 06 | Complete |
-| MON-03 | Phase 06 | Pending |
+| MON-03 | Phase 06 | Complete |
 | MON-04 | Phase 07 | Complete |
 
 **v1.2 Coverage:**
@@ -200,7 +349,7 @@ Explicitly excluded. Documented to prevent scope creep.
 | QUAL-05 | Phase 5 | Complete |
 | QUAL-06 | Phase 5 | Complete |
 | TEST-17 | Phase 5 | Complete |
-| TEST-18 | Phase 5 | Pending |
+| TEST-18 | Phase 5 | Complete |
 | TEST-19 | Phase 5 | Complete |
 | TEST-20 | Phase 5 | Complete |
 | TEST-21 | Phase 2 | Complete |
@@ -212,5 +361,5 @@ Explicitly excluded. Documented to prevent scope creep.
 
 ---
 
-*Requirements defined: 2026-04-28 (v1.1), 2026-05-11 (v1.2)*
-*Last updated: 2026-05-11 after v1.2 milestone definition*
+*Requirements defined: 2026-04-28 (v1.1), 2026-05-11 (v1.2), 2026-05-13 (v1.3)*
+*Last updated: 2026-05-13 after v1.3 milestone definition*

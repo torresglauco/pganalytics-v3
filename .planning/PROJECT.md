@@ -89,6 +89,10 @@ Enable database teams to proactively identify and fix performance issues before 
 - [ ] **Multi-version Support**: All PostgreSQL community-supported versions
 - [ ] **Frontend UI**: Dashboards for all new monitoring features
 - [ ] **Testing**: Unit tests, integration tests, E2E tests for all new code
+- [ ] **Collector Architecture**:
+  - Decentralized collector: runs on same host as PostgreSQL (low resource, secure)
+  - Centralized collector: for RDS/cloud databases (remote connection)
+  - Mixed deployment: support both modes simultaneously
 
 ### Out of Scope
 

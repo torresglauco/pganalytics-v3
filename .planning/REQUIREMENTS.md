@@ -11,10 +11,10 @@ Requirements for comprehensive monitoring and alerting platform. Extends existin
 
 ### Replication Monitoring
 
-- [ ] **REP-01**: User can view streaming replication status with write/flush/replay lag metrics
+- [x] **REP-01**: User can view streaming replication status with write/flush/replay lag metrics
 - [ ] **REP-02**: User can view logical replication subscriptions and publications
 - [ ] **REP-03**: User can view cascading replication topology (primary → standby → standby)
-- [ ] **REP-04**: User can view replication slots with WAL retention and active status
+- [x] **REP-04**: User can view replication slots with WAL retention and active status
 - [ ] **REP-05**: User can view replication lag alerts when thresholds exceeded
 - [ ] **REP-06**: User can view replication topology graph visualization
 
@@ -233,10 +233,10 @@ Explicitly excluded. Documented to prevent scope creep.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| REP-01 | Phase 10 | Pending |
+| REP-01 | Phase 10 | Complete |
 | REP-02 | Phase 10 | Pending |
 | REP-03 | Phase 10 | Pending |
-| REP-04 | Phase 10 | Pending |
+| REP-04 | Phase 10 | Complete |
 | REP-05 | Phase 12 | Pending |
 | REP-06 | Phase 13 | Pending |
 | HOST-01 | Phase 10 | Pending |

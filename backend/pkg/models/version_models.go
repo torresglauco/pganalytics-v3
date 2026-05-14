@@ -78,8 +78,8 @@ type VersionInfoResponse struct {
 
 // SupportedVersionsResponse represents the response for listing supported PostgreSQL versions
 type SupportedVersionsResponse struct {
-	Versions []PostgreSQLVersion `json:"versions"`
-	Count    int                 `json:"count"`
+	Versions []*PostgreSQLVersion `json:"versions"`
+	Count    int                  `json:"count"`
 }
 
 // CollectorModeResponse represents the response for collector mode queries

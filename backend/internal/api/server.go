@@ -381,13 +381,18 @@ func (s *Server) RegisterRoutes(router *gin.Engine) {
 			collectors.GET("/:id/topology", s.AuthMiddleware(), s.handleGetReplicationTopology)
 
 			// ================================================================
-			// Database Inventory Routes (INV-01 through INV-05)
+			// Version Information Routes (VER-01, VER-02, VER-04)
 			// ================================================================
-			collectors.GET("/:id/inventory/tables", s.AuthMiddleware(), s.handleGetTableInventory)
-			collectors.GET("/:id/inventory/columns", s.AuthMiddleware(), s.handleGetColumnInventory)
-			collectors.GET("/:id/inventory/indexes", s.AuthMiddleware(), s.handleGetIndexInventory)
-			collectors.GET("/:id/inventory/extensions", s.AuthMiddleware(), s.handleGetExtensionInventory)
-			collectors.GET("/:id/inventory/schema-versions", s.AuthMiddleware(), s.handleGetSchemaVersions)
+			collectors.GET("/:id/version", s.AuthMiddleware(), s.handleGetVersionInfo)
+			collectors.GET("/:id/mode", s.AuthMiddleware(), s.handleGetCollectorMode)
+		}
+
+		// ================================================================
+		// Version Routes (VER-01, VER-02)
+		// ================================================================
+		versions := api.Group("/versions")
+		{
+			versions.GET("/supported", s.AuthMiddleware(), s.handleGetSupportedVersions)
 		}
 
 		// ================================================================

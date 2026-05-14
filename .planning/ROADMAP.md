@@ -150,7 +150,13 @@ Plans:
   3. User can view host health score based on resource utilization
   4. System supports 2000+ PostgreSQL clusters with multi-tenancy isolation
   5. User can view version-specific health checks for PostgreSQL 11-17
-**Plans**: TBD
+**Plans**: 4 plans
+
+Plans:
+- [ ] 11-01: Data Classification Backend (PII/PCI detection models, storage, API)
+- [ ] 11-02: Host Health Scoring (weighted calculation, persistence, API)
+- [ ] 11-03: Multi-Tenancy Infrastructure (tenant_id, RLS, middleware, API)
+- [ ] 11-04: Version-Specific Health Checks (adaptive queries for PG 11-17)
 
 ### Phase 12: Alerting System
 **Goal**: Users receive timely notifications when metrics breach configured thresholds
@@ -202,8 +208,8 @@ Phases execute in numeric order: 10 → 11 → 12 → 13 → 14
 | 07. Caching Infrastructure | v1.2 | 2/2 | Complete | 2026-05-12 |
 | 08. Dashboard Optimization | v1.2 | 3/3 | Complete | 2026-05-12 |
 | 09. Index Intelligence | v1.2 | 2/2 | Complete | 2026-05-13 |
-| 10. Collector & Backend Foundation | 3/5 | In Progress|  | - |
-| 11. Data Classification & Health Analysis | v1.3 | 0/TBD | Not started | - |
+| 10. Collector & Backend Foundation | v1.3 | 3/5 | In Progress|  | - |
+| 11. Data Classification & Health Analysis | v1.3 | 0/4 | Not started | - |
 | 12. Alerting System | v1.3 | 0/TBD | Not started | - |
 | 13. Frontend UI | v1.3 | 0/TBD | Not started | - |
 | 14. Testing & Quality | v1.3 | 0/TBD | Not started | - |
@@ -211,4 +217,4 @@ Phases execute in numeric order: 10 → 11 → 12 → 13 → 14
 ---
 
 *Roadmap created: 2026-04-28*
-*Last updated: 2026-05-13 for v1.3 milestone initialization*
+*Last updated: 2026-05-14 for Phase 11 plan creation*

@@ -251,7 +251,7 @@ json PgSchemaCollector::collectForeignKeys(const std::string& dbname) {
 }
 
 /**
- * Collect index information
+ * Collect index information with sizes and usage stats (INV-03)
  */
 json PgSchemaCollector::collectIndexInfo(const std::string& dbname) {
     json indexes = json::array();
@@ -260,7 +260,7 @@ json PgSchemaCollector::collectIndexInfo(const std::string& dbname) {
     PGconn* conn = connectToDatabase(postgresHost_, postgresPort_, postgresUser_, postgresPassword_, dbname);
     if (!conn) return indexes;
 
-    // Query for index information
+    // Query for index information with size in MB and OID (INV-03)
     const char* query = R"(
         SELECT
             schemaname,
@@ -270,11 +270,16 @@ json PgSchemaCollector::collectIndexInfo(const std::string& dbname) {
             idx_scan,
             idx_tup_read,
             idx_tup_fetch,
-            pg_size_pretty(pg_relation_size(indexrelid)) as index_size,
+            pg_relation_size(indexrelid) / 1024 / 1024 as index_size_mb,
+            pg_size_pretty(pg_relation_size(indexrelid)) as index_size_pretty,
             CASE WHEN idx_scan = 0 THEN 'UNUSED'
                  WHEN idx_scan < 100 THEN 'RARELY_USED'
-                 ELSE 'ACTIVE' END as usage_status
+                 ELSE 'ACTIVE' END as usage_status,
+            indisprimary as is_primary,
+            indisunique as is_unique,
+            indexrelid as index_oid
         FROM pg_stat_user_indexes
+        JOIN pg_index ON pg_index.indexrelid = pg_stat_user_indexes.indexrelid
         ORDER BY schemaname, relname, indexrelname
     )";
 
@@ -290,8 +295,14 @@ json PgSchemaCollector::collectIndexInfo(const std::string& dbname) {
             idx["scans"] = std::stoll(PQgetvalue(result, i, 4));
             idx["tuples_read"] = std::stoll(PQgetvalue(result, i, 5));
             idx["tuples_fetched"] = std::stoll(PQgetvalue(result, i, 6));
-            idx["size"] = PQgetvalue(result, i, 7);
-            idx["usage_status"] = PQgetvalue(result, i, 8);
+            // INV-03: Add index size in MB for inventory
+            idx["index_size_mb"] = std::stoll(PQgetvalue(result, i, 7));
+            idx["size"] = PQgetvalue(result, i, 8);  // pretty size for display
+            idx["usage_status"] = PQgetvalue(result, i, 9);
+            // INV-03: Add is_primary, is_unique, and index_oid
+            idx["is_primary"] = std::string(PQgetvalue(result, i, 10)) == "t";
+            idx["is_unique"] = std::string(PQgetvalue(result, i, 11)) == "t";
+            idx["index_oid"] = std::stoull(PQgetvalue(result, i, 12));
 
             indexes.push_back(idx);
         }
@@ -356,7 +367,7 @@ json PgSchemaCollector::collectTriggerInfo(const std::string& dbname) {
 }
 
 /**
- * Collect table schema information
+ * Collect table schema information with sizes and row counts (INV-01)
  */
 json PgSchemaCollector::collectTableSchema(const std::string& dbname) {
     json tables = json::array();
@@ -365,16 +376,27 @@ json PgSchemaCollector::collectTableSchema(const std::string& dbname) {
     PGconn* conn = connectToDatabase(postgresHost_, postgresPort_, postgresUser_, postgresPassword_, dbname);
     if (!conn) return tables;
 
-    // Query for table information
+    // Query for table information with sizes from pg_stat_user_tables and pg_class
+    // INV-01: Table inventory with row counts and sizes
     const char* query = R"(
         SELECT
-            table_schema,
-            table_name,
-            table_type
-        FROM information_schema.tables
-        WHERE table_schema NOT IN ('pg_catalog', 'information_schema', 'pganalytics')
-            AND table_type IN ('BASE TABLE', 'VIEW')
-        ORDER BY table_schema, table_name
+            n.nspname as schema_name,
+            c.relname as table_name,
+            CASE c.relkind WHEN 'r' THEN 'BASE TABLE' WHEN 'v' THEN 'VIEW' END as table_type,
+            COALESCE(s.n_live_tup, 0) as row_count,
+            pg_total_relation_size(c.oid) / 1024 / 1024 as total_size_mb,
+            pg_relation_size(c.oid) / 1024 / 1024 as table_size_mb,
+            COALESCE((SELECT sum(pg_relation_size(indexrelid)) / 1024 / 1024
+                     FROM pg_index WHERE indrelid = c.oid), 0) as index_size_mb,
+            COALESCE(pg_relation_size(c.reltoastrelid) / 1024 / 1024, 0) as toast_size_mb,
+            c.reloptions IS NOT NULL AND array_to_string(c.reloptions, ',') LIKE '%oids=on%' as has_oids,
+            c.oid as table_oid
+        FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        LEFT JOIN pg_stat_user_tables s ON s.relid = c.oid
+        WHERE c.relkind IN ('r', 'v')
+            AND n.nspname NOT IN ('pg_catalog', 'information_schema', 'pganalytics')
+        ORDER BY n.nspname, c.relname
     )";
 
     PGresult* result = executeQuery(conn, query);
@@ -385,6 +407,14 @@ json PgSchemaCollector::collectTableSchema(const std::string& dbname) {
             table["schema"] = PQgetvalue(result, i, 0);
             table["name"] = PQgetvalue(result, i, 1);
             table["type"] = PQgetvalue(result, i, 2);
+            // INV-01: Add inventory fields
+            table["row_count"] = std::stoll(PQgetvalue(result, i, 3));
+            table["total_size_mb"] = std::stoll(PQgetvalue(result, i, 4));
+            table["table_size_mb"] = std::stoll(PQgetvalue(result, i, 5));
+            table["index_size_mb"] = std::stoll(PQgetvalue(result, i, 6));
+            table["toast_size_mb"] = std::stoll(PQgetvalue(result, i, 7));
+            table["has_oids"] = std::string(PQgetvalue(result, i, 8)) == "t";
+            table["table_oid"] = std::stoull(PQgetvalue(result, i, 9));
 
             tables.push_back(table);
         }

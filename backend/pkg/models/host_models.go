@@ -43,6 +43,7 @@ type HostMetrics struct {
 	CpuLoad1m         float64   `json:"cpu_load_1m" db:"cpu_load_1m"`   // load average
 	CpuLoad5m         float64   `json:"cpu_load_5m" db:"cpu_load_5m"`   // load average
 	CpuLoad15m        float64   `json:"cpu_load_15m" db:"cpu_load_15m"` // load average
+	CpuCores          int       `json:"cpu_cores" db:"cpu_cores"`       // number of CPU cores
 	MemoryTotalMb     int64     `json:"memory_total_mb" db:"memory_total_mb"`
 	MemoryFreeMb      int64     `json:"memory_free_mb" db:"memory_free_mb"`
 	MemoryUsedMb      int64     `json:"memory_used_mb" db:"memory_used_mb"`

@@ -28,11 +28,11 @@ Requirements for comprehensive monitoring and alerting platform. Extends existin
 
 ### Database Inventory
 
-- [ ] **INV-01**: User can view complete table inventory with row counts and sizes
-- [ ] **INV-02**: User can view column inventory with data types and nullability
-- [ ] **INV-03**: User can view index inventory with usage statistics
-- [ ] **INV-04**: User can view extension inventory with versions
-- [ ] **INV-05**: User can track schema changes over time
+- [x] **INV-01**: User can view complete table inventory with row counts and sizes
+- [x] **INV-02**: User can view column inventory with data types and nullability
+- [x] **INV-03**: User can view index inventory with usage statistics
+- [x] **INV-04**: User can view extension inventory with versions
+- [x] **INV-05**: User can track schema changes over time
 
 ### Data Classification
 
@@ -244,11 +244,11 @@ Explicitly excluded. Documented to prevent scope creep.
 | HOST-03 | Phase 10 | Pending |
 | HOST-04 | Phase 11 | Pending |
 | HOST-05 | Phase 12 | Pending |
-| INV-01 | Phase 10 | Pending |
-| INV-02 | Phase 10 | Pending |
-| INV-03 | Phase 10 | Pending |
-| INV-04 | Phase 10 | Pending |
-| INV-05 | Phase 10 | Pending |
+| INV-01 | Phase 10 | Complete |
+| INV-02 | Phase 10 | Complete |
+| INV-03 | Phase 10 | Complete |
+| INV-04 | Phase 10 | Complete |
+| INV-05 | Phase 10 | Complete |
 | DATA-01 | Phase 11 | Pending |
 | DATA-02 | Phase 11 | Pending |
 | DATA-03 | Phase 11 | Pending |

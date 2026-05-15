@@ -305,38 +305,38 @@ func TestEmailChannel_Type(t *testing.T) {
 // TestEmailConfig_OptionalFields tests that optional fields are properly parsed
 func TestEmailConfig_OptionalFields(t *testing.T) {
 	tests := []struct {
-		name          string
-		configJSON    string
-		wantSMTPURL   string
-		wantFrom      string
+		name           string
+		configJSON     string
+		wantSMTPURL    string
+		wantFrom       string
 		wantRecipients int
 	}{
 		{
-			name:          "basic config",
-			configJSON:    `{"recipients":["test@example.com"]}`,
-			wantSMTPURL:   "",
-			wantFrom:      "",
+			name:           "basic config",
+			configJSON:     `{"recipients":["test@example.com"]}`,
+			wantSMTPURL:    "",
+			wantFrom:       "",
 			wantRecipients: 1,
 		},
 		{
-			name:          "with optional smtp_url",
-			configJSON:    `{"recipients":["test@example.com"],"smtp_url":"mail.custom.com:587"}`,
-			wantSMTPURL:   "mail.custom.com:587",
-			wantFrom:      "",
+			name:           "with optional smtp_url",
+			configJSON:     `{"recipients":["test@example.com"],"smtp_url":"mail.custom.com:587"}`,
+			wantSMTPURL:    "mail.custom.com:587",
+			wantFrom:       "",
 			wantRecipients: 1,
 		},
 		{
-			name:          "with optional from",
-			configJSON:    `{"recipients":["test@example.com"],"from":"custom@example.com"}`,
-			wantSMTPURL:   "",
-			wantFrom:      "custom@example.com",
+			name:           "with optional from",
+			configJSON:     `{"recipients":["test@example.com"],"from":"custom@example.com"}`,
+			wantSMTPURL:    "",
+			wantFrom:       "custom@example.com",
 			wantRecipients: 1,
 		},
 		{
-			name:          "with all optional fields",
-			configJSON:    `{"recipients":["test@example.com","admin@example.com"],"smtp_url":"mail.custom.com:587","from":"custom@example.com"}`,
-			wantSMTPURL:   "mail.custom.com:587",
-			wantFrom:      "custom@example.com",
+			name:           "with all optional fields",
+			configJSON:     `{"recipients":["test@example.com","admin@example.com"],"smtp_url":"mail.custom.com:587","from":"custom@example.com"}`,
+			wantSMTPURL:    "mail.custom.com:587",
+			wantFrom:       "custom@example.com",
 			wantRecipients: 2,
 		},
 	}
@@ -360,4 +360,3 @@ func TestEmailConfig_OptionalFields(t *testing.T) {
 		})
 	}
 }
-

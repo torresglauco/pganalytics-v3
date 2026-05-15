@@ -17,14 +17,14 @@ type Broadcaster interface {
 
 // SilenceRepository implements the SilenceDB interface for silence operations
 type SilenceRepository struct {
-	db         *sql.DB
+	db          *sql.DB
 	broadcaster Broadcaster
 }
 
 // NewSilenceRepository creates a new SilenceRepository
 func NewSilenceRepository(db *sql.DB, broadcaster Broadcaster) *SilenceRepository {
 	return &SilenceRepository{
-		db:         db,
+		db:          db,
 		broadcaster: broadcaster,
 	}
 }

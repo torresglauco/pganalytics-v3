@@ -204,8 +204,8 @@ Plans:
 **Plans**: 4 plans
 
 Plans:
-- [ ] 14-01: Backend Unit Tests - Tenant middleware, health calculator, collector plugins (TEST-01, TEST-02)
-- [ ] 14-02: Backend Integration Tests - Replication, host monitoring, alert rules APIs (TEST-03)
+- [x] 14-01: Backend Unit Tests - Tenant middleware, health calculator, collector plugins (TEST-01, TEST-02)
+- [x] 14-02: Backend Integration Tests - Replication, host monitoring, alert rules APIs (TEST-03)
 - [ ] 14-03: Frontend Unit Tests - Components and pages for topology, classification, hosts (TEST-04)
 - [ ] 14-04: E2E Tests - Playwright tests for critical user flows (TEST-05)
 
@@ -229,7 +229,7 @@ Phases execute in numeric order: 10 → 11 → 12 → 13 → 14
 | 11. Data Classification & Health Analysis | v1.3 | 4/4 | Complete | 2026-05-14 |
 | 12. Alerting System | v1.3 | 4/4 | Complete | 2026-05-15 |
 | 13. Frontend UI | v1.3 | Complete    | 2026-05-15 | 2026-05-15 |
-| 14. Testing & Quality | v1.3 | 0/4 | Not started | - |
+| 14. Testing & Quality | v1.3 | 2/4 | Executing | 2026-05-15 |
 
 ---
 

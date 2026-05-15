@@ -10,6 +10,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -533,7 +534,12 @@ pgAnalytics Monitoring System
 
 // FormatAlertHTML creates HTML version of alert message
 func FormatAlertHTML(alert *AlertNotification) string {
-	tmpl := template.Must(template.New("alert").Parse(`
+	// Define template functions
+	funcMap := template.FuncMap{
+		"upper": strings.ToUpper,
+	}
+
+	tmpl := template.Must(template.New("alert").Funcs(funcMap).Parse(`
 <!DOCTYPE html>
 <html>
 <head>

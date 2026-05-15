@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 	"time"
 
@@ -234,14 +235,61 @@ func TestEmailChannelCircuitBreaker(t *testing.T) {
 		FiredAt:     time.Now(),
 	}
 
-	// Email channel should succeed (placeholder implementation)
+	// Store original env vars
+	originalHost := os.Getenv("SMTP_HOST")
+	originalUser := os.Getenv("SMTP_USER")
+	originalPassword := os.Getenv("SMTP_PASSWORD")
+	originalFrom := os.Getenv("SMTP_FROM")
+
+	// Test 1: Without SMTP config, should return failure
+	os.Unsetenv("SMTP_HOST")
+	os.Unsetenv("SMTP_USER")
+	os.Unsetenv("SMTP_PASSWORD")
+	os.Unsetenv("SMTP_FROM")
+
 	result, _ := channel.Send(context.Background(), alert, config)
-	if !result.Success {
-		t.Errorf("Email channel should succeed with valid config")
+	if result.Success {
+		t.Error("Email channel should fail without SMTP config")
+	}
+	if result.ErrorMsg != "SMTP not configured" {
+		t.Errorf("Expected 'SMTP not configured' error, got: %s", result.ErrorMsg)
 	}
 
-	if channel.circuitBreaker.State() != string(StateClosed) {
-		t.Errorf("Circuit breaker should remain closed after success")
+	// Test 2: With SMTP config but invalid server, should record failure
+	os.Setenv("SMTP_HOST", "invalid-smtp-server-that-does-not-exist.test")
+	os.Setenv("SMTP_USER", "testuser")
+	os.Setenv("SMTP_PASSWORD", "testpass")
+	os.Setenv("SMTP_FROM", "test@example.com")
+
+	// Reset circuit breaker
+	channel.circuitBreaker.Reset()
+
+	result, _ = channel.Send(context.Background(), alert, config)
+	// Should fail because server doesn't exist, but circuit should record it
+	if result.Success {
+		t.Error("Email channel should fail with invalid SMTP server")
+	}
+
+	// Restore original env vars
+	if originalHost != "" {
+		os.Setenv("SMTP_HOST", originalHost)
+	} else {
+		os.Unsetenv("SMTP_HOST")
+	}
+	if originalUser != "" {
+		os.Setenv("SMTP_USER", originalUser)
+	} else {
+		os.Unsetenv("SMTP_USER")
+	}
+	if originalPassword != "" {
+		os.Setenv("SMTP_PASSWORD", originalPassword)
+	} else {
+		os.Unsetenv("SMTP_PASSWORD")
+	}
+	if originalFrom != "" {
+		os.Setenv("SMTP_FROM", originalFrom)
+	} else {
+		os.Unsetenv("SMTP_FROM")
 	}
 }
 

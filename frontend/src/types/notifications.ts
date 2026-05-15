@@ -6,7 +6,7 @@
 /**
  * Notification channel types
  */
-export type ChannelType = 'slack' | 'email' | 'webhook' | 'pagerduty' | 'jira';
+export type ChannelType = 'slack' | 'email' | 'webhook' | 'pagerduty' | 'opsgenie' | 'jira';
 
 /**
  * Channel enabled/disabled state
@@ -30,7 +30,7 @@ export interface NotificationChannel {
   is_default?: boolean;
 
   // Configuration (type-specific)
-  config: SlackConfig | EmailConfig | WebhookConfig | PagerDutyConfig | JiraConfig;
+  config: SlackConfig | EmailConfig | WebhookConfig | PagerDutyConfig | OpsGenieConfig | JiraConfig;
 
   // Metadata
   created_at: string;
@@ -107,6 +107,22 @@ export interface PagerDutyConfig {
 }
 
 /**
+ * OpsGenie channel configuration
+ */
+export interface OpsGenieConfig {
+  api_key: string; // OpsGenie API key
+  region?: 'us' | 'eu'; // API region (default: us)
+  team_id?: string; // Team ID for routing
+  priority_mapping?: {
+    low: 'P4';
+    medium: 'P3';
+    high: 'P2';
+    critical: 'P1';
+  };
+  tags?: string[]; // Additional tags for alerts
+}
+
+/**
  * Jira channel configuration
  */
 export interface JiraConfig {
@@ -137,6 +153,7 @@ export interface CreateChannelRequest {
     | EmailConfig
     | WebhookConfig
     | PagerDutyConfig
+    | OpsGenieConfig
     | JiraConfig;
 }
 

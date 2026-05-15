@@ -13,6 +13,7 @@ import {
   FileText,
   CheckCircle,
   AlertTriangle,
+  Zap,
 } from 'lucide-react';
 import type { NotificationChannel } from '../types/notifications';
 import {
@@ -180,6 +181,8 @@ export const NotificationChannelsPage: React.FC = () => {
         return <WebhookIcon size={20} className="text-purple-500" />;
       case 'pagerduty':
         return <Phone size={20} className="text-orange-500" />;
+      case 'opsgenie':
+        return <Zap size={20} className="text-green-500" />;
       case 'jira':
         return <FileText size={20} className="text-blue-600" />;
       default:
@@ -307,6 +310,7 @@ export const NotificationChannelsPage: React.FC = () => {
                 <option value="email">Email</option>
                 <option value="webhook">Webhook</option>
                 <option value="pagerduty">PagerDuty</option>
+                <option value="opsgenie">OpsGenie</option>
                 <option value="jira">Jira</option>
               </select>
             </div>

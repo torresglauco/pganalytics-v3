@@ -13,6 +13,7 @@ import SlackChannelForm from './channels/SlackChannelForm';
 import EmailChannelForm from './channels/EmailChannelForm';
 import WebhookChannelForm from './channels/WebhookChannelForm';
 import PagerDutyChannelForm from './channels/PagerDutyChannelForm';
+import OpsGenieChannelForm from './channels/OpsGenieChannelForm';
 import JiraChannelForm from './channels/JiraChannelForm';
 
 interface NotificationChannelFormProps {
@@ -168,6 +169,11 @@ export const NotificationChannelForm: React.FC<NotificationChannelFormProps> = (
                 desc: 'Create incidents in PagerDuty',
               },
               {
+                value: 'opsgenie' as const,
+                label: 'OpsGenie',
+                desc: 'Create alerts in OpsGenie',
+              },
+              {
                 value: 'jira' as const,
                 label: 'Jira',
                 desc: 'Create tickets in Jira',
@@ -209,6 +215,9 @@ export const NotificationChannelForm: React.FC<NotificationChannelFormProps> = (
             )}
             {channelType === 'pagerduty' && (
               <PagerDutyChannelForm config={config} onChange={setConfig} />
+            )}
+            {channelType === 'opsgenie' && (
+              <OpsGenieChannelForm config={config} onChange={setConfig} />
             )}
             {channelType === 'jira' && (
               <JiraChannelForm config={config} onChange={setConfig} />

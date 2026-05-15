@@ -535,35 +535,39 @@ func (s *Server) RegisterRoutes(router *gin.Engine) {
 
 		// ========================================================================
 		// PHASE 4.6: ALERT RULES, SILENCES, AND ESCALATIONS ROUTES
+		// Uses TenantContextMiddleware for RLS isolation (SCALE-04)
 		// ========================================================================
 
-		// Alert Rule CRUD routes
+		// Alert Rule CRUD routes with tenant isolation
 		alertRules := api.Group("/alert-rules")
+		alertRules.Use(s.AuthMiddleware(), s.TenantContextMiddleware())
 		{
-			alertRules.POST("", s.AuthMiddleware(), s.handleCreateAlertRule)
-			alertRules.GET("", s.AuthMiddleware(), s.handleListAlertRules)
-			alertRules.GET("/:id", s.AuthMiddleware(), s.handleGetAlertRule)
-			alertRules.PUT("/:id", s.AuthMiddleware(), s.handleUpdateAlertRule)
-			alertRules.DELETE("/:id", s.AuthMiddleware(), s.handleDeleteAlertRule)
-			alertRules.POST("/validate", s.AuthMiddleware(), s.handleValidateAlertCondition)
+			alertRules.POST("", s.handleCreateAlertRule)
+			alertRules.GET("", s.handleListAlertRules)
+			alertRules.GET("/:id", s.handleGetAlertRule)
+			alertRules.PUT("/:id", s.handleUpdateAlertRule)
+			alertRules.DELETE("/:id", s.handleDeleteAlertRule)
+			alertRules.POST("/validate", s.handleValidateAlertCondition)
 		}
 
-		// Alert history route
-		api.GET("/alerts/history", s.AuthMiddleware(), s.handleGetAlertHistory)
+		// Alert history route with tenant isolation
+		api.GET("/alerts/history", s.AuthMiddleware(), s.TenantContextMiddleware(), s.handleGetAlertHistory)
 
-		// Silences management routes
+		// Silences management routes with tenant isolation
 		silences := api.Group("/silences")
+		silences.Use(s.AuthMiddleware(), s.TenantContextMiddleware())
 		{
-			silences.GET("", s.AuthMiddleware(), s.handleListActiveSilences)
-			silences.DELETE("/:id", s.AuthMiddleware(), s.handleDeleteSilence)
+			silences.GET("", s.handleListActiveSilences)
+			silences.DELETE("/:id", s.handleDeleteSilence)
 		}
 
-		// Escalation Policies routes
+		// Escalation Policies routes with tenant isolation
 		escalationPolicies := api.Group("/escalation-policies")
+		escalationPolicies.Use(s.AuthMiddleware(), s.TenantContextMiddleware())
 		{
-			escalationPolicies.POST("", s.AuthMiddleware(), s.handleCreateEscalationPolicy)
-			escalationPolicies.GET("/:policy_id", s.AuthMiddleware(), s.handleGetEscalationPolicy)
-			escalationPolicies.PUT("/:id", s.AuthMiddleware(), s.handleUpdateEscalationPolicy)
+			escalationPolicies.POST("", s.handleCreateEscalationPolicy)
+			escalationPolicies.GET("/:policy_id", s.handleGetEscalationPolicy)
+			escalationPolicies.PUT("/:id", s.handleUpdateEscalationPolicy)
 		}
 
 		// Alert routes merged below to avoid route conflicts
@@ -589,24 +593,26 @@ func (s *Server) RegisterRoutes(router *gin.Engine) {
 			servers.GET("/:id/metrics", s.AuthMiddleware(), s.handleGetServerMetrics)
 		}
 
-		// Notification Channels routes
+		// Notification Channels routes with tenant isolation
 		channels := api.Group("/channels")
+		channels.Use(s.AuthMiddleware(), s.TenantContextMiddleware())
 		{
-			channels.GET("", s.AuthMiddleware(), s.handleListChannels)
-			channels.POST("", s.AuthMiddleware(), s.handleCreateChannel)
-			channels.PUT("/:id", s.AuthMiddleware(), s.handleUpdateChannel)
-			channels.DELETE("/:id", s.AuthMiddleware(), s.handleDeleteChannel)
-			channels.POST("/:id/test", s.AuthMiddleware(), s.handleTestChannel)
+			channels.GET("", s.handleListChannels)
+			channels.POST("", s.handleCreateChannel)
+			channels.PUT("/:id", s.handleUpdateChannel)
+			channels.DELETE("/:id", s.handleDeleteChannel)
+			channels.POST("/:id/test", s.handleTestChannel)
 		}
 
-		// Alerts routes
+		// Alerts routes with tenant isolation
 		alerts := api.Group("/alerts")
+		alerts.Use(s.AuthMiddleware(), s.TenantContextMiddleware())
 		{
-			alerts.GET("", s.AuthMiddleware(), s.handleListAlerts)
-			alerts.GET("/:id", s.AuthMiddleware(), s.handleGetAlert)
-			alerts.POST("/:id/acknowledge", s.AuthMiddleware(), s.handleAcknowledgeAlert)
-			alerts.POST("/:id/silence", s.AuthMiddleware(), s.handleCreateSilence)
-			alerts.POST("/:id/acknowledge-escalation", s.AuthMiddleware(), s.handleAcknowledgeAlertEscalation)
+			alerts.GET("", s.handleListAlerts)
+			alerts.GET("/:id", s.handleGetAlert)
+			alerts.POST("/:id/acknowledge", s.handleAcknowledgeAlert)
+			alerts.POST("/:id/silence", s.handleCreateSilence)
+			alerts.POST("/:id/acknowledge-escalation", s.handleAcknowledgeAlertEscalation)
 		}
 
 		// Query timeline routes

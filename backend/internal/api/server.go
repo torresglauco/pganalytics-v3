@@ -44,6 +44,7 @@ type Server struct {
 	conditionHandler  *handlers.ConditionHandler
 	silenceHandler    *handlers.SilenceHandler
 	escalationHandler *handlers.EscalationHandler
+	alertRulesHandler *handlers.AlertRulesHandler
 	logCollector      *log_analysis.LogCollector
 }
 
@@ -90,6 +91,7 @@ func NewServer(
 	// Initialize alert repositories and services when postgres is available
 	var silenceHandler *handlers.SilenceHandler
 	var escalationHandler *handlers.EscalationHandler
+	var alertRulesHandler *handlers.AlertRulesHandler
 
 	if postgres != nil {
 		db := postgres.GetDB()
@@ -103,6 +105,10 @@ func NewServer(
 		escalationRepo := storage.NewEscalationRepository(db)
 		escalationService := services.NewEscalationService(escalationRepo, nil)
 		escalationHandler = handlers.NewEscalationHandler(escalationService)
+
+		// Create AlertRulesRepository and handler
+		alertRulesRepo := storage.NewAlertRulesRepository(db)
+		alertRulesHandler = handlers.NewAlertRulesHandler(alertRulesRepo, conditionValidator)
 	}
 
 	// Initialize session manager
@@ -132,6 +138,7 @@ func NewServer(
 		conditionHandler:  conditionHandler,
 		silenceHandler:    silenceHandler,
 		escalationHandler: escalationHandler,
+		alertRulesHandler: alertRulesHandler,
 		logCollector:      logCollector,
 	}
 }
@@ -530,11 +537,19 @@ func (s *Server) RegisterRoutes(router *gin.Engine) {
 		// PHASE 4.6: ALERT RULES, SILENCES, AND ESCALATIONS ROUTES
 		// ========================================================================
 
-		// Alert Rule Validation routes
+		// Alert Rule CRUD routes
 		alertRules := api.Group("/alert-rules")
 		{
+			alertRules.POST("", s.AuthMiddleware(), s.handleCreateAlertRule)
+			alertRules.GET("", s.AuthMiddleware(), s.handleListAlertRules)
+			alertRules.GET("/:id", s.AuthMiddleware(), s.handleGetAlertRule)
+			alertRules.PUT("/:id", s.AuthMiddleware(), s.handleUpdateAlertRule)
+			alertRules.DELETE("/:id", s.AuthMiddleware(), s.handleDeleteAlertRule)
 			alertRules.POST("/validate", s.AuthMiddleware(), s.handleValidateAlertCondition)
 		}
+
+		// Alert history route
+		api.GET("/alerts/history", s.AuthMiddleware(), s.handleGetAlertHistory)
 
 		// Silences management routes
 		silences := api.Group("/silences")
@@ -852,4 +867,62 @@ func (s *Server) handleAcknowledgeAlertEscalation(c *gin.Context) {
 		return
 	}
 	s.escalationHandler.AcknowledgeAlert(c.Writer, c.Request)
+}
+
+// ========================================================================
+// ALERT RULES HANDLERS
+// ========================================================================
+
+// handleCreateAlertRule is a Gin wrapper for creating an alert rule
+func (s *Server) handleCreateAlertRule(c *gin.Context) {
+	if s.alertRulesHandler == nil {
+		c.JSON(500, gin.H{"error": "Alert rules handler not initialized"})
+		return
+	}
+	s.alertRulesHandler.CreateAlertRule(c.Writer, c.Request)
+}
+
+// handleListAlertRules is a Gin wrapper for listing alert rules
+func (s *Server) handleListAlertRules(c *gin.Context) {
+	if s.alertRulesHandler == nil {
+		c.JSON(500, gin.H{"error": "Alert rules handler not initialized"})
+		return
+	}
+	s.alertRulesHandler.ListAlertRules(c.Writer, c.Request)
+}
+
+// handleGetAlertRule is a Gin wrapper for getting a single alert rule
+func (s *Server) handleGetAlertRule(c *gin.Context) {
+	if s.alertRulesHandler == nil {
+		c.JSON(500, gin.H{"error": "Alert rules handler not initialized"})
+		return
+	}
+	s.alertRulesHandler.GetAlertRule(c.Writer, c.Request)
+}
+
+// handleUpdateAlertRule is a Gin wrapper for updating an alert rule
+func (s *Server) handleUpdateAlertRule(c *gin.Context) {
+	if s.alertRulesHandler == nil {
+		c.JSON(500, gin.H{"error": "Alert rules handler not initialized"})
+		return
+	}
+	s.alertRulesHandler.UpdateAlertRule(c.Writer, c.Request)
+}
+
+// handleDeleteAlertRule is a Gin wrapper for deleting an alert rule
+func (s *Server) handleDeleteAlertRule(c *gin.Context) {
+	if s.alertRulesHandler == nil {
+		c.JSON(500, gin.H{"error": "Alert rules handler not initialized"})
+		return
+	}
+	s.alertRulesHandler.DeleteAlertRule(c.Writer, c.Request)
+}
+
+// handleGetAlertHistory is a Gin wrapper for getting alert history
+func (s *Server) handleGetAlertHistory(c *gin.Context) {
+	if s.alertRulesHandler == nil {
+		c.JSON(500, gin.H{"error": "Alert rules handler not initialized"})
+		return
+	}
+	s.alertRulesHandler.GetAlertHistory(c.Writer, c.Request)
 }

@@ -11,6 +11,8 @@ set(UNIT_TEST_SOURCES
     unit/config_manager_test.cpp
     unit/sender_test.cpp
     unit/replication_collector_test.cpp
+    unit/data_classification_test.cpp
+    unit/host_metrics_test.cpp
     postgres_plugin_test.cpp
 )
 

@@ -16,7 +16,7 @@ Requirements for comprehensive monitoring and alerting platform. Extends existin
 - [ ] **REP-03**: User can view cascading replication topology (primary → standby → standby)
 - [x] **REP-04**: User can view replication slots with WAL retention and active status
 - [ ] **REP-05**: User can view replication lag alerts when thresholds exceeded
-- [ ] **REP-06**: User can view replication topology graph visualization
+- [x] **REP-06**: User can view replication topology graph visualization
 
 ### Host Monitoring
 
@@ -77,7 +77,7 @@ Requirements for comprehensive monitoring and alerting platform. Extends existin
 
 ### Frontend
 
-- [ ] **UI-01**: User can view replication topology graph
+- [x] **UI-01**: User can view replication topology graph
 - [ ] **UI-02**: User can configure alert rules via UI
 - [ ] **UI-03**: User can view data classification reports
 - [ ] **UI-04**: User can view host inventory dashboards
@@ -238,7 +238,7 @@ Explicitly excluded. Documented to prevent scope creep.
 | REP-03 | Phase 10 | Pending |
 | REP-04 | Phase 10 | Complete |
 | REP-05 | Phase 12 | Pending |
-| REP-06 | Phase 13 | Pending |
+| REP-06 | Phase 13 | Complete |
 | HOST-01 | Phase 10 | Pending |
 | HOST-02 | Phase 10 | Pending |
 | HOST-03 | Phase 10 | Pending |
@@ -275,7 +275,7 @@ Explicitly excluded. Documented to prevent scope creep.
 | COLL-03 | Phase 10 | Pending |
 | COLL-04 | Phase 10 | Pending |
 | COLL-05 | Phase 10 | Pending |
-| UI-01 | Phase 13 | Pending |
+| UI-01 | Phase 13 | Complete |
 | UI-02 | Phase 12 | Pending |
 | UI-03 | Phase 13 | Pending |
 | UI-04 | Phase 13 | Pending |

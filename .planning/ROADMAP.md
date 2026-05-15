@@ -210,7 +210,7 @@ Phases execute in numeric order: 10 → 11 → 12 → 13 → 14
 | 09. Index Intelligence | v1.2 | 2/2 | Complete | 2026-05-13 |
 | 10. Collector & Backend Foundation | v1.3 | 3/5 | In Progress|  | - |
 | 11. Data Classification & Health Analysis | 4/4 | Complete    | 2026-05-14 | - |
-| 12. Alerting System | v1.3 | 0/TBD | Not started | - |
+| 12. Alerting System | 1/4 | In Progress|  | - |
 | 13. Frontend UI | v1.3 | 0/TBD | Not started | - |
 | 14. Testing & Quality | v1.3 | 0/TBD | Not started | - |
 

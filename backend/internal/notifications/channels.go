@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/smtp"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -417,7 +419,8 @@ type EmailChannel struct {
 
 type EmailConfig struct {
 	Recipients []string `json:"recipients"`
-	SMTPURL    string   `json:"smtp_url,omitempty"`
+	SMTPURL    string   `json:"smtp_url,omitempty"` // Optional override for SMTP host:port
+	From       string   `json:"from,omitempty"`     // Optional from address override
 }
 
 func NewEmailChannel(logger *zap.Logger, timeout time.Duration) NotificationChannel {
@@ -471,12 +474,75 @@ func (e *EmailChannel) Send(ctx context.Context, alert *AlertNotification, confi
 		}, nil
 	}
 
-	// In production, would use actual SMTP library (e.g., net/smtp)
-	// For now, simulating successful delivery with circuit breaker tracking
-	// This is a placeholder - would need proper email integration
+	// Read SMTP configuration from environment
+	smtpHost := os.Getenv("SMTP_HOST")
+	smtpPort := os.Getenv("SMTP_PORT")
+	if smtpPort == "" {
+		smtpPort = "587"
+	}
+	smtpUser := os.Getenv("SMTP_USER")
+	smtpPassword := os.Getenv("SMTP_PASSWORD")
+	smtpFrom := os.Getenv("SMTP_FROM")
 
+	// Allow per-channel overrides from EmailConfig
+	if emailConfig.SMTPURL != "" {
+		// Parse SMTPURL as host:port
+		parts := strings.Split(emailConfig.SMTPURL, ":")
+		if len(parts) >= 1 {
+			smtpHost = parts[0]
+			if len(parts) >= 2 {
+				smtpPort = parts[1]
+			}
+		}
+	}
+	if emailConfig.From != "" {
+		smtpFrom = emailConfig.From
+	}
+
+	// Validate required SMTP settings
+	if smtpHost == "" || smtpUser == "" || smtpPassword == "" || smtpFrom == "" {
+		e.logger.Warn("SMTP not configured",
+			zap.Bool("has_host", smtpHost != ""),
+			zap.Bool("has_user", smtpUser != ""),
+			zap.Bool("has_password", smtpPassword != ""),
+			zap.Bool("has_from", smtpFrom != ""))
+		return &DeliveryResult{
+			Success:     false,
+			ErrorMsg:    "SMTP not configured",
+			DeliveredAt: now(),
+		}, nil
+	}
+
+	// Build email message with HTML content
+	subject := fmt.Sprintf("[%s] %s", strings.ToUpper(alert.Severity), alert.Title)
+	body := FormatAlertHTML(alert)
+	msg := fmt.Sprintf("From: %s\r\nTo: %s\r\nSubject: %s\r\nMIME-version: 1.0;\r\nContent-Type: text/html; charset=\"UTF-8\";\r\n\r\n%s",
+		smtpFrom, strings.Join(emailConfig.Recipients, ","), subject, body)
+
+	// Create SMTP authentication
+	auth := smtp.PlainAuth("", smtpUser, smtpPassword, smtpHost)
+
+	// Send email using net/smtp
+	addr := fmt.Sprintf("%s:%s", smtpHost, smtpPort)
+	err := smtp.SendMail(addr, auth, smtpFrom, emailConfig.Recipients, []byte(msg))
+	if err != nil {
+		e.circuitBreaker.RecordFailure()
+		e.logger.Error("SMTP send failed",
+			zap.Error(err),
+			zap.String("host", smtpHost),
+			zap.Int("recipient_count", len(emailConfig.Recipients)))
+		return &DeliveryResult{
+			Success:     false,
+			ErrorMsg:    fmt.Sprintf("SMTP send failed: %v", err),
+			DeliveredAt: now(),
+		}, nil
+	}
+
+	// Success
 	e.circuitBreaker.RecordSuccess()
-	e.logger.Info("Email notification delivered", zap.Int("recipient_count", len(emailConfig.Recipients)))
+	e.logger.Info("Email notification delivered",
+		zap.String("host", smtpHost),
+		zap.Int("recipient_count", len(emailConfig.Recipients)))
 	return &DeliveryResult{
 		Success:     true,
 		MessageID:   fmt.Sprintf("email_%d", alert.AlertID),

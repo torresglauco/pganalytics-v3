@@ -184,7 +184,12 @@ Plans:
   1. User can view replication topology as an interactive graph
   2. User can view data classification reports with drill-down by database/table
   3. User can view host inventory dashboards with status and metrics
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 13-01: Replication Topology Graph - Interactive visualization with @xyflow/react
+- [ ] 13-02: Data Classification Reports - Drill-down UI with filters and charts
+- [ ] 13-03: Host Inventory Dashboard - Status table and metrics visualization
 
 ### Phase 14: Testing & Quality
 **Goal**: All new features have comprehensive test coverage ensuring reliability
@@ -217,10 +222,10 @@ Phases execute in numeric order: 10 → 11 → 12 → 13 → 14
 | 10. Collector & Backend Foundation | v1.3 | 5/5 | Complete | 2026-05-13 |
 | 11. Data Classification & Health Analysis | v1.3 | 4/4 | Complete | 2026-05-14 |
 | 12. Alerting System | v1.3 | 4/4 | Complete | 2026-05-15 |
-| 13. Frontend UI | v1.3 | 0/TBD | Not started | - |
+| 13. Frontend UI | v1.3 | 0/3 | Not started | - |
 | 14. Testing & Quality | v1.3 | 0/TBD | Not started | - |
 
 ---
 
 *Roadmap created: 2026-04-28*
-*Last updated: 2026-05-15 for Phase 12 completion*
+*Last updated: 2026-05-15 for Phase 13 planning*

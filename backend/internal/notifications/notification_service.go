@@ -144,6 +144,7 @@ func (ns *NotificationService) registerChannels() {
 	ns.channels["webhook"] = NewWebhookChannel(ns.httpClient, zapLogger, ns.channelTimeout)
 	ns.channels["pagerduty"] = NewPagerDutyChannel(ns.httpClient, zapLogger, ns.channelTimeout)
 	ns.channels["jira"] = NewJiraChannel(ns.httpClient, zapLogger, ns.channelTimeout)
+	ns.channels["opsgenie"] = NewOpsGenieChannel(ns.httpClient, zapLogger, ns.channelTimeout)
 }
 
 // ============================================================================

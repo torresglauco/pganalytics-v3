@@ -1077,6 +1077,206 @@ func (j *JiraChannel) Test(ctx context.Context, config ChannelConfig) error {
 }
 
 // ============================================================================
+// OPSGENIE CHANNEL
+// ============================================================================
+
+type OpsGenieChannel struct {
+	*BaseChannel
+	httpClient *http.Client
+}
+
+type OpsGenieConfig struct {
+	APIKey string `json:"api_key"`
+	Region string `json:"region,omitempty"` // "us" or "eu"
+	TeamID string `json:"team_id,omitempty"`
+}
+
+type OpsGenieAlert struct {
+	Message     string            `json:"message"`
+	Alias       string            `json:"alias"`
+	Description string            `json:"description"`
+	Priority    string            `json:"priority"`
+	Tags        []string          `json:"tags"`
+	Details     map[string]string `json:"details,omitempty"`
+}
+
+type OpsGenieResponse struct {
+	Result  string `json:"result"`
+	AlertID string `json:"alertId,omitempty"`
+}
+
+func NewOpsGenieChannel(httpClient *http.Client, logger *zap.Logger, timeout time.Duration) NotificationChannel {
+	return &OpsGenieChannel{
+		BaseChannel: NewBaseChannel(logger, timeout),
+		httpClient:  httpClient,
+	}
+}
+
+func (o *OpsGenieChannel) Type() string {
+	return "opsgenie"
+}
+
+func (o *OpsGenieChannel) Validate(config ChannelConfig) error {
+	var ogConfig OpsGenieConfig
+	if err := json.Unmarshal(config.Config, &ogConfig); err != nil {
+		return fmt.Errorf("unmarshal opsgenie config: %w", err)
+	}
+
+	if ogConfig.APIKey == "" {
+		return fmt.Errorf("api_key required")
+	}
+
+	// Validate region if provided
+	if ogConfig.Region != "" && ogConfig.Region != "us" && ogConfig.Region != "eu" {
+		return fmt.Errorf("invalid region '%s'. Valid values: us, eu", ogConfig.Region)
+	}
+
+	return nil
+}
+
+func (o *OpsGenieChannel) Send(ctx context.Context, alert *AlertNotification, config ChannelConfig) (*DeliveryResult, error) {
+	// Check circuit breaker
+	if o.circuitBreaker.IsOpen() {
+		o.logger.Warn("OpsGenie circuit breaker is open")
+		return &DeliveryResult{
+			Success:     false,
+			ErrorMsg:    "OpsGenie service temporarily unavailable (circuit open)",
+			DeliveredAt: now(),
+		}, nil
+	}
+
+	// Add timeout
+	ctx, cancel := context.WithTimeout(ctx, o.timeout)
+	defer cancel()
+
+	var ogConfig OpsGenieConfig
+	if err := json.Unmarshal(config.Config, &ogConfig); err != nil {
+		return nil, fmt.Errorf("unmarshal config: %w", err)
+	}
+
+	// Determine API URL based on region
+	baseURL := "https://api.opsgenie.com"
+	if ogConfig.Region == "eu" {
+		baseURL = "https://api.eu.opsgenie.com"
+	}
+
+	// Map severity to OpsGenie priority
+	priority := "P3"
+	switch alert.Severity {
+	case "critical":
+		priority = "P1"
+	case "high":
+		priority = "P2"
+	case "medium":
+		priority = "P3"
+	case "low":
+		priority = "P4"
+	}
+
+	// Build alert payload
+	opsgenieAlert := OpsGenieAlert{
+		Message:     alert.Title,
+		Alias:       fmt.Sprintf("pganalytics_%d", alert.AlertID),
+		Description: alert.Description,
+		Priority:    priority,
+		Tags:        []string{"pganalytics", alert.Severity},
+	}
+
+	// Add details from context if available
+	if len(alert.Context) > 0 {
+		var ctxMap map[string]interface{}
+		if err := json.Unmarshal(alert.Context, &ctxMap); err == nil {
+			details := make(map[string]string)
+			for k, v := range ctxMap {
+				details[k] = fmt.Sprintf("%v", v)
+			}
+			opsgenieAlert.Details = details
+		}
+	}
+
+	// Add database and query info if available
+	if alert.Database != "" {
+		opsgenieAlert.Details["database"] = alert.Database
+	}
+	if alert.Query != "" {
+		opsgenieAlert.Details["query"] = alert.Query
+	}
+
+	body, err := json.Marshal(opsgenieAlert)
+	if err != nil {
+		return nil, fmt.Errorf("marshal payload: %w", err)
+	}
+
+	// Create request
+	req, err := http.NewRequestWithContext(ctx, "POST", baseURL+"/v2/alerts", bytes.NewBuffer(body))
+	if err != nil {
+		return nil, fmt.Errorf("create request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "GenieKey "+ogConfig.APIKey)
+
+	// Send request
+	resp, err := o.httpClient.Do(req)
+	if err != nil {
+		o.circuitBreaker.RecordFailure()
+		o.logger.Error("OpsGenie POST failed", zap.Error(err))
+		return &DeliveryResult{
+			Success:     false,
+			ErrorMsg:    fmt.Sprintf("OpsGenie POST failed: %v", err),
+			DeliveredAt: now(),
+		}, nil
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		o.circuitBreaker.RecordFailure()
+		o.logger.Error("OpsGenie returned error",
+			zap.Int("status_code", resp.StatusCode))
+		return &DeliveryResult{
+			Success:     false,
+			ErrorMsg:    fmt.Sprintf("HTTP %d", resp.StatusCode),
+			DeliveredAt: now(),
+		}, nil
+	}
+
+	// Parse response to get alert ID
+	var ogResp OpsGenieResponse
+	if err := json.NewDecoder(resp.Body).Decode(&ogResp); err == nil && ogResp.AlertID != "" {
+		o.circuitBreaker.RecordSuccess()
+		o.logger.Info("OpsGenie notification delivered",
+			zap.String("alert_id", ogResp.AlertID))
+		return &DeliveryResult{
+			Success:     true,
+			MessageID:   ogResp.AlertID,
+			DeliveredAt: now(),
+		}, nil
+	}
+
+	o.circuitBreaker.RecordSuccess()
+	o.logger.Info("OpsGenie notification delivered")
+	return &DeliveryResult{
+		Success:     true,
+		MessageID:   fmt.Sprintf("opsgenie_%d", alert.AlertID),
+		DeliveredAt: now(),
+	}, nil
+}
+
+func (o *OpsGenieChannel) Test(ctx context.Context, config ChannelConfig) error {
+	testAlert := &AlertNotification{
+		AlertID:     0,
+		Title:       "pgAnalytics Test Alert",
+		Description: "Test notification from pgAnalytics - connection successful!",
+		Severity:    "low",
+		Status:      "firing",
+		FiredAt:     now(),
+	}
+
+	_, err := o.Send(ctx, testAlert, config)
+	return err
+}
+
+// ============================================================================
 // UTILITIES
 // ============================================================================
 

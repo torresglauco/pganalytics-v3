@@ -85,8 +85,8 @@ Requirements for comprehensive monitoring and alerting platform. Extends existin
 
 ### Testing
 
-- [ ] **TEST-01**: All new collector plugins have C++ unit tests
-- [ ] **TEST-02**: All new backend services have Go unit tests
+- [x] **TEST-01**: All new collector plugins have C++ unit tests
+- [x] **TEST-02**: All new backend services have Go unit tests
 - [ ] **TEST-03**: All new API endpoints have integration tests
 - [ ] **TEST-04**: All new frontend components have tests
 - [ ] **TEST-05**: End-to-end tests cover critical user flows
@@ -280,8 +280,8 @@ Explicitly excluded. Documented to prevent scope creep.
 | UI-03 | Phase 13 | Pending |
 | UI-04 | Phase 13 | Pending |
 | UI-05 | Phase 12 | Pending |
-| TEST-01 | Phase 14 | Pending |
-| TEST-02 | Phase 14 | Pending |
+| TEST-01 | Phase 14 | Complete |
+| TEST-02 | Phase 14 | Complete |
 | TEST-03 | Phase 14 | Pending |
 | TEST-04 | Phase 14 | Pending |
 | TEST-05 | Phase 14 | Pending |

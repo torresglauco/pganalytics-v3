@@ -563,7 +563,23 @@ func (e *EmailChannel) Test(ctx context.Context, config ChannelConfig) error {
 		}
 	}
 
-	// In production, would test SMTP connection and send test email
+	// Verify SMTP configuration from environment
+	if os.Getenv("SMTP_HOST") == "" {
+		return fmt.Errorf("SMTP_HOST not configured")
+	}
+	if os.Getenv("SMTP_USER") == "" {
+		return fmt.Errorf("SMTP_USER not configured")
+	}
+	if os.Getenv("SMTP_PASSWORD") == "" {
+		return fmt.Errorf("SMTP_PASSWORD not configured")
+	}
+	if os.Getenv("SMTP_FROM") == "" {
+		return fmt.Errorf("SMTP_FROM not configured")
+	}
+
+	// Note: A full SMTP connection test could be added here
+	// to verify connectivity without sending an actual email
+
 	return nil
 }
 

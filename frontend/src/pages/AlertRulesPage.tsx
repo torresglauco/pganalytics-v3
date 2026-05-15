@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Filter, Download, Upload, AlertCircle, Search } from 'lucide-react';
+import { Plus, Filter, Download, Upload, AlertCircle, Search, History, CheckCircle } from 'lucide-react';
 import type { AlertRule } from '../types/alertRules';
-import { listAlertRules, exportRules, importRules, bulkRuleAction } from '../api/alertRulesApi';
+import { listAlertRules, exportRules, importRules, bulkRuleAction, getAlertHistory, acknowledgeAlert } from '../api/alertRulesApi';
 import AlertRuleForm from '../components/AlertRuleForm';
 import RuleDetailsModal from '../components/RuleDetailsModal';
 import BulkRuleActions from '../components/BulkRuleActions';
@@ -29,6 +29,12 @@ export const AlertRulesPage: React.FC<AlertRulesPageProps> = ({
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [severityFilter, setSeverityFilter] = useState<string>('');
   const [showFilters, setShowFilters] = useState(false);
+
+  // Alert History
+  const [showHistory, setShowHistory] = useState(false);
+  const [historyTriggers, setHistoryTriggers] = useState<any[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyTotal, setHistoryTotal] = useState(0);
 
   // Pagination
   const [limit] = useState(20);
@@ -133,6 +139,47 @@ export const AlertRulesPage: React.FC<AlertRulesPageProps> = ({
   };
 
   /**
+   * Load alert history
+   */
+  const loadHistory = async () => {
+    try {
+      setHistoryLoading(true);
+      const response = await getAlertHistory({
+        database_id: databaseId,
+        limit: 20,
+      });
+      setHistoryTriggers(response.triggers);
+      setHistoryTotal(response.total);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load history');
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  /**
+   * Handle acknowledge alert
+   */
+  const handleAcknowledgeAlert = async (triggerId: string) => {
+    try {
+      await acknowledgeAlert(triggerId);
+      await loadHistory();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to acknowledge alert');
+    }
+  };
+
+  /**
+   * Toggle history view
+   */
+  const toggleHistory = () => {
+    if (!showHistory) {
+      loadHistory();
+    }
+    setShowHistory(!showHistory);
+  };
+
+  /**
    * Toggle rule selection
    */
   const toggleRuleSelection = (ruleId: string) => {
@@ -191,6 +238,17 @@ export const AlertRulesPage: React.FC<AlertRulesPageProps> = ({
           </p>
         </div>
         <div className="flex gap-2">
+          <button
+            onClick={toggleHistory}
+            className={`flex items-center gap-2 px-4 py-2 border rounded-lg font-medium ${
+              showHistory
+                ? 'bg-blue-100 border-blue-300 text-blue-800'
+                : 'border-gray-300 hover:bg-gray-50 text-gray-700'
+            }`}
+          >
+            <History size={18} />
+            History
+          </button>
           <button
             onClick={() => handleExport('json')}
             className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-700 font-medium"
@@ -443,6 +501,97 @@ export const AlertRulesPage: React.FC<AlertRulesPageProps> = ({
               Next
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Alert History Section */}
+      {showHistory && (
+        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+          <div className="p-4 border-b border-gray-200">
+            <h3 className="text-lg font-semibold text-gray-900">Alert History</h3>
+            <p className="text-sm text-gray-600 mt-1">
+              Recent alert triggers and their status
+            </p>
+          </div>
+
+          {historyLoading ? (
+            <div className="p-8 text-center text-gray-600">Loading history...</div>
+          ) : historyTriggers.length === 0 ? (
+            <div className="p-8 text-center text-gray-600">
+              <History size={32} className="mx-auto mb-2 opacity-50" />
+              <p>No alert triggers recorded yet</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-gray-200">
+              {historyTriggers.map((trigger) => (
+                <div
+                  key={trigger.id}
+                  className="p-4 hover:bg-gray-50 flex justify-between items-center"
+                >
+                  <div className="flex items-center gap-4">
+                    <div
+                      className={`w-3 h-3 rounded-full ${
+                        trigger.status === 'acknowledged'
+                          ? 'bg-green-500'
+                          : trigger.status === 'firing'
+                          ? 'bg-red-500'
+                          : 'bg-gray-400'
+                      }`}
+                    />
+                    <div>
+                      <p className="font-medium text-gray-900">{trigger.rule_name}</p>
+                      <p className="text-sm text-gray-600">
+                        Triggered: {new Date(trigger.triggered_at).toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <span
+                      className={`px-2 py-1 rounded text-sm font-medium ${
+                        trigger.severity === 'critical'
+                          ? 'bg-red-100 text-red-800'
+                          : trigger.severity === 'high'
+                          ? 'bg-orange-100 text-orange-800'
+                          : trigger.severity === 'medium'
+                          ? 'bg-yellow-100 text-yellow-800'
+                          : 'bg-blue-100 text-blue-800'
+                      }`}
+                    >
+                      {trigger.severity}
+                    </span>
+                    <span
+                      className={`px-2 py-1 rounded text-sm font-medium ${
+                        trigger.status === 'acknowledged'
+                          ? 'bg-green-100 text-green-800'
+                          : trigger.status === 'firing'
+                          ? 'bg-red-100 text-red-800'
+                          : 'bg-gray-100 text-gray-800'
+                      }`}
+                    >
+                      {trigger.status}
+                    </span>
+                    {trigger.status !== 'acknowledged' && (
+                      <button
+                        onClick={() => handleAcknowledgeAlert(trigger.id)}
+                        className="flex items-center gap-1 px-3 py-1 border border-gray-300 rounded hover:bg-gray-50 text-gray-700 text-sm"
+                      >
+                        <CheckCircle size={16} />
+                        Acknowledge
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {historyTotal > 20 && (
+            <div className="p-4 border-t border-gray-200 text-center">
+              <p className="text-sm text-gray-600">
+                Showing 20 of {historyTotal} triggers
+              </p>
+            </div>
+          )}
         </div>
       )}
     </div>

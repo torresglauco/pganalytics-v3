@@ -284,3 +284,51 @@ export async function getSuggestedRules(databaseId: string): Promise<{
 }> {
   return apiCall(`/alert-rules/suggestions?database_id=${databaseId}`);
 }
+
+/**
+ * Get alert history across all rules
+ */
+export async function getAlertHistory(options?: {
+  database_id?: string;
+  rule_id?: string;
+  severity?: string;
+  status?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<{
+  triggers: Array<{
+    id: string;
+    rule_id: string;
+    rule_name: string;
+    triggered_at: string;
+    severity: string;
+    status: string;
+    metric_value: number;
+    acknowledged_at?: string;
+    acknowledged_by?: string;
+  }>;
+  total: number;
+}> {
+  const params = new URLSearchParams();
+  if (options?.database_id) params.append('database_id', options.database_id);
+  if (options?.rule_id) params.append('rule_id', options.rule_id);
+  if (options?.severity) params.append('severity', options.severity);
+  if (options?.status) params.append('status', options.status);
+  if (options?.limit) params.append('limit', options.limit.toString());
+  if (options?.offset) params.append('offset', options.offset.toString());
+
+  return apiCall(`/alerts/history?${params.toString()}`);
+}
+
+/**
+ * Acknowledge an alert trigger
+ */
+export async function acknowledgeAlert(triggerId: string): Promise<{
+  id: string;
+  status: string;
+  acknowledged_at: string;
+}> {
+  return apiCall(`/alerts/${triggerId}/acknowledge`, {
+    method: 'POST',
+  });
+}

@@ -5,7 +5,6 @@
 
 import type {
   ReplicationTopology,
-  ReplicationStatus,
   ReplicationSlot,
   LogicalSubscription,
   Publication,

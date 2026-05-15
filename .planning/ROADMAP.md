@@ -201,7 +201,13 @@ Plans:
   3. All new API endpoints have integration tests covering happy path and error cases
   4. All new frontend components have tests passing
   5. End-to-end tests cover critical user flows for monitoring features
-**Plans**: TBD
+**Plans**: 4 plans
+
+Plans:
+- [ ] 14-01: Backend Unit Tests - Tenant middleware, health calculator, collector plugins (TEST-01, TEST-02)
+- [ ] 14-02: Backend Integration Tests - Replication, host monitoring, alert rules APIs (TEST-03)
+- [ ] 14-03: Frontend Unit Tests - Components and pages for topology, classification, hosts (TEST-04)
+- [ ] 14-04: E2E Tests - Playwright tests for critical user flows (TEST-05)
 
 ## Progress
 
@@ -223,9 +229,9 @@ Phases execute in numeric order: 10 → 11 → 12 → 13 → 14
 | 11. Data Classification & Health Analysis | v1.3 | 4/4 | Complete | 2026-05-14 |
 | 12. Alerting System | v1.3 | 4/4 | Complete | 2026-05-15 |
 | 13. Frontend UI | v1.3 | Complete    | 2026-05-15 | 2026-05-15 |
-| 14. Testing & Quality | v1.3 | 0/TBD | Not started | - |
+| 14. Testing & Quality | v1.3 | 0/4 | Not started | - |
 
 ---
 
 *Roadmap created: 2026-04-28*
-*Last updated: 2026-05-15 for Phase 13 planning*
+*Last updated: 2026-05-15 for Phase 14 planning*

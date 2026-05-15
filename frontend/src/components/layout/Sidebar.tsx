@@ -22,6 +22,7 @@ const navItems: NavItem[] = [
   { section: 'main', icon: '📇', label: 'Index Advisor', href: '/index-advisor/1' },
   { section: 'main', icon: '🧹', label: 'VACUUM Advisor', href: '/vacuum-advisor/1' },
   { section: 'main', icon: '📁', label: 'Collectors', href: '/collectors' },
+  { section: 'main', icon: '🔗', label: 'Replication Topology', href: '/topology/1' },
   { section: 'main', icon: '🔔', label: 'Channels', href: '/channels' },
   { section: 'main', icon: '📊', label: 'Grafana', href: '/grafana' },
 

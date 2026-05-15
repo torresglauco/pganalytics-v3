@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Monitoring & Alerting Platform
 status: executing
-stopped_at: Phase 12 Plan 02 complete - SMTP Email Delivery
-last_updated: "2026-05-15T00:57:28.000Z"
+stopped_at: Phase 12 Plan 01 complete - Alert Database Repositories
+last_updated: "2026-05-15T01:17:23.000Z"
 progress:
   total_phases: 5
   completed_phases: 2
   total_plans: 13
-  completed_plans: 10
+  completed_plans: 11
 ---
 
 # Project State
@@ -100,6 +100,13 @@ Key decisions logged in PROJECT.md:
 - Superuser bypass policies allow administrative access
 - Default tenant created for backward compatibility with single-tenant mode
 
+### Phase 12 Plan 01 Decisions
+
+- Used Broadcaster interface in storage package to avoid import cycle with services package
+- Added Broadcast method to ConnectionManager for generic event broadcasting
+- EscalationPolicy updates use transactional delete-and-reinsert pattern for steps
+- Handlers initialize conditionally when postgres is available
+
 ### Phase 12 Plan 02 Decisions
 
 - Use net/smtp with PlainAuth for SMTP authentication
@@ -118,10 +125,10 @@ None.
 ## Session Continuity
 
 Last session: 2026-05-15
-Stopped at: Phase 12 Plan 02 complete - SMTP Email Delivery
+Stopped at: Phase 12 Plan 01 complete - Alert Database Repositories
 Resume file: None
 
 ---
 
 *Roadmap created: 2026-05-13*
-*Phase 12 Plan 02 complete - ready for Plan 03*
+*Phase 12 Plan 01 complete - ready for Plan 02*

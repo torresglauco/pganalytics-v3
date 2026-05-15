@@ -84,13 +84,26 @@ func NewServer(
 	conditionValidator := services.NewConditionValidator()
 	conditionHandler := handlers.NewConditionHandler(conditionValidator)
 
-	// TODO: Initialize SilenceService with SilenceDB implementation
-	var silenceHandler *handlers.SilenceHandler
-	// silenceHandler = handlers.NewSilenceHandler(silenceService)
+	// Initialize WebSocket manager for real-time updates
+	wsManager := services.NewConnectionManager(logger)
 
-	// TODO: Initialize EscalationService with EscalationDB implementation and Notifier
+	// Initialize alert repositories and services when postgres is available
+	var silenceHandler *handlers.SilenceHandler
 	var escalationHandler *handlers.EscalationHandler
-	// escalationHandler = handlers.NewEscalationHandler(escalationService)
+
+	if postgres != nil {
+		db := postgres.GetDB()
+
+		// Create SilenceRepository with WebSocket broadcast support
+		silenceRepo := storage.NewSilenceRepository(db, wsManager)
+		silenceService := services.NewSilenceService(silenceRepo)
+		silenceHandler = handlers.NewSilenceHandler(silenceService)
+
+		// Create EscalationRepository (notifier can be nil for now)
+		escalationRepo := storage.NewEscalationRepository(db)
+		escalationService := services.NewEscalationService(escalationRepo, nil)
+		escalationHandler = handlers.NewEscalationHandler(escalationService)
+	}
 
 	// Initialize session manager
 	sessionManager := session.NewSessionManager(nil) // Redis client to be configured
@@ -115,7 +128,7 @@ func NewServer(
 		rateLimiter:       rateLimiter,
 		secretManager:     secretManager,
 		sessionManager:    sessionManager,
-		wsManager:         services.NewConnectionManager(logger),
+		wsManager:         wsManager,
 		conditionHandler:  conditionHandler,
 		silenceHandler:    silenceHandler,
 		escalationHandler: escalationHandler,

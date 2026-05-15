@@ -232,6 +232,19 @@ func (cm *ConnectionManager) BroadcastAlertEvent(data interface{}, instanceID in
 	return cm.broadcastWithFallback(event, instanceID)
 }
 
+// Broadcast sends a generic event to all connected clients
+// This implements the Broadcaster interface for silence notifications
+func (cm *ConnectionManager) Broadcast(event string, data map[string]interface{}) {
+	// Broadcast to all connected users (instanceID = 0 means all)
+	wsEvent := WebSocketEvent{
+		Type: event,
+		Data: data,
+	}
+
+	// Use instanceID 0 to broadcast to all connections
+	_ = cm.broadcastWithFallback(wsEvent, 0)
+}
+
 // broadcastWithFallback sends a message with fallback mechanism for backpressure
 func (cm *ConnectionManager) broadcastWithFallback(event WebSocketEvent, instanceID int) error {
 	// Check circuit breaker
